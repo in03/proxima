@@ -1,0 +1,7 @@
+rabbitmq:
+  user: marco
+  password: yolo
+  address: 192.168.1.19
+  vhost: marco_vhost
+  protocol: amqp
+  backend: rpc://

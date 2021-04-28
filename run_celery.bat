@@ -1,0 +1,1 @@
+celery -A distributor worker --loglevel=info
