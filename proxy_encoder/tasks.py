@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from distributor.celery import app
+from proxy_encoder.celery import app
 import time
 
 

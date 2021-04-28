@@ -1,4 +1,4 @@
-rabbitmq:
+rabbit_mq:
   user: marco
   password: yolo
   address: 192.168.1.19

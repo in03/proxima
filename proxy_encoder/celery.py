@@ -5,7 +5,7 @@ import os
 import yaml
 
 script_dir = os.path.dirname(__file__)
-with open(os.path.join(script_dir, "proxy_settings.yml")) as file: 
+with open(os.path.join(script_dir, "config.yml")) as file: 
     config = yaml.safe_load(file)
 
 # Broker Settings
@@ -17,7 +17,7 @@ vhost = broker['vhost']
 protocol = broker['protocol']
 backend = broker['backend']
 
-
+os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
 
 app = Celery('proxy_encoder',
              broker=f'{protocol}://{user}:{pwd}@{address}/{vhost}',
