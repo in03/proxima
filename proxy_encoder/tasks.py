@@ -24,7 +24,6 @@ def simulate_encode(job):
             file.write(f"Rendered:\n{job}")
 
     print(f"Done!")
-    
 
 
 @app.task
