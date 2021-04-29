@@ -7,18 +7,16 @@ import pathlib
 import shutil
 import socket
 import sys
-import time
 import tkinter
 import tkinter.messagebox
 import traceback
-import uuid
 
 import yaml
 from colorama import Fore, init
 
-from proxy_encoder import *
 from python_get_resolve import GetResolve
 from link_proxies import get_timelines, match_proxies
+from proxy_encoder import *
 
 # Get environment variables #########################################
 script_dir = os.path.dirname(__file__)
@@ -34,12 +32,7 @@ revision_sep = config['paths']['revision_sep']
 
 def send_clips(clips):
 
-    job_id = str(uuid.uuid4())
-    clips_in_job = len(clips)
-
     general = {
-        'job_id': job_id,
-        'clips_in_job': clips_in_job,
         'project': project.GetName(), 
         'timeline': timeline.GetName(), 
         'status': "ready",
@@ -49,7 +42,8 @@ def send_clips(clips):
 
     jobs = [dict(item, **general) for item in clips]
 
-    for job in jobs:
+    for i, job in enumerate(jobs):
+        sys.stdout.write(f"\r{Fore.CYAN}Sending job {i+1}/{len(jobs)}: {job['Clip Name']} --> {job['Expected Proxy Path']}")
         tasks.encode_video.delay(job)
 
 def handle_offline_proxies(media_list):

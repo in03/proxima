@@ -12,16 +12,14 @@ paths:
   revision_sep: "_"
 
 proxy_settings:
-  framerate: 50/1
-  h_flip: False
-  v_flip: False
-  h_res: 1280
-  v_res: 720
   vid_codec: dnxhd
+  h_res: 1280 
+  v_res: 720
   vid_profile: dnxhr_sq 
   pix_fmt: yuv422p
-  audio_codec: pcm_s16le
-  audio_samplerate: 48000
+  audio:
+    audio_codec: pcm_s16le
+    audio_samplerate: 48000
   misc_args: [-hide_banner, -stats, -loglevel error]
   ext: .mxf
   overwrite_mode: increment #keep, skip
