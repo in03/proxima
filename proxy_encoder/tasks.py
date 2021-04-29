@@ -18,17 +18,13 @@ with open(os.path.join(script_dir, "config.yml")) as file:
 def simulate_encode(job):
     '''Just something simple to simulate a quick encode job'''
 
-    print(f"Started encoding {job}")
+    print(f"Started encoding {job.get('Clip Name', None)}")
     time.sleep(2)
     with open(os.path.join(script_dir, "render_log.txt"), "a") as file:
             file.write(f"Rendered:\n{job}")
-
-    print(f"Done!")
 
 
 @app.task
 def encode_video(job):
     simulate_encode(job)
     return True
-    
-    

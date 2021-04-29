@@ -11,6 +11,7 @@ import time
 import tkinter
 import tkinter.messagebox
 import traceback
+import uuid
 
 import yaml
 from colorama import Fore, init
@@ -32,8 +33,13 @@ revision_sep = config['paths']['revision_sep']
 
 
 def send_clips(clips):
-        
+
+    job_id = str(uuid.uuid4())
+    clips_in_job = len(clips)
+
     general = {
+        'job_id': job_id,
+        'clips_in_job': clips_in_job,
         'project': project.GetName(), 
         'timeline': timeline.GetName(), 
         'status': "ready",
