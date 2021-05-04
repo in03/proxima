@@ -38,7 +38,7 @@ def encode_video(job):
 
     output_file = os.path.join(
         job['Expected Proxy Path'],
-        job['Clip Name'] +
+        os.path.splitext(job['Clip Name'])[0] +
         proxy_settings['ext'],
     )
     
@@ -48,6 +48,15 @@ def encode_video(job):
     fps = job['FPS']
 
 
+    # Flip logic:
+    # If any flip args were sent with the job from Resolve, flip the clip accordingly. 
+    # Flipping should be applied to clip attributes, not through the inspector panel
+
+    flippage = ''
+    if job['H-FLIP'] == "On":
+        flippage += ' hflip, '
+    if job['V-FLIP'] == "On":
+        flippage += 'vflip, '
 
     ff = FFmpeg(
         global_options = [
@@ -63,10 +72,10 @@ def encode_video(job):
             output_file:
                 ['-c:v', 
                     'dnxhd', 
-                    '-profile:v', 
+                    '-profile:v',
                     'dnxhr_sq', 
-                    '-vf', 
-                    f'scale={h_res}:{v_res},' + 
+                    '-vf',
+                    f'scale={h_res}:{v_res},{flippage}' + 
                     f'fps={fps},' + 
                     'format=yuv422p', 
                     '-c:a',
@@ -76,6 +85,8 @@ def encode_video(job):
                 ]
         },
     )
+    
+
 
     print(ff.cmd)
     try:
