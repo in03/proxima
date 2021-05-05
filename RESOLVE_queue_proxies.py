@@ -83,6 +83,7 @@ def confirm(title, message):
         message = message,
     )
 
+    some_action_taken = True
     return answer
 
 def get_expected_proxy_path(media_list):
@@ -147,6 +148,8 @@ def handle_orphaned_proxies(media_list):
 
                 shutil.move(proxy['Old Path'], proxy['New Path'])
 
+            some_action_taken = True
+
         elif answer == None:
             print("Exiting...")
             sys.exit(1)
@@ -169,6 +172,7 @@ def handle_already_linked(media_list):
     if len(already_linked) > 0:
         print(f"{Fore.GREEN}Skipping {len(already_linked)} already linked.")
         media_list = [x for x in media_list if x not in already_linked]
+        some_action_taken = True
 
     else:
         print(f"{Fore.GREEN}Found none.")
@@ -195,6 +199,8 @@ def handle_offline_proxies(media_list):
             for media in media_list:
                 if media['Proxy'] == "Offline":
                     media['Proxy'] = "None"
+
+            some_action_taken = True
 
         if answer == None:
             print(f"{Fore.RED}Exiting...")
@@ -226,6 +232,8 @@ def handle_existing_unlinked(media_list):
             existing = glob.glob(expected_proxy_file + "*.*")
 
             if len(existing) > 0:
+
+                some_action_taken = True
 
                 try:
                     existing.sort(key=os.path.getmtime)
@@ -338,6 +346,8 @@ if __name__ == "__main__":
     root = tkinter.Tk()
     root.withdraw()
 
+    some_action_taken = False
+
     
     try:       
         # Get global variables
@@ -347,6 +357,9 @@ if __name__ == "__main__":
 
         print()
         clips = get_media()
+
+        #TODO: Implement 'some_action_taken' flag to make below message more user friendly when other dialogues have been shown.
+        # Possibly consider altering the flag when a dialogue box is shown at all and not just if answer == True. 
 
         if len(clips) == 0:
             print("No clips to queue.")
