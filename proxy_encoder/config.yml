@@ -1,3 +1,5 @@
+debug: true
+
 rabbit_mq:
   user: marco
   password: yolo

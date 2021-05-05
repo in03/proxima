@@ -1,4 +1,4 @@
-#! /usr/bin/python3.6
+#!/usr/bin/env python
 # Save proxy clip list
 
 import glob
@@ -7,6 +7,7 @@ import pathlib
 import shutil
 import socket
 import sys
+import time
 import tkinter
 import tkinter.messagebox
 import traceback
@@ -46,33 +47,9 @@ def send_clips(clips):
         sys.stdout.write(f"\r{Fore.CYAN}Sending job {i+1}/{len(jobs)}: {job['Clip Name']} --> {job['Expected Proxy Path']}")
         tasks.encode_video.delay(job)
 
-def handle_offline_proxies(media_list):
-
-    offline_proxies = [x for x in media_list if x['Proxy'] == "Offline"]
-
-    if len(offline_proxies) != 0:
-        print(f"Offline proxies: {len(offline_proxies)}")
-        answer = tkinter.messagebox.askyesnocancel(title="Offline proxies",
-                                        message=f"{len(offline_proxies)} clip(s) have offline proxies.\n" +
-                                        "Would you like to rerender them?")
-
-
-        if answer == True:
-            print(f"Rerendering offline: {len(offline_proxies)}")
-            # Set all offline clips to None, so they'll rerender
-            # [media['Proxy'] == "None" for media in media_list if media['Proxy'] == "Offline"]
-            for media in media_list:
-                if media['Proxy'] == "Offline":
-                    media['Proxy'] = "None"
-
-        if answer == None:
-            print("Exiting...")
-            sys.exit(0)
-
-    return media_list
-
 def link(media_list):
     
+    print(f"{Fore.CYAN}Linking proxy media")
     existing_proxies = []
 
     for media in media_list:
@@ -84,7 +61,7 @@ def link(media_list):
 
         if not os.path.exists(proxy):
             tkinter.messagebox.showerror(title = "Error linking proxy", message = f"Proxy media not found at '{proxy}'")
-            print(f"Error linking proxy: Proxy media not found at '{proxy}'")
+            print(f"{Fore.RED}Error linking proxy: Proxy media not found at '{proxy}'")
             continue
 
         else:
@@ -94,7 +71,19 @@ def link(media_list):
     for timeline in get_timelines(active_only=True):
         match_proxies(timeline, existing_proxies)
 
+    print()
     return media_list
+
+def confirm(title, message):
+    '''General tkinter confirmation prompt using ok/cancel.
+    Keeps things tidy'''
+
+    answer = tkinter.messagebox.askokcancel(
+        title = title, 
+        message = message,
+    )
+
+    return answer
 
 def get_expected_proxy_path(media_list):
     '''Retrieves the current expected proxy path using the source media path.
@@ -111,85 +100,12 @@ def get_expected_proxy_path(media_list):
 
     return media_list
 
-def handle_already_linked(media_list):
-    '''Remove media from the queue if the source media already has a linked proxy that is online.
-    As re-rendering linked clips is rarely desired behaviour, it makes sense to avoid clunky prompting.
-    To re-render linked clips, simply unlink their proxies and try queuing proxies again. 
-    You'll be prompted to handle offline proxies.'''
-
-    already_linked = [x for x in media_list if x['Proxy'] != "None"]
-    print(f"Skipping {len(already_linked)} already linked.")
-    media_list = [x for x in media_list if x not in already_linked]
-
-    return media_list
-
-def handle_existing_unlinked(media_list):
-    '''Prompts user to either link or re-render proxy media that exists in the expected location, 
-    but has either been unlinked at some point or was never linked after proxies finished rendering.
-    Saves confusion and unncessary re-rendering time.'''
-
-    existing_unlinked = []
-
-    for media in media_list:
-        if media['Proxy'] == "None":
-            expected_proxy_path = media['Expected Proxy Path']
-            media_basename = os.path.splitext(os.path.basename(media['File Name']))[0]
-            expected_proxy_file = os.path.join(expected_proxy_path, media_basename)
-            expected_proxy_file = os.path.splitext(expected_proxy_file)[0]
-            
-            existing = glob.glob(expected_proxy_file + "*.*")
-
-            if len(existing) > 0:
-
-                try:
-                    existing.sort(key=os.path.getmtime)
-                    print(f"Found {len(existing)} existing matches for {media['File Name']}")
-                    existing = existing[0]
-                    print(f"Using newest: '{existing}'")
-                except:
-                    print("Couldn't sort by modification time.")
-                    sorted(existing, key = lambda x: int(x.split(revision_sep)[1]))
-                    existing = existing[0]
-                    print(f"Using largest revision number: {existing}")
-
-
-                media.update({'Existing Proxy': existing})
-                existing_unlinked.append(existing)
-
-
-    if len(existing_unlinked) > 0:
-        print(f"Existing unlinked proxy media: {len(existing_unlinked)}")
-        answer = tkinter.messagebox.askyesnocancel(title="Found unlinked proxy media",
-                                        message=f"{len(existing_unlinked)} clip(s) have existing but unlinked proxy media. " +
-                                        "Would you like to link them? If you select 'No' they will be re-rendered.")
-
-        if answer == True:
-            link(media_list)
-
-            # Remove the proxies we just linked from the media_list
-            pre_len = len(media_list)
-
-            media_list = [x for x in media_list if 'Existing Proxy' not in x]
-
-            post_len = len(media_list)
-            print(f"{pre_len - post_len} proxy(s) linked, will not be queued.")
-            print(f"Queueing {post_len}")
-            
-        
-        elif answer == False:
-            print("Existing proxies will be overwritten...")
-
-        else:
-            print("Exiting...")
-            sys.exit(0)
-
-    return media_list
-    
 def handle_orphaned_proxies(media_list):
     '''Prompts user to tidy orphaned proxies into the current proxy path structure.
     Orphans can become separated from a project if source media file-path structure changes.
     Saves unncessary re-rendering time and lost disk space.'''
 
+    print(f"{Fore.CYAN}Checking for orphaned proxies.")
     orphaned_proxies = []
 
     for clip in media_list:
@@ -235,8 +151,130 @@ def handle_orphaned_proxies(media_list):
             print("Exiting...")
             sys.exit(1)
 
+    else:
+        print(f"{Fore.GREEN}Found none.")
+    
+    print()
     return 
     
+def handle_already_linked(media_list):
+    '''Remove media from the queue if the source media already has a linked proxy that is online.
+    As re-rendering linked clips is rarely desired behaviour, it makes sense to avoid clunky prompting.
+    To re-render linked clips, simply unlink their proxies and try queuing proxies again. 
+    You'll be prompted to handle offline proxies.'''
+
+    print(f"{Fore.CYAN}Checking for source media with linked proxies.")
+    already_linked = [x for x in media_list if x['Proxy'] != "None"]
+
+    if len(already_linked) > 0:
+        print(f"{Fore.GREEN}Skipping {len(already_linked)} already linked.")
+        media_list = [x for x in media_list if x not in already_linked]
+
+    else:
+        print(f"{Fore.GREEN}Found none.")
+
+    print()
+    return media_list
+
+def handle_offline_proxies(media_list):
+
+    print(f"{Fore.CYAN}Checking for offline proxies")
+    offline_proxies = [x for x in media_list if x['Proxy'] == "Offline"]
+
+    if len(offline_proxies) > 0:
+        print(f"{Fore.CYAN}Offline proxies: {len(offline_proxies)}")
+        answer = tkinter.messagebox.askyesnocancel(title="Offline proxies",
+                                        message=f"{len(offline_proxies)} clip(s) have offline proxies.\n" +
+                                        "Would you like to rerender them?")
+
+
+        if answer == True:
+            print(f"{Fore.YELLOW}Rerendering offline: {len(offline_proxies)}")
+            # Set all offline clips to None, so they'll rerender
+            # [media['Proxy'] == "None" for media in media_list if media['Proxy'] == "Offline"]
+            for media in media_list:
+                if media['Proxy'] == "Offline":
+                    media['Proxy'] = "None"
+
+        if answer == None:
+            print(f"{Fore.RED}Exiting...")
+            sys.exit(0)
+    else:
+        print(f"{Fore.GREEN}Found none.")
+    
+    print()
+    return media_list
+
+def handle_existing_unlinked(media_list):
+    '''Prompts user to either link or re-render proxy media that exists in the expected location, 
+    but has either been unlinked at some point or was never linked after proxies finished rendering.
+    Saves confusion and unncessary re-rendering time.'''
+
+    print(f"{Fore.CYAN}Checking for existing, unlinked media.")
+    existing_unlinked = []
+
+    
+    get_expected_proxy_path(media_list)
+
+    for media in media_list:
+        if media['Proxy'] == "None":
+            expected_proxy_path = media['Expected Proxy Path']
+            media_basename = os.path.splitext(os.path.basename(media['File Name']))[0]
+            expected_proxy_file = os.path.join(expected_proxy_path, media_basename)
+            expected_proxy_file = os.path.splitext(expected_proxy_file)[0]
+            
+            existing = glob.glob(expected_proxy_file + "*.*")
+
+            if len(existing) > 0:
+
+                try:
+                    existing.sort(key=os.path.getmtime)
+                    # if debug: print(f"{Fore.MAGENTA} [x] Found {len(existing)} existing matches for {media['File Name']}")
+                    existing = existing[0]
+                    # if debug: print(f"{Fore.MAGENTA} [x] Using newest: '{existing}'")
+                except:
+                    # if debug: print(f"{Fore.MAGENTA} [x] {Fore.YELLOW}Couldn't sort by modification time.")
+                    sorted(existing, key = lambda x: int(x.split(revision_sep)[1]))
+                    existing = existing[0]
+                    # if debug: print(f"{Fore.MAGENTA} [x] Using largest revision number: {existing}")
+
+
+                media.update({'Existing Proxy': existing})
+                existing_unlinked.append(existing)
+
+
+    if len(existing_unlinked) > 0:
+        print(f"{Fore.GREEN}Found {len(existing_unlinked)} unlinked")
+        answer = tkinter.messagebox.askyesnocancel(title="Found unlinked proxy media",
+                                        message=f"{len(existing_unlinked)} clip(s) have existing but unlinked proxy media. " +
+                                        "Would you like to link them? If you select 'No' they will be re-rendered.")
+
+        if answer == True:
+            link(media_list)
+
+            # Remove the proxies we just linked from the media_list
+            pre_len = len(media_list)
+
+            media_list = [x for x in media_list if 'Existing Proxy' not in x]
+
+            post_len = len(media_list)
+            print(f"{pre_len - post_len} proxy(s) linked, will not be queued.")
+            print(f"Queueing {post_len}")
+            
+        
+        elif answer == False:
+            print("Existing proxies will be overwritten...")
+
+        else:
+            print("Exiting...")
+            sys.exit(0)
+
+    else:
+        print(f"{Fore.GREEN}Found none.")
+    
+    print()
+    return media_list
+
 def get_media():
     ''' Main function to get clip-list and prompt user to filter passed clips.'''
 
@@ -248,7 +286,7 @@ def get_media():
         tkinter.messagebox.showinfo("ERROR", message)
         sys.exit(1)
         
-    print(f"Video track count: {track_len}")
+    print(f"{Fore.GREEN}Video track count: {track_len}")
 
     all_clips = []
     for i in range(1, track_len):
@@ -275,8 +313,8 @@ def get_media():
     unique_sets = set(frozenset(d.items()) for d in all_clips)
     media_list = [dict(s) for s in unique_sets]
 
-    print(f"Total clips on timeline: {len(all_clips)}")
-    print(f"Unique source media: {len(media_list)}")
+    print(f"{Fore.GREEN}Total clips on timeline: {len(all_clips)}")
+    print(f"{Fore.GREEN}Unique source media: {len(media_list)}")
     print()
 
 
@@ -284,7 +322,7 @@ def get_media():
     media_list = handle_already_linked(media_list)
     media_list = handle_offline_proxies(media_list)
 
-    get_expected_proxy_path(media_list)
+    
     media_list = handle_existing_unlinked(media_list)
 
 
@@ -316,7 +354,15 @@ if __name__ == "__main__":
                                            "If you want to re-rerender some proxies, unlink those existing proxies within Resolve and try again.")
             sys.exit(1)
 
-        send_clips(clips)
+        # Final Prompt confirm
+        ready = confirm(
+            "Queue Proxies", 
+            f"{len(clips)} clips have no existing proxies.\n" +
+            "Would you like to queue them?"
+        )
+
+        if ready:
+            send_clips(clips)
 
     
     except Exception as e:
@@ -325,3 +371,8 @@ if __name__ == "__main__":
         
         tkinter.messagebox.showerror("ERROR", tb)
         print("ERROR - " + str(e))
+
+        # Allow time to read console before exit
+        for i in range(5, -1, -1):
+            sys.stdout.write(f"{Fore.RED}\rExiting in " + str(i))
+            time.sleep(1)
