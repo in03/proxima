@@ -81,7 +81,7 @@ def match_proxies(timeline, potential_proxies):
                             path = media.GetClipProperty("File Path")
 
                         except:
-                            print(f"Skipping {name}, no linked media pool item.")
+                            print(f"Skipping {item.GetName()}, no linked media pool item.")
                             continue
                         
                         clip_name = os.path.splitext(os.path.basename(path))[0]

@@ -28,7 +28,8 @@ def simulate_encode(job):
 
     # C:\Program Files\FFMPEG\ffmpeg.exe" -y -i "B:/Yeet.mp4" -c:v dnxhd -profile:v dnxhr_sq -vf scale=1280:720,fps=50.000,format=yuv422p -c:a pcm_s16le -ar 48000 -hide_banner -stats -loglevel error "B:/Sup.mp4"
     # ffmpeg -y -hide-banner -stats -loglevel error -i B:/Yeet.mp4 -c:v dnxhd -profile:v dnxhr_s1 -vf scale=1280:720 fps=50 format=yuv422p "-c:a pcm_s16le" "-ar 48000" B:/Sup.mp4
-@app.task
+
+@app.task(acks_late = True, track_started = True, prefetch_limit = 1)
 def encode_video(job):
     
     # Create path for proxy first

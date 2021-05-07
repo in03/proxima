@@ -10,22 +10,5 @@ with open(os.path.join(script_dir, "config.yml")) as file:
 
 os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
 
-# Broker Settings
-broker = config['rabbit_mq']
-user = broker['user']
-pwd = broker['password']
-address = broker['address']
-vhost = broker['vhost']
-protocol = broker['protocol']
-backend = broker['backend']
-
-
-app = Celery('proxy_encoder',
-             broker=f'{protocol}://{user}:{pwd}@{address}/{vhost}',
-             backend=backend,
-             include=['proxy_encoder.tasks'])
-
-app.conf.update(
-    enable_utc = True,
-    timezone ='Australia/Brisbane'
-)
+app = Celery('proxy_encoder')
+app.config_from_object('proxy_encoder.celery_settings')

@@ -13,7 +13,10 @@ import tkinter.messagebox
 import traceback
 
 import yaml
+from celery import group
 from colorama import Fore, init
+from pyfiglet import Figlet
+from win10toast import ToastNotifier
 
 from python_get_resolve import GetResolve
 from link_proxies import get_timelines, match_proxies
@@ -28,24 +31,57 @@ acceptable_exts = config['filters']['acceptable_exts']
 proxy_path_root = config['paths']['proxy_path_root']
 revision_sep = config['paths']['revision_sep']
 
+debug = True
+
 #####################################################################
 
+def toast(message):
+    assert toaster.show_toast(
+        "Queue Proxies", 
+        message, 
+        # icon_path = icon_path, 
+        threaded = True,
+    )
+    return
 
-def send_clips(clips):
+def exit_in_seconds(timeout):
+    '''Allow time to read console before exit'''
+    for i in range(timeout, -1, -1):
+        sys.stdout.write(f"{Fore.RED}\rExiting in " + str(i))
+        time.sleep(1)
 
-    general = {
-        'project': project.GetName(), 
-        'timeline': timeline.GetName(), 
-        'status': "ready",
-        'queued_by': socket.gethostname(),
-        'type': "Resolve",
-    }
+def time_job(result):
+    '''Synchronously (blocking) print job runtime in seconds until job has completed.'''
+    count = 0
+    while not result.join():
+        sys.stdout.write(f"{Fore.MAGENTA}\rRunning for {count} seconds...")
+        count += 1
+        time.sleep(1)
+    return result
 
-    jobs = [dict(item, **general) for item in clips]
+def create_jobs(clips, **kwargs):
+    '''Prepend project details to each clip
+    to create individual 'jobs' '''
 
-    for i, job in enumerate(jobs):
-        sys.stdout.write(f"\r{Fore.CYAN}Sending job {i+1}/{len(jobs)}: {job['Clip Name']} --> {job['Expected Proxy Path']}")
-        tasks.encode_video.delay(job)
+    # Append project details to each clip
+    jobs = [dict(item, **kwargs) for item in clips]
+    return jobs
+
+def queue_jobs(jobs):
+    ''' Send dictionary jobs as group of async celery tasks'''
+
+    # Convert list of dictionaries to celery tasks
+    job_tasks = [tasks.encode_video.s(job) for job in jobs]
+    if debug: print(job_tasks)
+
+
+    # Create job group to retrieve job results as batch
+    job_group = group(job_tasks)
+
+    # Queue job
+    print(f"{Fore.CYAN}Sending jobs.")
+    result = job_group.apply_async()
+    return result
 
 def link(media_list):
     
@@ -163,7 +199,7 @@ def handle_orphaned_proxies(media_list):
 def handle_already_linked(media_list):
     '''Remove media from the queue if the source media already has a linked proxy that is online.
     As re-rendering linked clips is rarely desired behaviour, it makes sense to avoid clunky prompting.
-    To re-render linked clips, simply unlink their proxies and try queuing proxies again. 
+    To re-render linked clips, simply unlink their proxies and try queueing proxies again. 
     You'll be prompted to handle offline proxies.'''
 
     print(f"{Fore.CYAN}Checking for source media with linked proxies.")
@@ -267,11 +303,11 @@ def handle_existing_unlinked(media_list):
 
             post_len = len(media_list)
             print(f"{pre_len - post_len} proxy(s) linked, will not be queued.")
-            print(f"Queueing {post_len}")
+            print(f"{Fore.MAGENTA}Queueing {post_len}")
             
         
         elif answer == False:
-            print("Existing proxies will be overwritten...")
+            print(f"{Fore.YELLOW}Existing proxies will be OVERWRITTEN!")
 
         else:
             print("Exiting...")
@@ -336,18 +372,18 @@ def get_media():
 
     return media_list
 
-
-
-
 if __name__ == "__main__":
 
     init(autoreset=True)
+    toaster = ToastNotifier()
     
     root = tkinter.Tk()
     root.withdraw()
 
     some_action_taken = False
 
+    f = Figlet()
+    print(f.renderText("Queue/Link Proxies"))
     
     try:       
         # Get global variables
@@ -362,20 +398,49 @@ if __name__ == "__main__":
         # Possibly consider altering the flag when a dialogue box is shown at all and not just if answer == True. 
 
         if len(clips) == 0:
-            print("No clips to queue.")
+            print(f"{Fore.RED}No clips to queue.")
             tkinter.messagebox.showwarning("No clip to queue", "There is no new media to queue for proxies.\n" +
                                            "If you want to re-rerender some proxies, unlink those existing proxies within Resolve and try again.")
             sys.exit(1)
 
         # Final Prompt confirm
-        ready = confirm(
-            "Queue Proxies", 
-            f"{len(clips)} clips have no existing proxies.\n" +
-            "Would you like to queue them?"
+        if not confirm(
+            "Go time!", 
+            f"{len(clips)} clip(s) are ready to queue!\n" +
+            "Continue?"
+        ):
+            sys.exit(0)
+
+        jobs = create_jobs(
+            clips,
+            project = project.GetName(), 
+            timeline = timeline.GetName(), 
+            status = "ready",
+            queued_by = socket.gethostname(),
+            type = "Resolve",
         )
 
-        if ready:
-            send_clips(clips)
+        result = queue_jobs(jobs)
+
+        toast('Started encoding clips')
+        print(f"{Fore.YELLOW}Waiting for jobs to finish. Feel free to minimize.")
+
+        # This is blocking! 
+        # Needed for the below prints to be useful
+        result = time_job(result)
+
+        # Notify failed
+        if result.failed():
+            fail_message = f"{Fore.RED}Some videos failed to encode! Please check dashboard."
+            print(fail_message)
+            toast(fail_message)
+
+        # Notify complete
+        complete_message = f"{Fore.GREEN}Completed encoding {result.completed_count()} videos"
+        print(complete_message)
+        toast(complete_message)
+        
+        input(f"{Fore.MAGENTA}Press any key to exit...")
 
     
     except Exception as e:
@@ -385,7 +450,4 @@ if __name__ == "__main__":
         tkinter.messagebox.showerror("ERROR", tb)
         print("ERROR - " + str(e))
 
-        # Allow time to read console before exit
-        for i in range(5, -1, -1):
-            sys.stdout.write(f"{Fore.RED}\rExiting in " + str(i))
-            time.sleep(1)
+        exit_in_seconds(5)
