@@ -31,16 +31,16 @@ acceptable_exts = config['filters']['acceptable_exts']
 proxy_path_root = config['paths']['proxy_path_root']
 revision_sep = config['paths']['revision_sep']
 
-debug = True
+debug = False
 
 #####################################################################
 
-def toast(message):
-    assert toaster.show_toast(
+def toast(message, threaded = True):
+    toaster.show_toast(
         "Queue Proxies", 
         message, 
         # icon_path = icon_path, 
-        threaded = True,
+        threaded = threaded,
     )
     return
 
@@ -431,16 +431,18 @@ if __name__ == "__main__":
 
         # Notify failed
         if result.failed():
-            fail_message = f"{Fore.RED}Some videos failed to encode! Please check dashboard."
-            print(fail_message)
+            fail_message = f"Some videos failed to encode! Please check dashboard."
+            print(Fore.RED + fail_message)
             toast(fail_message)
 
         # Notify complete
-        complete_message = f"{Fore.GREEN}Completed encoding {result.completed_count()} videos"
-        print(complete_message)
+        complete_message = f"Completed encoding {result.completed_count()} videos"
+        print(Fore.GREEN + complete_message)
+
+        # Don't thread the toast, or it won't show
         toast(complete_message)
         
-        input(f"{Fore.MAGENTA}Press any key to exit...")
+        input("\nPress ENTER key to exit...")
 
     
     except Exception as e:
