@@ -1,5 +1,2 @@
-start celery -A proxy_encoder worker --loglevel=info --pool=solo
-TIMEOUT /T 5
-start celery -A proxy_encoder flower
-TIMEOUT /T 5
-start http://localhost:5555
+start %~dp0/proxy_env/Scripts/python.exe -m celery -A proxy_encoder worker --loglevel=info
+start http://192.168.1.19:5555

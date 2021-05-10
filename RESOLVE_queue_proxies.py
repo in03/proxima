@@ -5,7 +5,6 @@ import glob
 import os
 import pathlib
 import shutil
-import socket
 import sys
 import time
 import tkinter
@@ -20,7 +19,7 @@ from win10toast import ToastNotifier
 
 from python_get_resolve import GetResolve
 from link_proxies import get_timelines, match_proxies
-from proxy_encoder import *
+from proxy_encoder import tasks
 
 # Get environment variables #########################################
 script_dir = os.path.dirname(__file__)
@@ -34,6 +33,9 @@ revision_sep = config['paths']['revision_sep']
 debug = False
 
 #####################################################################
+
+# TODO:
+# Find out the up to date config setting for 'FORKED_BY_MULTIPROCESSING'
 
 def toast(message, threaded = True):
     toaster.show_toast(
@@ -49,43 +51,35 @@ def exit_in_seconds(timeout):
     for i in range(timeout, -1, -1):
         sys.stdout.write(f"{Fore.RED}\rExiting in " + str(i))
         time.sleep(1)
+    print()
+    sys.exit()
 
-def time_job(result):
-    '''Synchronously (blocking) print job runtime in seconds until job has completed.'''
-    count = 0
-    while not result.join():
-        sys.stdout.write(f"{Fore.MAGENTA}\rRunning for {count} seconds...")
-        count += 1
-        time.sleep(1)
-    return result
-
-def create_jobs(clips, **kwargs):
+def create_tasks(clips, **kwargs):
     '''Prepend project details to each clip
     to create individual 'jobs' '''
 
     # Append project details to each clip
-    jobs = [dict(item, **kwargs) for item in clips]
-    return jobs
+    tasks = [dict(item, **kwargs) for item in clips]
+    return tasks
 
-def queue_jobs(jobs):
+def queue_job(tasks):
     ''' Send dictionary jobs as group of async celery tasks'''
 
-    # Convert list of dictionaries to celery tasks
-    job_tasks = [tasks.encode_video.s(job) for job in jobs]
-    if debug: print(job_tasks)
+    # Wrap job object in task function
+    callable_tasks = [tasks.encode.s(x) for x in tasks]
+    if debug: print(callable_tasks)
 
 
     # Create job group to retrieve job results as batch
-    job_group = group(job_tasks)
+    job = group(callable_tasks)
 
     # Queue job
-    print(f"{Fore.CYAN}Sending jobs.")
-    result = job_group.apply_async()
-    return result
+    print(f"{Fore.CYAN}Sending job.")
+    return job.apply_async()
 
 def link(media_list):
-    
-    print(f"{Fore.CYAN}Linking proxy media")
+
+    print(f"{Fore.CYAN}Linking {len(media_list)} proxies.")
     existing_proxies = []
 
     for media in media_list:
@@ -104,7 +98,9 @@ def link(media_list):
             media.update({'Existing Proxy': None}) # Set existing to none once linked
             media.update({'Proxy':"1280x720"})
 
-    for timeline in get_timelines(active_only=True):
+    # Match all timelines just in case
+    # we've since changed timelines during encode.
+    for timeline in get_timelines(active_only=False):
         match_proxies(timeline, existing_proxies)
 
     print()
@@ -206,7 +202,7 @@ def handle_already_linked(media_list):
     already_linked = [x for x in media_list if x['Proxy'] != "None"]
 
     if len(already_linked) > 0:
-        print(f"{Fore.GREEN}Skipping {len(already_linked)} already linked.")
+        print(f"{Fore.YELLOW}Skipping {len(already_linked)} already linked.")
         media_list = [x for x in media_list if x not in already_linked]
         some_action_taken = True
 
@@ -411,38 +407,53 @@ if __name__ == "__main__":
         ):
             sys.exit(0)
 
-        jobs = create_jobs(
+        tasks = create_tasks(
             clips,
             project = project.GetName(), 
-            timeline = timeline.GetName(), 
-            status = "ready",
-            queued_by = socket.gethostname(),
-            type = "Resolve",
+            timeline = timeline.GetName(),
         )
 
-        result = queue_jobs(jobs)
+        job = queue_job(tasks)
 
-        toast('Started encoding clips')
-        print(f"{Fore.YELLOW}Waiting for jobs to finish. Feel free to minimize.")
-
-        # This is blocking! 
-        # Needed for the below prints to be useful
-        result = time_job(result)
+        toast('Started encoding job')
+        print(f"{Fore.YELLOW}Waiting for job to finish. Feel free to minimize.")
+        
+        job_metadata = job.join()
 
         # Notify failed
-        if result.failed():
-            fail_message = f"Some videos failed to encode! Please check dashboard."
+        if job.failed():
+            fail_message = f"Some videos failed to encode! Check dashboard @ 192.168.1.19:5555."
             print(Fore.RED + fail_message)
             toast(fail_message)
 
         # Notify complete
-        complete_message = f"Completed encoding {result.completed_count()} videos"
+        complete_message = f"Completed encoding {job.completed_count()} videos."
         print(Fore.GREEN + complete_message)
+        print()
 
-        # Don't thread the toast, or it won't show
         toast(complete_message)
-        
-        input("\nPress ENTER key to exit...")
+
+        # ATTEMPT POST ENCODE LINK
+        active_project = resolve.GetProjectManager().GetCurrentProject().GetName()
+        linkable = [x for x in job_metadata if x['project'] == active_project]
+
+        if len(linkable) == 0:
+            print(
+                f"{Fore.YELLOW}\nNo proxies to link post-encode.\n" +
+                "Resolve project may have changed.\n" +
+                "Skipping."
+            )
+
+        else: 
+            link(linkable)
+
+        ####### DONE ################
+        print(f.renderText("Done!"))
+
+        if not debug: 
+            input("Press ENTER to exit.")
+        else: 
+            exit_in_seconds(5)
 
     
     except Exception as e:

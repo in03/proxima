@@ -30,7 +30,7 @@ def simulate_encode(job):
     # ffmpeg -y -hide-banner -stats -loglevel error -i B:/Yeet.mp4 -c:v dnxhd -profile:v dnxhr_s1 -vf scale=1280:720 fps=50 format=yuv422p "-c:a pcm_s16le" "-ar 48000" B:/Sup.mp4
 
 @app.task(acks_late = True, track_started = True, prefetch_limit = 1)
-def encode_video(job):
+def encode(job):
     
     # Create path for proxy first
     os.makedirs(
@@ -100,4 +100,4 @@ def encode_video(job):
         print(e)
         return False
     else:
-        return True
+        return job
