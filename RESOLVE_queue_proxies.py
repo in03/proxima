@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.6
 # Save proxy clip list
 
 import glob
@@ -19,7 +19,10 @@ from win10toast import ToastNotifier
 
 from python_get_resolve import GetResolve
 from link_proxies import get_timelines, match_proxies
-from proxy_encoder import tasks
+
+#'tasks' python file matches 'tasks' variable. 
+# Want to keep app terminology close to Celery's.
+from proxy_encoder import tasks as do 
 
 # Get environment variables #########################################
 script_dir = os.path.dirname(__file__)
@@ -37,6 +40,13 @@ debug = False
 # TODO:
 # Find out the up to date config setting for 'FORKED_BY_MULTIPROCESSING'
 
+def app_exit(level):
+    ''' Standard exitcodes for 'level' '''
+    print(f.renderText("Done!"))
+
+    if debug or level > 1: input("Press ENTER to exit.")
+    else: exit_in_seconds(seconds = 5)
+
 def toast(message, threaded = True):
     toaster.show_toast(
         "Queue Proxies", 
@@ -46,27 +56,33 @@ def toast(message, threaded = True):
     )
     return
 
-def exit_in_seconds(timeout):
-    '''Allow time to read console before exit'''
-    for i in range(timeout, -1, -1):
-        sys.stdout.write(f"{Fore.RED}\rExiting in " + str(i))
+def exit_in_seconds(seconds=5, level=0):
+    ''' Allow time to read console before exit '''
+
+    ansi_colour = Fore.CYAN
+    if level > 0: ansi_colour = Fore.RED
+
+    for i in range(seconds, -1, -1):
+        sys.stdout.write(f"{ansi_colour}\rExiting in " + str(i))
         time.sleep(1)
+        
+    erase_line = '\x1b[2K' 
+    sys.stdout.write(f"\r{erase_line}")
     print()
-    sys.exit()
+    sys.exit(level)
 
 def create_tasks(clips, **kwargs):
-    '''Prepend project details to each clip
-    to create individual 'jobs' '''
+    ''' Create metadata dictionaries to send as Celery tasks' '''
 
     # Append project details to each clip
     tasks = [dict(item, **kwargs) for item in clips]
     return tasks
 
 def queue_job(tasks):
-    ''' Send dictionary jobs as group of async celery tasks'''
+    ''' Send tasks as a celery job 'group' '''
 
     # Wrap job object in task function
-    callable_tasks = [tasks.encode.s(x) for x in tasks]
+    callable_tasks = [do.encode.s(x) for x in tasks]
     if debug: print(callable_tasks)
 
 
@@ -166,6 +182,8 @@ def handle_orphaned_proxies(media_list):
                                         })
 
     if len(orphaned_proxies) > 0:
+        
+        some_action_taken = True
         print(f"Orphaned proxies: {len(orphaned_proxies)}")
         answer = tkinter.messagebox.askyesnocancel(title="Orphaned proxies",
                                         message=f"{len(orphaned_proxies)} clip(s) have orphaned proxy media. " +
@@ -180,7 +198,6 @@ def handle_orphaned_proxies(media_list):
 
                 shutil.move(proxy['Old Path'], proxy['New Path'])
 
-            some_action_taken = True
 
         elif answer == None:
             print("Exiting...")
@@ -190,7 +207,7 @@ def handle_orphaned_proxies(media_list):
         print(f"{Fore.GREEN}Found none.")
     
     print()
-    return 
+    return media_list
     
 def handle_already_linked(media_list):
     '''Remove media from the queue if the source media already has a linked proxy that is online.
@@ -202,9 +219,10 @@ def handle_already_linked(media_list):
     already_linked = [x for x in media_list if x['Proxy'] != "None"]
 
     if len(already_linked) > 0:
+        
+        some_action_taken = True
         print(f"{Fore.YELLOW}Skipping {len(already_linked)} already linked.")
         media_list = [x for x in media_list if x not in already_linked]
-        some_action_taken = True
 
     else:
         print(f"{Fore.GREEN}Found none.")
@@ -218,6 +236,9 @@ def handle_offline_proxies(media_list):
     offline_proxies = [x for x in media_list if x['Proxy'] == "Offline"]
 
     if len(offline_proxies) > 0:
+
+        some_action_taken = True
+
         print(f"{Fore.CYAN}Offline proxies: {len(offline_proxies)}")
         answer = tkinter.messagebox.askyesnocancel(title="Offline proxies",
                                         message=f"{len(offline_proxies)} clip(s) have offline proxies.\n" +
@@ -232,7 +253,6 @@ def handle_offline_proxies(media_list):
                 if media['Proxy'] == "Offline":
                     media['Proxy'] = "None"
 
-            some_action_taken = True
 
         if answer == None:
             print(f"{Fore.RED}Exiting...")
@@ -256,6 +276,8 @@ def handle_existing_unlinked(media_list):
 
     for media in media_list:
         if media['Proxy'] == "None":
+
+            some_action_taken = True
             expected_proxy_path = media['Expected Proxy Path']
             media_basename = os.path.splitext(os.path.basename(media['File Name']))[0]
             expected_proxy_file = os.path.join(expected_proxy_path, media_basename)
@@ -265,7 +287,6 @@ def handle_existing_unlinked(media_list):
 
             if len(existing) > 0:
 
-                some_action_taken = True
 
                 try:
                     existing.sort(key=os.path.getmtime)
@@ -284,7 +305,7 @@ def handle_existing_unlinked(media_list):
 
 
     if len(existing_unlinked) > 0:
-        print(f"{Fore.GREEN}Found {len(existing_unlinked)} unlinked")
+        print(f"{Fore.YELLOW}Found {len(existing_unlinked)} unlinked")
         answer = tkinter.messagebox.askyesnocancel(title="Found unlinked proxy media",
                                         message=f"{len(existing_unlinked)} clip(s) have existing but unlinked proxy media. " +
                                         "Would you like to link them? If you select 'No' they will be re-rendered.")
@@ -358,11 +379,9 @@ def get_media():
     print()
 
 
-    handle_orphaned_proxies(media_list)
+    media_list = handle_orphaned_proxies(media_list)
     media_list = handle_already_linked(media_list)
     media_list = handle_offline_proxies(media_list)
-
-    
     media_list = handle_existing_unlinked(media_list)
 
 
@@ -388,16 +407,17 @@ if __name__ == "__main__":
         timeline = project.GetCurrentTimeline()     
 
         print()
+        # HEAVY LIFTING HERE
         clips = get_media()
 
-        #TODO: Implement 'some_action_taken' flag to make below message more user friendly when other dialogues have been shown.
-        # Possibly consider altering the flag when a dialogue box is shown at all and not just if answer == True. 
-
         if len(clips) == 0:
-            print(f"{Fore.RED}No clips to queue.")
-            tkinter.messagebox.showwarning("No clip to queue", "There is no new media to queue for proxies.\n" +
-                                           "If you want to re-rerender some proxies, unlink those existing proxies within Resolve and try again.")
-            sys.exit(1)
+            if not some_action_taken:
+                print(f"{Fore.RED}No clips to queue.")
+                tkinter.messagebox.showwarning("No clip to queue", "There is no new media to queue for proxies.\n" +
+                                            "If you want to re-rerender some proxies, unlink those existing proxies within Resolve and try again.")
+                sys.exit(1)
+            else:
+                print(f"{Fore.GREEN}All clips linked now. No encoding necessary.")
 
         # Final Prompt confirm
         if not confirm(
@@ -447,13 +467,7 @@ if __name__ == "__main__":
         else: 
             link(linkable)
 
-        ####### DONE ################
-        print(f.renderText("Done!"))
-
-        if not debug: 
-            input("Press ENTER to exit.")
-        else: 
-            exit_in_seconds(5)
+        app_exit(0)
 
     
     except Exception as e:
@@ -463,4 +477,4 @@ if __name__ == "__main__":
         tkinter.messagebox.showerror("ERROR", tb)
         print("ERROR - " + str(e))
 
-        exit_in_seconds(5)
+        app_exit(1)

@@ -1,3 +1,3 @@
 {
-    "python.pythonPath": "b:\\!PipelineAutomation\\Python\\Resolve-Proxy-Encoder\\proxy_env\\Scripts\\python.exe"
+    "python.pythonPath": "proxy_env\\Scripts\\python.exe"
 }

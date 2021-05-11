@@ -1,4 +1,5 @@
 
+#!/usr/bin/env python3.6
 # Link proxies
 
 import os, re
@@ -100,10 +101,10 @@ def get_timelines(active_only=False):
 
     if active_only:
         ct = project.GetCurrentTimeline()
-        print(f"{Fore.YELLOW}Linking active timeline: '{ct.GetName()}' only")
+        print(f"{Fore.YELLOW}Linking for active timeline: '{ct.GetName()}' only")
         return [ct]
 
-    print("Linking all non-revision timelines")
+    print(f"{Fore.YELLOW}Linking for all non-revision timelines")
 
     main = []
     revisions = []
@@ -113,13 +114,13 @@ def get_timelines(active_only=False):
         timeline = project.GetTimelineByIndex(i)
         tn = timeline.GetName()
         if tn is not None:
-            print(f"Attempting to match proxies for timeline: {tn}")
             if re.search(r"^(\w+)(\s)(V\d+)", tn, re.IGNORECASE):
                 revisions.append(tn)
             else:   
                 main.append(timeline)
     
-    print(f"Skipped linking identified revisions to save time: {revisions}")
+    if debug: print(f"{Fore.YELLOW}Skipped linking identified revisions to save time: {revisions}")
+    if debug: print(f"{Fore.CYAN}Attempting to match proxies for timelines: {main}")
     return main
     
 

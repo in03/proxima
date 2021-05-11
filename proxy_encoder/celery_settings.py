@@ -1,7 +1,7 @@
 broker_url = 'amqp://marco:yolo@192.168.1.19:5672/marco_vhost'
 
 # List of modules to import when the Celery worker starts.
-imports = ('proxy_encoder.celery_tasks',)
+imports = ('proxy_encoder.tasks',)
 
 ## Using the database to store task state and results.
 result_backend = 'rpc://'
@@ -10,3 +10,5 @@ result_backend = 'rpc://'
 worker_prefetch_multiplier = 1
 enable_utc = True,
 timezone ='Australia/Brisbane'
+result_expires = 18000 # 5 hours
+worker_pool_restarts = True
