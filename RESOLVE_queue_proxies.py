@@ -18,7 +18,7 @@ from pyfiglet import Figlet
 from win10toast import ToastNotifier
 
 from python_get_resolve import GetResolve
-from link_proxies import get_timelines, match_proxies
+from link_proxies_v2 import link_proxies
 
 #'tasks' python file matches 'tasks' variable. 
 # Want to keep app terminology close to Celery's.
@@ -31,20 +31,19 @@ with open(os.path.join(script_dir, "proxy_encoder", "config.yml")) as file:
     
 acceptable_exts = config['filters']['acceptable_exts']
 proxy_path_root = config['paths']['proxy_path_root']
-revision_sep = config['paths']['revision_sep']
 
-debug = False
+debug = os.getenv('RPE_DEBUG')
 
 #####################################################################
 
 # TODO:
 # Find out the up to date config setting for 'FORKED_BY_MULTIPROCESSING'
 
-def app_exit(level):
+def app_exit(level, force_explicit_exit=True):
     ''' Standard exitcodes for 'level' '''
     print(f.renderText("Done!"))
 
-    if debug or level > 1: input("Press ENTER to exit.")
+    if debug or force_explicit_exit or level > 1: input("Press ENTER to exit.")
     else: exit_in_seconds(seconds = 5)
 
 def toast(message, threaded = True):
@@ -114,10 +113,7 @@ def link(media_list):
             media.update({'Existing Proxy': None}) # Set existing to none once linked
             media.update({'Proxy':"1280x720"})
 
-    # Match all timelines just in case
-    # we've since changed timelines during encode.
-    for timeline in get_timelines(active_only=False):
-        match_proxies(timeline, existing_proxies)
+    link_proxies(existing_proxies)
 
     print()
     return media_list
@@ -176,37 +172,38 @@ def handle_orphaned_proxies(media_list):
                 # Rejoin extensions 
                 linked_proxy_path = ''.join(linked_proxy_path)
                 new_output_path = ''.join(new_output_path)
-
                 orphaned_proxies.append({'Old Path': linked_proxy_path, 
                                         'New Path': new_output_path,
                                         })
 
+
     if len(orphaned_proxies) > 0:
         
         some_action_taken = True
-        print(f"Orphaned proxies: {len(orphaned_proxies)}")
+        print(f"{Fore.YELLOW}Orphaned proxies: {len(orphaned_proxies)}")
         answer = tkinter.messagebox.askyesnocancel(title="Orphaned proxies",
                                         message=f"{len(orphaned_proxies)} clip(s) have orphaned proxy media. " +
                                         "Would you like to attempt to automatically move these proxies to the up-to-date proxy folder?\n\n" +
                                         "For help, check 'Managing Proxies' in our YouTour documentation portal.")
         if answer == True:
+            print(f"{Fore.YELLOW}Moving orphaned proxies.")
             for proxy in orphaned_proxies:
 
                 output_folder = os.path.dirname(proxy['New Path'])
                 if not os.path.exists(output_folder):
                     os.makedirs(output_folder)
 
-                shutil.move(proxy['Old Path'], proxy['New Path'])
+                if os.path.exists(proxy['Old Path']):
+                    shutil.move(proxy['Old Path'], proxy['New Path'])
+                else:
+                    print(f"{proxy['Old Path']} doesn't exist. Most likely a parent directory rename created this orphan.")
+            print()
 
 
         elif answer == None:
             print("Exiting...")
             sys.exit(1)
-
-    else:
-        print(f"{Fore.GREEN}Found none.")
     
-    print()
     return media_list
     
 def handle_already_linked(media_list):
@@ -223,11 +220,8 @@ def handle_already_linked(media_list):
         some_action_taken = True
         print(f"{Fore.YELLOW}Skipping {len(already_linked)} already linked.")
         media_list = [x for x in media_list if x not in already_linked]
+        print()
 
-    else:
-        print(f"{Fore.GREEN}Found none.")
-
-    print()
     return media_list
 
 def handle_offline_proxies(media_list):
@@ -252,15 +246,13 @@ def handle_offline_proxies(media_list):
             for media in media_list:
                 if media['Proxy'] == "Offline":
                     media['Proxy'] = "None"
+            print()
 
 
         if answer == None:
             print(f"{Fore.RED}Exiting...")
             sys.exit(0)
-    else:
-        print(f"{Fore.GREEN}Found none.")
     
-    print()
     return media_list
 
 def handle_existing_unlinked(media_list):
@@ -288,16 +280,10 @@ def handle_existing_unlinked(media_list):
             if len(existing) > 0:
 
 
-                try:
-                    existing.sort(key=os.path.getmtime)
-                    # if debug: print(f"{Fore.MAGENTA} [x] Found {len(existing)} existing matches for {media['File Name']}")
-                    existing = existing[0]
-                    # if debug: print(f"{Fore.MAGENTA} [x] Using newest: '{existing}'")
-                except:
-                    # if debug: print(f"{Fore.MAGENTA} [x] {Fore.YELLOW}Couldn't sort by modification time.")
-                    sorted(existing, key = lambda x: int(x.split(revision_sep)[1]))
-                    existing = existing[0]
-                    # if debug: print(f"{Fore.MAGENTA} [x] Using largest revision number: {existing}")
+                existing.sort(key=os.path.getmtime)
+                if debug: print(f"{Fore.MAGENTA} [x] Found {len(existing)} existing matches for {media['File Name']}")
+                existing = existing[0]
+                if debug: print(f"{Fore.MAGENTA} [x] Using newest: '{existing}'")
 
 
                 media.update({'Existing Proxy': existing})
@@ -321,19 +307,17 @@ def handle_existing_unlinked(media_list):
             post_len = len(media_list)
             print(f"{pre_len - post_len} proxy(s) linked, will not be queued.")
             print(f"{Fore.MAGENTA}Queueing {post_len}")
+            print()
             
         
         elif answer == False:
             print(f"{Fore.YELLOW}Existing proxies will be OVERWRITTEN!")
+            print()
 
         else:
             print("Exiting...")
             sys.exit(0)
 
-    else:
-        print(f"{Fore.GREEN}Found none.")
-    
-    print()
     return media_list
 
 def get_media():
@@ -356,7 +340,8 @@ def get_media():
         if items is None:
             print(f"No items found in track {i}")
             continue
-        
+        # TODO: Refactor this check. Extension check should not be based on clipname!
+        # Since clipnames can be customised. Try clip attributes first. Match extension with 'File Path' key
         for item in items:
             for ext in acceptable_exts:
                 if ext.lower() in item.GetName().lower():
@@ -379,7 +364,7 @@ def get_media():
     print()
 
 
-    media_list = handle_orphaned_proxies(media_list)
+    # media_list = handle_orphaned_proxies(media_list)
     media_list = handle_already_linked(media_list)
     media_list = handle_offline_proxies(media_list)
     media_list = handle_existing_unlinked(media_list)
@@ -399,12 +384,17 @@ if __name__ == "__main__":
 
     f = Figlet()
     print(f.renderText("Queue/Link Proxies"))
+    print()  
     
     try:       
         # Get global variables
         resolve = GetResolve()
         project = resolve.GetProjectManager().GetCurrentProject()
-        timeline = project.GetCurrentTimeline()     
+        timeline = project.GetCurrentTimeline()
+        resolve_job_name = f"{project.GetName().upper()} - {timeline.GetName().upper()}"
+
+        print(f"{Fore.CYAN}Working on: {resolve_job_name}") 
+
 
         print()
         # HEAVY LIFTING HERE

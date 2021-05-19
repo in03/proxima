@@ -1,0 +1,8 @@
+start_worker.bat
+Start Celery Worker.lnk
+LICENSE
+Celery_logo.ico
+.gitignore
+.gitattributes
+.vscode
+__pycache__

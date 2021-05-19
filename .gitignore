@@ -1,3 +1,8 @@
+# Custom
+celery_settings.py
+*.lnk
+*.url
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
