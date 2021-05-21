@@ -12,7 +12,7 @@
  This script takes the naive approach of simply overwriting proxy files if they exist.
  For this reason, it's recommended you keep your proxy files on a separate volume to your source media.
  If your 'proxy_path_root' is set incorrectly 
----
+
  ## Prerequisites
  - DaVinci Resolve Studio, with scripting enabled and environment ready
  - RabbitMQ server running and accessible (preferably running on a NAS or server)
