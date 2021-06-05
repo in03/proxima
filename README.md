@@ -1,4 +1,12 @@
 # Resolve Proxy Encoder
+ 
+ **NOTE: Work in progress!**
+ 
+ Please excuse junk files and stray thrown together versions. I, inappropriately, run all of our production machines off our network storage that hosts this repo for the time being. When I get some time to develop I usually just make a 'v2' file... The whole point of git, right?
+ 
+ ---
+ 
+ ## What this does ##
  Queue proxies for render directly from Resolve using Celery and RabbitMQ.
  This works using four major parts, the Celery worker to run the tasks on other computers,
  the *RESOLVE_queue_proxies.py* script to interface with DaVinci Resolve's API and get the proxies needed for render,
