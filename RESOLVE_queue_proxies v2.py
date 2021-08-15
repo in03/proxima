@@ -1,6 +1,12 @@
 #!/usr/bin/env python3.6
 # Save proxy clip list
 
+# THIS DOESN'T WORK YET!
+# Attempted rewriting this script with smaller functions. 
+# Previous script used "Get Media", which may prove too catch-all
+# for future stabilizing/rendering scripts to make use of
+# Currently has an issue causing it to requeue all media as 'proxifiable'
+
 import glob
 import os
 import pathlib
@@ -18,7 +24,7 @@ from pyfiglet import Figlet
 from win10toast import ToastNotifier
 
 from python_get_resolve import GetResolve
-from link_proxies import link_proxies
+from link_proxies_v3 import link_proxies
 
 #'tasks' python file matches 'tasks' variable. 
 # Want to keep app terminology close to Celery's.
@@ -320,8 +326,10 @@ def handle_existing_unlinked(media_list):
 
     return media_list
 
-def get_media():
-    ''' Main function to get clip file paths and prompt user to filter passed clips.'''
+def get_safe_track_count(timeline):
+    """ Resolve API won't retrieve track items if less than 2 tracks. 
+    Warn if less than two, otherwise return track length 
+    """
 
     track_len = timeline.GetTrackCount("video")
     if track_len == 1: 
@@ -330,8 +338,15 @@ def get_media():
         print(f"\nERROR:\n{message}")
         tkinter.messagebox.showinfo("ERROR", message)
         sys.exit(1)
-        
-    print(f"{Fore.GREEN}Video track count: {track_len}")
+
+    if debug: print(f"{Fore.GREEN}Video track count: {track_len}")
+    return track_len
+
+def get_all_clip_properties_from_timeline(timeline, media_type):
+    """ Retrieve clip properties from each track item with unique source media.
+    """
+
+    track_len = get_safe_track_count(timeline)  
 
     all_clips = []
     for i in range(1, track_len):
@@ -343,17 +358,8 @@ def get_media():
 
         for item in items:
             try:
-                
                 media_item = item.GetMediaPoolItem()
                 attributes = media_item.GetClipProperty()
-
-                source_ext = os.path.splitext(attributes['File Path'])[1].lower()
-                if debug: print(source_ext)
-
-                if source_ext not in acceptable_exts:
-                    if debug: print(f"Ignoring unacceptable file type: '{attributes['File Path']}'")
-                    continue
-
                 all_clips.append(attributes)
 
             except:
@@ -362,20 +368,38 @@ def get_media():
 
     # Get unique source media from clips on timeline
     unique_sets = set(frozenset(d.items()) for d in all_clips)
-    media_list = [dict(s) for s in unique_sets]
+    return [dict(s) for s in unique_sets]
 
-    print(f"{Fore.GREEN}Total clips on timeline: {len(all_clips)}")
-    print(f"{Fore.GREEN}Unique source media: {len(media_list)}")
-    print()
+def get_active_clip_properties_from_timeline(timeline, media_type):
+    """ Get clip properties for the clip directly underneath 
+    the playhead """
+
+    track_len = get_safe_track_count(timeline)  
+
+    print("Need to work on this!!")
+    sys.exit(1)
+    return
 
 
-    # media_list = handle_orphaned_proxies(media_list)
-    media_list = handle_already_linked(media_list)
-    media_list = handle_offline_proxies(media_list)
-    media_list = handle_existing_unlinked(media_list)
+# TODO: flesh this out! We need to generalise everything proxy related, 
+# and make these functions useful as imports for a 'stabilise' module 
+# or any other future module.
 
+def get_timeline_items(timeline, item_type="all", media_type="video"):
+    """ Retrieve clip properties dictionary for track items """ 
+
+    if item_type == "all":
+        media_list = get_all_clip_properties_from_timeline(timeline, media_type)
+    
+    elif item_type =="active":
+        media_list = get_active_clip_properties_from_timeline(timeline, media_type)
+    
+    else:
+        raise ValueError(f"'{item_type}' is not a supported item_type!")
 
     return media_list
+
+        
 
 if __name__ == "__main__":
 
@@ -403,7 +427,12 @@ if __name__ == "__main__":
 
         print()
         # HEAVY LIFTING HERE
-        clips = get_media()
+        clips = get_timeline_items(timeline, item_type="all", media_type="video")
+
+        # clips = handle_orphaned_proxies(clips)
+        clips = handle_already_linked(clips)
+        clips = handle_offline_proxies(clips)
+        clips = handle_existing_unlinked(clips)
 
         if len(clips) == 0:
             if not some_action_taken:

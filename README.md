@@ -15,11 +15,11 @@
 ---
  ## Prerequisites
  - DaVinci Resolve Studio, with scripting enabled and environment ready
- - RabbitMQ server running and accessible (preferably running on a NAS or server)
+ - RabbitMQ broker / Redis running and accessible (preferably running on a NAS or server)
  - Computers capable of being workers (encoding video, running python, connected to LAN)
 
  ## Installing Resolve Script
- Clone the repo, make a virtualenv, activate it and run `pip install -r requirements.txt`.
+ Clone the repo, create a new virtualenv, activate it and run `pip install -r requirements.txt`.
  You can call python scripts from a Streamdeck if you don't have spaces in the filepath. (Even with quotes it seems to fail)
  Otherwise you can make a shortcut to the script on your desktop or taskbar, or use a program like AutoHotkey to assign the script to a keyboard shortcut.
 
@@ -31,8 +31,8 @@
  To run locally, clone the repo, make a virtualenv, activate it and run `pip install -r requirements.txt`.
 
  On your workers, run `celery -A proxy_encoder worker`
- For convenience, add a shortcut to **start_worker.bat** to *shell:startup* if you want it to run when Windows starts.
+ For convenience, add a shortcut to **start_worker.bat** in *shell:startup* if you want it to run when Windows starts.
  If you want it to run without logging in, look into starting it as a service.
 
- Linux is a little hairier depending on cron, systemd and whichever shell you're using.
+ For Linux you can usually register a service using systemctl.
  Give it a distro-specific Google.

@@ -8,7 +8,6 @@ from celery import Celery
 
 import os
 import sys
-import yaml
 
 # Windows can't fork processes. It'll choke if you make it try.
 if sys.platform == "win32":

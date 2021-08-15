@@ -2,16 +2,18 @@
 #!/usr/bin/env python3.6
 # Link proxies
 
-import os, re
-import traceback
+import os
+import re
 import tkinter
 import tkinter.messagebox
-import yaml
+import traceback
+from inspect import Attribute
 from tkinter import filedialog
 
+import yaml
+from colorama import Fore, Style, init
+
 from python_get_resolve import GetResolve
-from datetime import datetime
-from colorama import init, Fore
 
 # Get environment variables #########################################
 script_dir = os.path.dirname(__file__)
@@ -30,6 +32,9 @@ resolve = GetResolve()
 project = resolve.GetProjectManager().GetCurrentProject()
 media_pool = project.GetMediaPool()
 
+def debug_print(variable):
+    print(variable, '=', repr(eval(variable)))
+    return
 
 def get_proxy_path():
     root = tkinter.Tk()
@@ -40,89 +45,168 @@ def get_proxy_path():
         exit(0)
     return f
 
-def filter_videos(dir):
-    videos = []
+def recurse_dir(root):
+    """Recursively search given directory for files
+    and return full filepaths
+    """
 
-    # Walk directory to match files
-    for root, dirs, files in os.walk(dir, topdown=False):
-        for name in files:
-            file = os.path.join(root, name)
-            # print(file)
+    all_files = [os.path.join(root, f) for root, dirs, files in os.walk(root) for f in files]
+    return all_files
 
-            # Check extension is allowed
-            if os.path.splitext(file)[1].lower() in acceptable_exts:
-                videos.append(file)
-    return videos
+def filter_files(dir_, acceptable_exts):
+    """Filter files by allowed filetype
+    """
 
-def match_proxies(timeline, potential_proxies):
+    allowed = [x for x in dir_ if os.path.splitext(x) in acceptable_exts]
+    return allowed
 
-    linked = []
-
-    track_len = timeline.GetTrackCount("video")
-    if track_len < 1:
-        raise Exception(f"Please add another empty video track\n." +
-                        "Resolve needs at least two to export a clip-list.")
 
     print(f"{Fore.CYAN}{timeline.GetName()} - Video track count: {track_len}")
+
+def get_track_items(timeline, track_type="video"):
+    """Retrieve all video track items from a given timeline object"""
+
+    track_len = timeline.GetTrackCount("video") 
+    if debug: print(f"{Fore.CYAN}{timeline.GetName()} - Video track count: {track_len}")
+
+    items = []
+    
     for i in range(track_len):
-        items = timeline.GetItemListInTrack("video", i)
-        if items is None:
+        i += 1 # Track index starts at one...
+        items.extend(timeline.GetItemListInTrack(track_type, i))
+        
+    return items
+
+def get_resolve_timelines(active_timeline_first=True):
+    """ Return a list of all Resolve timeline objects in current project. """
+
+    timelines = []
+
+    timeline_len = project.GetTimelineCount()
+    if timeline_len > 0:
+
+        for i in range(1, timeline_len + 1):
+            timeline = project.GetTimelineByIndex(i)
+            timelines.append(timeline)
+
+        if active_timeline_first:
+            active = project.GetCurrentTimeline().GetName()                     # Get active timeline
+            timeline_names = [x.GetName() for x in timelines]
+            active_i = timeline_names.index(active)                             # It's already in the list, find it's index
+            timelines.insert(0, timelines.pop(active_i))            # Move it to the front, indexing should be the same as name list
+    else:
+         return False
+
+    return timelines
+
+def get_timeline_data(timeline):
+    """ Return a dictionary containing timeline names, 
+    their tracks, clips media paths, etc.
+    """
+
+    clips = get_track_items(timeline, track_type="video")
+    data = {
+        'timeline': timeline,
+        'name': timeline.GetName(), 
+        'track count': timeline.GetTrackCount(),
+        'clips': clips,
+    }
+    
+    return data
+
+def __link_proxies(proxy_files, clips):
+    """ Actual linking function.
+    Matches filenames between lists of paths.
+    'clips' actually needs to be a Resolve timeline item object.
+    """
+
+    linked_proxies = []
+    failed_proxies = []
+    linked_clips = []
+
+    for proxy in proxy_files:
+        for clip in clips:
+
+            proxy_name = os.path.splitext(os.path.basename(proxy))[0]
+            if proxy in failed_proxies:
+                if debug: print(f"{Fore.YELLOW}Skipping {proxy_name}, already failed.")
+                break
+
+            try:
+                media_pool_item = clip.GetMediaPoolItem()
+                path = media_pool_item.GetClipProperty("File Path")
+                filename = os.path.splitext(os.path.basename(path))[0]
+
+                if proxy_name.lower() in filename.lower():
+
+                    print(f"{Fore.GREEN}Found match:")
+                    print(f"{proxy} &\n{path}")
+
+                    if media_pool_item.LinkProxyMedia(proxy):
+
+                        print(f"{Fore.GREEN}Linked\n")
+                        linked_proxies.append(proxy)
+                        linked_clips.append(clip)
+
+                    else:
+                        print(f"{Fore.RED}Failed link.\n")
+                        failed_proxies.append(proxy)
+
+            except AttributeError:
+
+                if debug: 
+                    print(f"{Fore.YELLOW}{clip.GetName()} has no 'file path' attribute," + 
+                    " probably Resolve internal media.")
+
+    
+    return linked_proxies, failed_proxies
+
+def link_proxies(proxy_files):
+    """ Attempts to match source media in active Resolve project
+     with a list of filepaths to proxy files."""
+
+    linked = []
+    failed = []
+
+    timelines = get_resolve_timelines()
+    if not timelines:
+        raise Exception("No timelines exist in current project.")
+
+    # Get clips from all timelines.
+    for timeline in timelines:
+        
+        timeline_data = get_timeline_data(timeline)
+        clips = timeline_data['clips']
+        unlinked_source = [x for x in clips if x not in linked]
+
+        if len(unlinked_source) == 0:
+            if debug: print(f"{Fore.YELLOW}No more clips to link in {timeline_data['name']}")
             continue
+        else:
+            print(f"{Fore.CYAN}Searching timeline {timeline_data['name']}")
+        
+        unlinked_proxies = [x for x in proxy_files if x not in linked]
+        print(f"Unlinked source count: {len(unlinked_source)}")
+        print(f"Unlinked proxies count: {len(unlinked_proxies)}")
 
-        for potential_proxy in potential_proxies:
-            proxy_name = os.path.splitext(os.path.basename(potential_proxy))[0]
-            if debug: print(f"Potential proxy: {proxy_name}")
 
-            for item in items:
-                for ext in acceptable_exts:
-                    if ext.lower() in item.GetName().lower():
-                        try:
-                            media = item.GetMediaPoolItem()
-                            name = media.GetName()
-                            path = media.GetClipProperty("File Path")
+        if len(unlinked_proxies) == 0:
+            print(f"{Fore.YELLOW}No more proxies to link in {timeline_data['name']}")
+            return
+  
+        linked_, failed_ = (__link_proxies(proxy_files, clips))
 
-                        except:
-                            print(f"Skipping {item.GetName()}, no linked media pool item.")
-                            continue
-                        
-                        clip_name = os.path.splitext(os.path.basename(path))[0]
-                        if proxy_name.lower() in clip_name.lower():
-                            if name not in linked:
-                                linked.append(name)
-                                print(f"{Fore.GREEN}Found match: {path} & {potential_proxy}")
-                                media.LinkProxyMedia(potential_proxy)
+        linked.extend(linked_)
+        failed.extend(failed_)
 
-                                # if media.LinkProxyMedia(potential_proxy):
-                                #     print(f"Linked: {proxy_name}")
-                                # else:
-                                #     raise Exception(f"Couldn't link proxy: {proxy_name}")
+        if debug: print(f"Linked: {linked}, Failed: {failed}")
 
-def get_timelines(active_only=False):
+    if len(failed) > 0:
+        print(f"{Fore.RED}The following files matched, but couldn't be linked. Suggest rerendering them:")
+        [print(os.path.basename(x)) for x in failed]
+        print()
 
-    if active_only:
-        ct = project.GetCurrentTimeline()
-        print(f"{Fore.YELLOW}Linking for active timeline: '{ct.GetName()}' only")
-        return [ct]
-
-    print(f"{Fore.YELLOW}Linking for all non-revision timelines")
-
-    main = []
-    revisions = []
-
-    tc = project.GetTimelineCount()
-    for i in range(1, tc + 1):
-        timeline = project.GetTimelineByIndex(i)
-        tn = timeline.GetName()
-        if tn is not None:
-            if re.search(r"^(\w+)(\s)(V\d+)", tn, re.IGNORECASE):
-                revisions.append(tn)
-            else:   
-                main.append(timeline)
-    
-    if debug: print(f"{Fore.YELLOW}Skipped linking identified revisions to save time: {revisions}")
-    if debug: print(f"{Fore.CYAN}Attempting to match proxies for timelines: {main}")
-    return main
-    
+    return linked
 
 if __name__ == "__main__":
 
@@ -132,15 +216,10 @@ if __name__ == "__main__":
         proxy_dir = get_proxy_path()
         print(f"Passed directory: '{proxy_dir}'\n")
 
-        potential_proxies = filter_videos(proxy_dir)
-        print(potential_proxies, "\n")
-    
-        # TODO: Work on this a little
-        for timeline in get_timelines(active_only=True): 
-            print("")
-            match_proxies(timeline, potential_proxies)
+        all_files = recurse_dir(proxy_dir)
+        proxy_files = filter_files(all_files, acceptable_exts)
+        linked = link_proxies(proxy_files)
 
-    
     except Exception as e:
         tb = traceback.format_exc()
         print(tb)

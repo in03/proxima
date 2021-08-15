@@ -1,1 +1,4 @@
-py -m celery -A proxy_encoder worker --loglevel=info
+@echo off
+cd %dp0%
+py start_workers.py
+@echo on
