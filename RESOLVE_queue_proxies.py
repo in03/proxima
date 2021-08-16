@@ -14,7 +14,9 @@ import traceback
 import yaml
 from celery import group
 from colorama import Fore, init
+from ffmpy import FFmpeg, FFRuntimeError
 from pyfiglet import Figlet
+import ray
 from win10toast import ToastNotifier
 
 from python_get_resolve import GetResolve
@@ -30,6 +32,7 @@ with open(os.path.join(script_dir, "proxy_encoder", "config.yml")) as file:
     config = yaml.safe_load(file)
     
 acceptable_exts = config['filters']['acceptable_exts']
+proxy_settings = config['proxy_settings']
 proxy_path_root = config['paths']['proxy_path_root']
 
 debug = os.getenv('RPE_DEBUG')
@@ -77,20 +80,80 @@ def create_tasks(clips, **kwargs):
     tasks = [dict(item, **kwargs) for item in clips]
     return tasks
 
-def queue_job(tasks):
-    ''' Send tasks as a celery job 'group' '''
+@ray.remote
+def encode(job):
+    
+    # Create path for proxy first
+    os.makedirs(
+        job['Expected Proxy Path'], 
+        exist_ok=True,
+    )
+    
+    # Paths
+    source_file = job['File Path']
 
-    # Wrap job object in task function
-    callable_tasks = [do.encode.s(x) for x in tasks]
-    if debug: print(callable_tasks)
+    output_file = os.path.join(
+        job['Expected Proxy Path'],
+        os.path.splitext(job['Clip Name'])[0] +
+        proxy_settings['ext'],
+    )
+    
+    # Video
+    h_res = proxy_settings['h_res']
+    v_res = proxy_settings['v_res']
+    fps = job['FPS']
 
 
-    # Create job group to retrieve job results as batch
-    job = group(callable_tasks)
+    # Flip logic:
+    # If any flip args were sent with the job from Resolve, flip the clip accordingly. 
+    # Flipping should be applied to clip attributes, not through the inspector panel
 
-    # Queue job
-    print(f"{Fore.CYAN}Sending job.")
-    return job.apply_async()
+    flippage = ''
+    if job['H-FLIP'] == "On":
+        flippage += ' hflip, '
+    if job['V-FLIP'] == "On":
+        flippage += 'vflip, '
+
+    ff = FFmpeg(
+        global_options = [
+            '-y', 
+            '-hide_banner', 
+            '-stats', 
+            '-loglevel error',
+                         
+        ],
+
+        inputs = {source_file: None},
+        outputs = {
+            output_file:
+                ['-c:v', 
+                    'dnxhd', 
+                    '-profile:v',
+                    'dnxhr_sq', 
+                    '-vf',
+                    f'scale={h_res}:{v_res},{flippage}' + 
+                    f'fps={fps},' + 
+                    'format=yuv422p', 
+                    '-c:a',
+                    'pcm_s16le', 
+                    '-ar', 
+                    '48000',
+                ]
+        },
+    )
+    
+
+
+    print(ff.cmd)
+    try:
+        ff.run()
+    except FFRuntimeError as e:
+        print(e)
+        return ("FAILED encoding job: %s", 
+                job['File Path'])
+    else:
+        return ("SUCCESS encoding job: %s", 
+                job['File Path'])
 
 def parse_for_link(media_list):
 
@@ -379,6 +442,11 @@ def get_media():
 
 if __name__ == "__main__":
 
+    ray.init(
+        ignore_reinit_error=True, 
+        dashboard_host='0.0.0.0',
+    
+    )
     init(autoreset=True)
     toaster = ToastNotifier()
     
@@ -428,21 +496,31 @@ if __name__ == "__main__":
             timeline = timeline.GetName(),
         )
 
-        job = queue_job(tasks)
+        # Encode all tasks
+        for task in tasks:
+            encode.remote(task)
+
+        # Get object references
+        futures = [encode.remote(task) for task in tasks]
+
+        # Get job results as they become available
+        for i in range(1, len(futures)):
+
+            ready, remaining = ray.wait(futures)
+            print('Ready: ', len(ready))
+            print('Remaining:', len(remaining))
+
+            ids = remaining
+            if not ids:
+                break
+        
+        ray.get(futures)
 
         toast('Started encoding job')
         print(f"{Fore.YELLOW}Waiting for job to finish. Feel free to minimize.")
-        
-        job_metadata = job.join()
-
-        # Notify failed
-        if job.failed():
-            fail_message = f"Some videos failed to encode! Check dashboard @ 192.168.1.19:5555."
-            print(Fore.RED + fail_message)
-            toast(fail_message)
 
         # Notify complete
-        complete_message = f"Completed encoding {job.completed_count()} videos."
+        complete_message = f"Completed encoding {len(futures)} videos."
         print(Fore.GREEN + complete_message)
         print()
 
@@ -450,7 +528,7 @@ if __name__ == "__main__":
 
         # ATTEMPT POST ENCODE LINK
         active_project = resolve.GetProjectManager().GetCurrentProject().GetName()
-        linkable = [x for x in job_metadata if x['project'] == active_project]
+        linkable = [x for x in tasks if x['project'] == active_project]
 
         if len(linkable) == 0:
             print(
