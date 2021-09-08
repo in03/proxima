@@ -3,11 +3,10 @@
 # Link proxies
 
 import os
-import re
+import platform
 import tkinter
 import tkinter.messagebox
 import traceback
-from inspect import Attribute
 from tkinter import filedialog
 
 import yaml
@@ -214,6 +213,7 @@ if __name__ == "__main__":
         init(autoreset=True)
 
         proxy_dir = get_proxy_path()
+
         print(f"Passed directory: '{proxy_dir}'\n")
 
         all_files = recurse_dir(proxy_dir)

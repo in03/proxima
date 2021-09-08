@@ -1,0 +1,121 @@
+version: '3'
+ 
+# Run as
+# docker-compose build; docker-compose up -d
+# Check with
+# docker ps
+# Then check the logs with
+# docker logs --tail 50 $container_id
+# docker-compose logs --tail 20 tf_counts
+ 
+services:
+    rabbit:
+        hostname: rabbit
+        image: rabbitmq:latest
+        environment:
+            - RABBITMQ_DEFAULT_USER=admin
+            - RABBITMQ_DEFAULT_PASS=mypass
+            - SERVICE_PORTS=5672
+            - TCP_PORTS=5672
+        networks:
+            - proxy
+ 
+    job_queue_flask_app:
+        environment:
+            CELERY_INSTANCES: 2
+            BROKER_URL: "amqp://admin:mypass@rabbit:5672"
+            BACKEND_URL: "rpc://"
+        build:
+            context: job_queue
+            dockerfile: Dockerfile
+        labels:
+            - traefik.backend=job_queue_flask_app
+            - traefik.frontend.entryPoints=http
+            - traefik.frontend.rule=PathPrefixStrip:/api;Host:localhost
+            - traefik.docker.network=proxy
+            - traefik.frontend.headers.customresponseheaders.Access-Control-Allow-Origin = '*'
+            - traefik.port=5000
+            - traefik.enable=true
+        depends_on:
+            - rabbit
+        networks:
+            - proxy
+        command: |
+            bash -c "./wait-for-it.sh -p 5672 -h rabbit -- gunicorn \
+            --workers=4 --bind=0.0.0.0:5000 --keep-alive=2000 \
+            --timeout=2000 --log-level=debug flask_app:app"
+    
+    job_queue_celery_worker:
+        environment:
+            CELERY_INSTANCES: 2
+            BROKER_URL: "amqp://admin:mypass@rabbit:5672"
+            BACKEND_URL: "rpc://"
+        build:
+            context: job_queue
+            dockerfile: Dockerfile
+        depends_on:
+            - rabbit
+        networks:
+            - proxy
+        command: |
+            bash -c "./wait-for-it.sh -p 5672 -h rabbit -- celery \
+            -A flask_app.celery worker --concurrency 2"
+    
+    
+    job_queue_celery_flower:
+        environment:
+            CELERY_INSTANCES: 2
+            BROKER_URL: "amqp://admin:mypass@rabbit:5672"
+            BACKEND_URL: "rpc://"
+        build:
+            context: job_queue
+            dockerfile: Dockerfile
+        depends_on:
+            - rabbit
+        labels:
+            - traefik.backend=job_queue_celery_flower
+            - traefik.frontend.entryPoints=http
+            - traefik.frontend.rule=PathPrefixStrip:/flower;Host:localhost
+            - traefik.docker.network=proxy
+            - traefik.frontend.headers.customresponseheaders.Access-Control-Allow-Origin = '*'
+            - traefik.port=5555
+            - traefik.enable=true
+        networks:
+            - proxy
+        command: |
+            bash -c "./wait-for-it.sh -p 5672 -h rabbit -- celery \
+            -A flask_app.celery flower --host=0.0.0.0 \
+            --port=5555 --url-prefix=flower"
+        
+    traefik-manager:
+        image: traefik:1.5-alpine
+        restart: always
+        command: [
+            "traefik",
+            "--api",
+            "--docker",
+            "--web",
+            '--logLevel=info',
+            '--docker.domain=localhost',
+            '--docker.endpoint=unix:///var/run/docker.sock',
+            '--docker.watch=true',
+            '--docker.exposedbydefault=false'
+        ]
+        container_name: traefik
+        labels:
+            - traefik.frontend.entryPoints=http
+            - traefik.frontend.rule=PathPrefixStrip:/traefik;Host:localhost
+            - traefik.port=8080
+            - traefik.enable=true
+        networks:
+            - proxy
+        ports:
+            - "80:80"
+            - "443:443"
+            - "8080:8080"
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+ 
+networks:
+    proxy:
+        driver: bridge

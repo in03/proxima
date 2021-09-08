@@ -4,17 +4,22 @@
 import multiprocessing
 import platform
 import os
+import subprocess
 import time
 import logging
 import sys
-from subprocess import Popen
 
 from colorama import Fore, init
 from pyfiglet import Figlet
 
 # VARIABLES #
-windows_worker_cmd = """start /min py -m celery -A proxy_encoder worker -l INFO -E -P eventlet --concurrency=1"""
-linux_worker_cmd = """xterm py -m celery -A proxy_encoder worker -l INFO -E --concurrency=1"""
+# windows_worker_cmd = """start /min py -m celery -A proxy_encoder worker -l INFO -E -P solo"""
+# linux_worker_cmd = """xterm py -m celery -A proxy_encoder worker -l INFO -E -P solo"""
+
+SEP = os.path.sep
+APP_NAME = 'proxy_encoder'
+start_worker_cmd = """start /min py -m celery -A proxy_encoder worker -l INFO -E -P solo"""
+
 
 # Set loglevel
 logging.basicConfig(level=logging.WARNING)
@@ -36,43 +41,32 @@ def prompt_worker_amount(cpu_cores: int):
     """Prompt the user for the amount of Celery workers they want to run.
     Start 2 less workers than amount of CPU cores by default."""
 
-    
+    answer = 0
     safe_cores_suggestion = cpu_cores - 2
 
     def invalid_answer():
         """Restart prompt if answer invalid"""
-        print(Fore.RED + "Invalid number! Please enter a whole number.")
-        prompt_worker_amount()
+        print(f"{Fore.RED}Invalid number! Please enter a whole number.")
+        prompt_worker_amount(cpu_cores)
 
     try:
 
-        answer = int(
-            input(
-                Fore.YELLOW + "How many workers would you like to start?" +
-                f" DEFAULT: {safe_cores_suggestion}\n"
-            ) or 
-            safe_cores_suggestion
-        )
+        # Input doesn't like parsing colours
+        print(f"{Fore.YELLOW}How many workers would you like to start?\n" +
+              f"Press ENTER for default: {safe_cores_suggestion}\n")
+
+        answer = int(input() or safe_cores_suggestion)
 
     except ValueError:
         invalid_answer()
 
-    if answer is 0:
-        print(Fore.YELLOW + "Using suggested amount: %s", safe_cores_suggestion)
+    if answer == 0:
+        print(f"{Fore.YELLOW}Using suggested amount: {safe_cores_suggestion}")
         answer = safe_cores_suggestion
 
     return answer
 
-def launch_workers(os_: str, workers_to_launch: int):
-
-    # Get Launch CMD
-    if os_ is "Windows":
-        platform_cmd = windows_worker_cmd
-    elif os_ is "Linux":
-        platform_cmd = linux_worker_cmd
-    else:
-        print(Fore.RED + "Aborting! Unsupported worker OS: %s", os_)
-        sys.exit(1)
+def launch_workers(workers_to_launch: int):
 
     # Start launching
     for i in range(0, workers_to_launch):
@@ -83,11 +77,11 @@ def launch_workers(os_: str, workers_to_launch: int):
 
         # Add worker number to differentiate
         multi_worker_fmt = f" -n worker{i+1}@%h"
-        launch_cmd = platform_cmd + multi_worker_fmt
+        launch_cmd = start_worker_cmd + multi_worker_fmt
 
         logging.info(launch_cmd)
 
-        process = Popen(
+        process = subprocess.Popen(
             launch_cmd, 
             shell = True,
         )
@@ -101,23 +95,27 @@ if __name__ == "__main__":
     # Coloured term output
     init(
         autoreset = True, 
-        convert = True
     )
 
     filename_figlet()
 
     os_ = platform.system()
     cpu_cores = multiprocessing.cpu_count()
-    
-    print("\n" + Fore.YELLOW + f"This computer has {cpu_cores} cores.\n")
+
+    print(f"{Fore.GREEN}Running on {os_} with {cpu_cores} cores.\n")
+
+    # Check OS isn't Linux
+    if platform.system() == "Linux":
+        print(f"{Fore.RED}This utility is for Windows only!\n" +
+                "To start multiple workers on Linux or WSL, setup a systemd service.")
+        sys.exit(1)
+
     print("For maximum performance, start as many workers as CPU cores.")
     print("Default recommendation is 2 cores spare for Resolve and other tasks.\n")
 
-    workers_to_launch = prompt_worker_amount(cpu_cores)
+    launch_workers(prompt_worker_amount(cpu_cores))
 
-    launch_workers(os_, workers_to_launch)
-
-    print(Fore.GREEN + "Done!")
+    print(f"{Fore.GREEN}Done!")
     exit_in_seconds(5)
 
     

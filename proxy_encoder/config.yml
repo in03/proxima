@@ -1,6 +1,5 @@
 paths:
   proxy_path_root: "R:\\ProxyMedia"
-  ffmpeg: "C:\\Program Files\\FFMPEG"
 
 proxy_settings:
   vid_codec: dnxhd
