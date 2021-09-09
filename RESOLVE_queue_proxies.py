@@ -234,6 +234,43 @@ def search_and_link():
 
     return linked
 
+def legacy_link(media_list):
+    """ This is sooooo dank. But it's the only way that works atm."""
+
+    print(f"{Fore.CYAN}Linking {len(media_list)} proxies.")
+    existing_proxies = []
+
+    for media in media_list:
+        proxy = media.get('Unlinked Proxy', None)
+        if proxy == None:
+            continue
+
+        existing_proxies.append(proxy)
+
+        if not os.path.exists(proxy):
+            tkinter.messagebox.showerror(title = "Error linking proxy", message = f"Proxy media not found at '{proxy}'")
+            print(f"{Fore.RED}Error linking proxy: Proxy media not found at '{proxy}'")
+            continue
+
+        else:
+            media.update({'Unlinked Proxy': None}) # Set existing to none once linked
+
+        media.update({'Proxy':"1280x720"})
+
+        
+    link_proxies(existing_proxies)    
+
+    print()
+
+    pre_len = len(media_list)
+    media_list = [x for x in media_list if 'Unlinked Proxy' not in x]
+    post_len = len(media_list)
+    print(f"{pre_len - post_len} proxy(s) linked, will not be queued.")
+    print(f"{Fore.MAGENTA}Queueing {post_len}")
+    print()
+
+    return media_list
+
 def confirm(title, message):
     '''General tkinter confirmation prompt using ok/cancel.
     Keeps things tidy'''
@@ -416,7 +453,7 @@ def handle_existing_unlinked(media_list):
         some_action_taken = True
 
         if answer == True:
-            media_list = search_and_link()
+            media_list = legacy_link(media_list)
             
         
         elif answer == False:
@@ -435,7 +472,7 @@ def handle_workers():
     i = app.control.inspect().active_queues()
 
     if i is not None:
-        print(i)
+        # print(i)
         worker_count = len(i)
 
         if worker_count > 0:
@@ -539,7 +576,7 @@ def get_source_metadata(media_pool_items):
                 continue
 
             # Add the Resolve API media pool item object so we can call it directly to link
-            source_metadata.update({'media_pool_item_object':media_pool_item})
+            # source_metadata.update({'media_pool_item_object':media_pool_item})
             all_source_metadata.append(source_metadata)
 
         except:
@@ -637,24 +674,14 @@ if __name__ == "__main__":
         job_metadata = wait_encode(job)
 
         # ATTEMPT POST ENCODE LINK
-        # Project may have changed while script was waiting for renders to finish
-        active_project = resolve.GetProjectManager().GetCurrentProject().GetName()
-        linkable = [x for x in job_metadata if x['project'] == active_project]
+        try:
 
-        tkinter.messagebox.showwarning("Linkable", f"There are {len(linkable)} proxies to link" +
-                                            "If you want to re-rerender some proxies, unlink those existing proxies within Resolve and try again.")
+            clips = legacy_link(clips)
 
-        if len(linkable) == 0:
-            print(
-                f"{Fore.YELLOW}\nNo proxies to link post-encode.\n" +
-                "Resolve project may have changed.\n" +
-                "Feel free to link manually. Skipping."
-            )
-
-        else: 
-            postencode_link(linkable)
-
-        app_exit(0)
+        except:
+            
+            print(Fore.RED + "Couldn't link clips. Link manually...")
+            app_exit(1)
 
     
     except Exception as e:
