@@ -4,33 +4,22 @@ broker_url = f'redis://{host_address}:6379/0'
 flower_url = f'http://{host_address}:5555'
 
 # List of modules to import when the Celery worker starts.
-imports = (
-    'proxy_encoder.tasks',
-)
+imports = ('proxy_encoder.tasks',)
 
 # Using the database to store task state and results.
 result_backend = broker_url
 
 # Additional settings
-worker_max_tasks_per_child = 1
-worker_concurrency = 1
+# worker_max_tasks_per_child = 1
+# worker_concurrency = 1
 
-task_serializer = 'pickle'
-result_serializer = 'pickle'
-
-accept_content = [
-    'json', 
-    'pickle',
-]
-
-result_accept_content = [
-    'json', 
-    'pickle',
-]
-
+task_serializer = 'json'
+result_serializer = 'json'
+accept_content = ['json', 'pickle', 'application/x-python-serialize']
+result_accept_content = ['json', 'pickle', 'application/x-python-serialize']
 acks_late = True
 worker_prefetch_multiplier = 1
-enable_utc = True
+enable_utc = True,
 timezone ='Australia/Brisbane'
 result_expires = 18000 # 5 hours
 worker_pool_restarts = True
