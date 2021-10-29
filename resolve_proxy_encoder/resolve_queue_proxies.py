@@ -18,10 +18,10 @@ from colorama import init as colorama_init
 from pyfiglet import Figlet
 from win10toast import ToastNotifier
 
-from python_get_resolve import GetResolve
-from link_proxies import link_proxies
+from . python_get_resolve import GetResolve
+from . link_proxies import link_proxies
 
-#'tasks' python file matches 'tasks' variable. 
+# 'tasks' python file matches 'tasks' variable. 
 # Want to keep app terminology close to Celery's.
 from proxy_encoder import tasks as do
 from proxy_encoder import celery_settings

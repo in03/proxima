@@ -3,7 +3,6 @@
 # Link proxies
 
 import os
-import platform
 import tkinter
 import tkinter.messagebox
 import traceback
@@ -12,7 +11,7 @@ from tkinter import filedialog
 import yaml
 from colorama import Fore, Style, init
 
-from python_get_resolve import GetResolve
+from . python_get_resolve import GetResolve
 
 # Get environment variables #########################################
 script_dir = os.path.dirname(__file__)
