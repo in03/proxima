@@ -1,0 +1,43 @@
+loglevel: INFO
+
+paths:
+  proxy_path_root: C:/Videos
+
+proxy_settings:
+  vid_codec: dnxhd
+  h_res: 1280 
+  v_res: 720
+  vid_profile: dnxhr_sq 
+  pix_fmt: yuv422p
+  audio:
+    audio_codec: pcm_s16le
+    audio_samplerate: 48000
+  misc_args: [-hide_banner, -stats, -loglevel error]
+  ext: .mxf
+
+filters:
+  acceptable_exts : [.mov, .mp4, .mxf, .avi]
+
+celery_settings:
+  # Structure: <protocol>://<user>:<password>@<IP address>:<port>/<virtual host>
+  host_address: 192.168.1.19
+  broker_url:  redis://192.168.1.19:6379/0
+  flower_url: http://192.168.1.19:5555
+
+  # Using the database to store task state and results.
+  result_backend: redis://192.168.1.19:6379/0
+
+  # Additional settings
+  # worker_max_tasks_per_child: 1
+  # worker_concurrency: 1
+
+  task_serializer: json
+  result_serializer: json
+  accept_content: [json, pickle, application/x-python-serialize]
+  result_accept_content: [json, pickle, application/x-python-serialize]
+  acks_late: True
+  worker_prefetch_multiplier: 1
+  enable_utc: True
+  timezone: Australia/Brisbane
+  result_expires: 18000 # 5 hours
+  worker_pool_restarts: True

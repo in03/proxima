@@ -1,8 +1,15 @@
 """ Helper functions for main module """
 
-from typing import Union
 import logging
-from rich import RichHandler
+import sys
+import time
+from typing import Union
+
+from rich.logging import RichHandler
+from rich.prompt import Prompt
+
+from . settings import app_settings
+config = app_settings.get_user_settings()
 
 def get_rich_logger(loglevel:Union[int, str]="WARNING"):
 
@@ -36,7 +43,7 @@ def app_exit(level:int=0, timeout:int=5, cleanup_funcs:list=None):
     Provide a list of functions to call on cleanup if necessary.
     """
 
-    logger = get_rich_logger(settings.LOGLEVEL)
+    logger = get_rich_logger(config['loglevel'])
 
     # Run any cleanup functions
     if cleanup_funcs:
@@ -65,3 +72,4 @@ def app_exit(level:int=0, timeout:int=5, cleanup_funcs:list=None):
         sys.stdout.write('\x1b[2K')
 
     sys.exit(level)
+

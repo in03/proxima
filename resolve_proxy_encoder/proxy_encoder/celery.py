@@ -9,6 +9,10 @@ from celery import Celery
 import os
 import sys
 
+from .. settings import app_settings
+config = app_settings.get_user_settings()
+
+
 # Windows can't fork processes. It'll choke if you make it try.
 if sys.platform == "win32":
     os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
@@ -17,6 +21,6 @@ app = Celery('proxy_encoder')
 
 if not os.getenv('BROKER_URL'):
     try:
-        app.config_from_object('proxy_encoder.celery_settings')
+        app.config_from_object(config['celery_settings'])
     except:
-        raise Exception('Environment variables must be set or "celery_settings.py" present')
+        raise Exception('Environment variables must be set or celery_settings present in YAML config')

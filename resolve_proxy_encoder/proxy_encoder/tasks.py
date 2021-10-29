@@ -1,23 +1,15 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.6
 
 from __future__ import absolute_import
 
 import os
 
-import yaml
-
 from ffmpy import FFmpeg, FFRuntimeError
 from .celery import app
 from .helpers import check_wsl, get_wsl_path
 
-# Get environment variables #########################################
-script_dir = os.path.dirname(__file__)
-with open(os.path.join(script_dir, "config.yml")) as file: 
-    config = yaml.safe_load(file)
-
-    proxy_settings = config['proxy_settings']
-
-#####################################################################
+from resolve_proxy_encoder.settings import app_settings
+config = app_settings.get_user_settings()
 
 @app.task(acks_late = True, track_started = True, prefetch_limit = 1)
 def encode(job):
@@ -39,12 +31,12 @@ def encode(job):
     output_file = os.path.join(
         expected_proxy_path,
         os.path.splitext(job['Clip Name'])[0] +
-        proxy_settings['ext'],
+        config['proxy_settings']['ext'],
     )
     
     # Video
-    h_res = proxy_settings['h_res']
-    v_res = proxy_settings['v_res']
+    h_res = config['proxy_settings']['h_res']
+    v_res = config['proxy_settings']['v_res']
     fps = job['FPS']
 
 

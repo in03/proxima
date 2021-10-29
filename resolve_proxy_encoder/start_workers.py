@@ -1,7 +1,8 @@
 
+#!/usr/bin/env python3.6
+
 # Launch multiple workers
 
-from enum import auto
 import multiprocessing
 import platform
 import os
@@ -21,12 +22,6 @@ SEP = os.path.sep
 APP_NAME = 'proxy_encoder'
 start_worker_cmd = """start /min py -m celery -A proxy_encoder worker -l INFO -E -P solo"""
 
-
-def filename_figlet():
-    """Print the name of the script in big green letters"""
-    script_name = os.path.basename(sys.argv[0])
-    fig = Figlet()
-    print(Fore.GREEN + fig.renderText(script_name))
 
 def exit_in_seconds(timeout):
     '''Allow time to read console before exit'''
@@ -88,7 +83,7 @@ def launch_workers(workers_to_launch: int):
         sys.stdout.flush()
     return
     
-def main():
+def main(workers:int=0):
     """ Main function """
 
     # Coloured term output
@@ -96,9 +91,7 @@ def main():
 
     # Set loglevel
     logging.basicConfig(level=logging.WARNING)
-
-    init()
-    filename_figlet()
+    
     os_ = platform.system()
     cpu_cores = multiprocessing.cpu_count()
 
@@ -113,12 +106,13 @@ def main():
     print("For maximum performance, start as many workers as CPU cores.")
     print("Default recommendation is 2 cores spare for Resolve and other tasks.\n")
 
-    launch_workers(prompt_worker_amount(cpu_cores))
+    if workers:
+        launch_workers(workers)
+    else:
+        launch_workers(prompt_worker_amount(cpu_cores))
 
     print(f"{Fore.GREEN}Done!")
     exit_in_seconds(5)
 
 if __name__ == "__main__":
-    main()
-
-    
+    main(0)

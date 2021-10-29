@@ -11,45 +11,38 @@ import tkinter
 import tkinter.messagebox
 import traceback
 
-import yaml
 from celery import group
 from colorama import Fore, init
-from colorama import init as colorama_init
 from pyfiglet import Figlet
 from win10toast import ToastNotifier
 
-from . python_get_resolve import GetResolve
-from . link_proxies import link_proxies
+from resolve_proxy_encoder.python_get_resolve import GetResolve
+from resolve_proxy_encoder import link_proxies
+
 
 # 'tasks' python file matches 'tasks' variable. 
 # Want to keep app terminology close to Celery's.
-from . proxy_encoder import tasks as do
-from . proxy_encoder import celery_settings
-from . proxy_encoder.celery import app
+from resolve_proxy_encoder.proxy_encoder import tasks as do
+from resolve_proxy_encoder.proxy_encoder.celery import app
+
+from resolve_proxy_encoder.settings import app_settings
+config = app_settings.get_user_settings()
 
 # Get global variables
 resolve = GetResolve()
 project = resolve.GetProjectManager().GetCurrentProject()
 timeline = project.GetCurrentTimeline()
 resolve_job_name = f"{project.GetName().upper()} - {timeline.GetName().upper()}"
+proxy_path_root = os.path.normpath(config['paths']['proxy_path_root'])
 
-# Get environment variables #########################################
-script_dir = os.path.dirname(__file__)
-with open(os.path.join(script_dir, "proxy_encoder", "config.yml")) as file: 
-    config = yaml.safe_load(file)
-    
-acceptable_exts = config['filters']['acceptable_exts']
-proxy_path_root = config['paths']['proxy_path_root']
-
-debug = os.getenv('RPE_DEBUG')
-
-#####################################################################
 
 def app_exit(level, force_explicit_exit=True):
-    ''' Standard exitcodes for 'level' '''
+    """ Standard exitcodes for 'level' """
+
+    f = Figlet()
     print(f.renderText("Done!"))
 
-    if debug or force_explicit_exit or level > 1: 
+    if config['loglevel'] or force_explicit_exit or level > 1: 
 
         input("Press ENTER to exit.")
         sys.exit(level)
@@ -67,7 +60,7 @@ def toast(message, threaded = True):
     return
 
 def exit_in_seconds(seconds=5, level=0):
-    ''' Allow time to read console before exit '''
+    """ Allow time to read console before exit """
 
     ansi_colour = Fore.CYAN
     if level > 0: ansi_colour = Fore.RED
@@ -82,18 +75,18 @@ def exit_in_seconds(seconds=5, level=0):
     sys.exit(level)
 
 def create_tasks(clips, **kwargs):
-    ''' Create metadata dictionaries to send as Celery tasks' '''
+    """ Create metadata dictionaries to send as Celery tasks' """
 
     # Append project details to each clip
     tasks = [dict(item, **kwargs) for item in clips]
     return tasks
 
 def queue_job(tasks):
-    ''' Send tasks as a celery job 'group' '''
+    """ Send tasks as a celery job 'group' """
 
     # Wrap job object in task function
     callable_tasks = [do.encode.s(x) for x in tasks]
-    if debug: print(callable_tasks)
+    if config['loglevel']: print(callable_tasks)
 
 
     # Create job group to retrieve job results as batch
@@ -104,7 +97,7 @@ def queue_job(tasks):
     return job.apply_async()
 
 def postencode_link(media_list):
-    ''' Iterate through media mutated during script call, attempt to link the source media '''
+    """ Iterate through media mutated during script call, attempt to link the source media """
 
     print(f"{Fore.CYAN}Linking {len(media_list)} proxies.")
 
@@ -213,7 +206,7 @@ def search_and_link():
     #     unlinked_source = [x for x in clips if x not in linked]
 
     #     if len(unlinked_source) == 0:
-    #         if debug: print(f"{Fore.YELLOW}No more clips to link in {timeline_data['name']}")
+    #         if config['loglevel']: print(f"{Fore.YELLOW}No more clips to link in {timeline_data['name']}")
     #         continue
     #     else:
     #         print(f"{Fore.CYAN}Searching timeline {timeline_data['name']}")
@@ -232,7 +225,7 @@ def search_and_link():
     #     linked.extend(linked_)
     #     failed.extend(failed_)
 
-    #     if debug: print(f"Linked: {linked}, Failed: {failed}")
+    #     if config['loglevel']: print(f"Linked: {linked}, Failed: {failed}")
 
     # if len(failed) > 0:
     #     print(f"{Fore.RED}The following files matched, but couldn't be linked. Suggest rerendering them:")
@@ -279,8 +272,8 @@ def legacy_link(media_list):
     return media_list
 
 def confirm(title, message):
-    '''General tkinter confirmation prompt using ok/cancel.
-    Keeps things tidy'''
+    """General tkinter confirmation prompt using ok/cancel.
+    Keeps things tidy"""
 
     answer = tkinter.messagebox.askokcancel(
         title = title, 
@@ -306,9 +299,9 @@ def get_expected_proxy_path(media_list):
     return media_list
 
 def handle_orphaned_proxies(media_list):
-    '''Prompts user to tidy orphaned proxies into the current proxy path structure.
+    """Prompts user to tidy orphaned proxies into the current proxy path structure.
     Orphans can become separated from a project if source media file-path structure changes.
-    Saves unncessary re-rendering time and lost disk space.'''
+    Saves unncessary re-rendering time and lost disk space."""
 
     print(f"{Fore.CYAN}Checking for orphaned proxies.")
     orphaned_proxies = []
@@ -369,10 +362,10 @@ def handle_orphaned_proxies(media_list):
     return media_list
     
 def handle_already_linked(media_list):
-    '''Remove media from the queue if the source media already has a linked proxy that is online.
+    """Remove media from the queue if the source media already has a linked proxy that is online.
     As re-rendering linked clips is rarely desired behaviour, it makes sense to avoid clunky prompting.
     To re-render linked clips, simply unlink their proxies and try queueing proxies again. 
-    You'll be prompted to handle offline proxies.'''
+    You'll be prompted to handle offline proxies."""
 
     print(f"{Fore.CYAN}Checking for source media with linked proxies.")
     already_linked = [x for x in media_list if x['Proxy'] != "None"]
@@ -418,9 +411,9 @@ def handle_offline_proxies(media_list):
     return media_list
 
 def handle_existing_unlinked(media_list):
-    '''Prompts user to either link or re-render proxy media that exists in the expected location, 
+    """Prompts user to either link or re-render proxy media that exists in the expected location, 
     but has either been unlinked at some point or was never linked after proxies finished rendering.
-    Saves confusion and unncessary re-rendering time.'''
+    Saves confusion and unncessary re-rendering time."""
 
     print(f"{Fore.CYAN}Checking for existing, unlinked media.")
     existing_unlinked = []
@@ -442,9 +435,9 @@ def handle_existing_unlinked(media_list):
 
 
                 existing.sort(key=os.path.getmtime)
-                if debug: print(f"{Fore.MAGENTA} [x] Found {len(existing)} existing matches for {media['File Name']}")
+                if config['loglevel']: print(f"{Fore.MAGENTA} [x] Found {len(existing)} existing matches for {media['File Name']}")
                 existing = existing[0]
-                if debug: print(f"{Fore.MAGENTA} [x] Using newest: '{existing}'")
+                if config['loglevel']: print(f"{Fore.MAGENTA} [x] Using newest: '{existing}'")
 
 
                 media.update({'Unlinked Proxy': existing})
@@ -576,10 +569,10 @@ def get_source_metadata(media_pool_items):
             source_metadata = media_pool_item.GetClipProperty()
 
             source_ext = os.path.splitext(source_metadata['File Path'])[1].lower()
-            if debug: print(source_ext)
+            if config['loglevel']: print(source_ext)
 
-            if source_ext not in acceptable_exts:
-                if debug: print(f"Ignoring unacceptable file type: '{source_metadata['File Path']}'")
+            if source_ext not in config['filters']['acceptable_exts']:
+                if config['loglevel']: print(f"Ignoring unacceptable file type: '{source_metadata['File Path']}'")
                 continue
 
             # Add the Resolve API media pool item object so we can call it directly to link
@@ -587,7 +580,7 @@ def get_source_metadata(media_pool_items):
             all_source_metadata.append(source_metadata)
 
         except:
-            if debug: print(f"{Fore.MAGENTA}Skipping {media_pool_item.GetName()}, no linked media pool item.")    
+            if config['loglevel']: print(f"{Fore.MAGENTA}Skipping {media_pool_item.GetName()}, no linked media pool item.")    
             continue
 
     print(f"{Fore.GREEN}Total clips on timeline: {len(all_source_metadata)}")
@@ -614,7 +607,10 @@ def wait_encode(job):
 
     # Notify failed
     if job.failed():
-        fail_message = f"Some videos failed to encode! Check flower dashboard at address: {celery_settings.flower_url}."
+        fail_message = (
+            "Some videos failed to encode!" + 
+            f"Check flower dashboard at address: {config['celery_settings']['flower_url']}."
+        )
         print(Fore.RED + fail_message)
         toast(fail_message)
 
@@ -627,21 +623,11 @@ def wait_encode(job):
 
     return job_metadata
 
-def init():
-    """ Run on module initialisation """
-
-    global f
-    f = Figlet()
-    print(f.renderText("Queue/Link Proxies"))
-    print()  
-    
-    global toaster
-    toaster = ToastNotifier()
-
 def main():
     """ Main function"""
 
-    init()
+    global toaster
+    toaster = ToastNotifier()
 
     try:       
 
