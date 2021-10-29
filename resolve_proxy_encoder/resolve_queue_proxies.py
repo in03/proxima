@@ -23,9 +23,9 @@ from . link_proxies import link_proxies
 
 # 'tasks' python file matches 'tasks' variable. 
 # Want to keep app terminology close to Celery's.
-from proxy_encoder import tasks as do
-from proxy_encoder import celery_settings
-from proxy_encoder.celery import app
+from . proxy_encoder import tasks as do
+from . proxy_encoder import celery_settings
+from . proxy_encoder.celery import app
 
 # Get global variables
 resolve = GetResolve()
