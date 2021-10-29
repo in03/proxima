@@ -5,19 +5,21 @@ import subprocess
 import webbrowser
 
 import typer
+from colorama import Fore, init
 from pyfiglet import Figlet
 from rich.pretty import pprint
 from rich.prompt import Confirm
+
+# Print CLI title
+init(autoreset=True)
+fig = Figlet()
+text = fig.renderText('Resolve Proxy Encoder')
+print(Fore.GREEN + text)
 
 from resolve_proxy_encoder import link_proxies, resolve_queue_proxies, start_workers
 from resolve_proxy_encoder.settings import app_settings
 
 config = app_settings.get_user_settings()
-
-# Print CLI title
-fig = Figlet()
-pprint(f"[green]{fig.renderText('Resolve Proxy Encoder')}[/]")
-
 app = typer.Typer()
 
 # Check before anything else
