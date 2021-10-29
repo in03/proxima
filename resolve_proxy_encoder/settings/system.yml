@@ -1,3 +1,9 @@
+# SYSTEM LEVEL SETTINGS
+# User settings take precedence and will be copied here on startup if found.
+# Default values are imported from default.yml if missing here or from user settings.
+
+loglevel: DEBUG
+
 paths:
   proxy_path_root: "R:\\ProxyMedia"
 

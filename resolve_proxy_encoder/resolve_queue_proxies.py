@@ -14,6 +14,7 @@ import traceback
 import yaml
 from celery import group
 from colorama import Fore, init
+from colorama import init as colorama_init
 from pyfiglet import Figlet
 from win10toast import ToastNotifier
 
@@ -25,6 +26,12 @@ from link_proxies import link_proxies
 from proxy_encoder import tasks as do
 from proxy_encoder import celery_settings
 from proxy_encoder.celery import app
+
+# Get global variables
+resolve = GetResolve()
+project = resolve.GetProjectManager().GetCurrentProject()
+timeline = project.GetCurrentTimeline()
+resolve_job_name = f"{project.GetName().upper()} - {timeline.GetName().upper()}"
 
 # Get environment variables #########################################
 script_dir = os.path.dirname(__file__)
@@ -620,31 +627,26 @@ def wait_encode(job):
 
     return job_metadata
 
-if __name__ == "__main__":
+def init():
+    """ Run on module initialisation """
 
-    init(autoreset=True)
-    toaster = ToastNotifier()
-    
-    root = tkinter.Tk()
-    root.withdraw()
-
-    some_action_taken = False
-
+    global f
     f = Figlet()
     print(f.renderText("Queue/Link Proxies"))
     print()  
     
+    global toaster
+    toaster = ToastNotifier()
+
+def main():
+    """ Main function"""
+
+    init()
+
     try:       
-        # Get global variables
-        resolve = GetResolve()
-        project = resolve.GetProjectManager().GetCurrentProject()
-        timeline = project.GetCurrentTimeline()
-        resolve_job_name = f"{project.GetName().upper()} - {timeline.GetName().upper()}"
 
         print(f"{Fore.CYAN}Working on: {resolve_job_name}") 
-
         handle_workers()
-
         print()
 
         # Lets make it happen!
@@ -692,3 +694,6 @@ if __name__ == "__main__":
         print("ERROR - " + str(e))
 
         app_exit(1)
+        
+if __name__ == "__main__":
+    main()

@@ -1,6 +1,7 @@
 
 # Launch multiple workers
 
+from enum import auto
 import multiprocessing
 import platform
 import os
@@ -20,9 +21,6 @@ SEP = os.path.sep
 APP_NAME = 'proxy_encoder'
 start_worker_cmd = """start /min py -m celery -A proxy_encoder worker -l INFO -E -P solo"""
 
-
-# Set loglevel
-logging.basicConfig(level=logging.WARNING)
 
 def filename_figlet():
     """Print the name of the script in big green letters"""
@@ -89,16 +87,18 @@ def launch_workers(workers_to_launch: int):
         sys.stdout.write(Fore.GREEN + f"\rLAUNCHING{dots}")
         sys.stdout.flush()
     return
-
-if __name__ == "__main__":
+    
+def main():
+    """ Main function """
 
     # Coloured term output
-    init(
-        autoreset = True, 
-    )
+    init(autoreset = True)
 
+    # Set loglevel
+    logging.basicConfig(level=logging.WARNING)
+
+    init()
     filename_figlet()
-
     os_ = platform.system()
     cpu_cores = multiprocessing.cpu_count()
 
@@ -117,5 +117,8 @@ if __name__ == "__main__":
 
     print(f"{Fore.GREEN}Done!")
     exit_in_seconds(5)
+
+if __name__ == "__main__":
+    main()
 
     

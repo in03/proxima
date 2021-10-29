@@ -1,0 +1,20 @@
+loglevel: INFO
+
+paths:
+  proxy_path_root: "C:\\Videos"
+
+proxy_settings:
+  vid_codec: dnxhd
+  h_res: 1280 
+  v_res: 720
+  vid_profile: dnxhr_sq 
+  pix_fmt: yuv422p
+  audio:
+    audio_codec: pcm_s16le
+    audio_samplerate: 48000
+  misc_args: [-hide_banner, -stats, -loglevel error]
+  ext: .mxf
+  overwrite_mode: increment #keep, skip
+
+filters:
+  acceptable_exts : [.mov, .mp4, .mxf, .avi]
