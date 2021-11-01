@@ -10,23 +10,24 @@ from tkinter import filedialog
 
 from colorama import Fore, init
 
-from resolve_proxy_encoder.python_get_resolve import GetResolve
+from resolve_proxy_encoder import python_get_resolve
 
 from resolve_proxy_encoder.settings import app_settings
 config = app_settings.get_user_settings()
 
 
 # Get global variables
-resolve = GetResolve()
+resolve = python_get_resolve.GetResolve()
 project = resolve.GetProjectManager().GetCurrentProject()
 media_pool = project.GetMediaPool()
+
+root = tkinter.Tk()
+root.withdraw()
 
 def get_proxy_path():
 
     proxy_path_root = config['paths']['proxy_path_root']
 
-    root = tkinter.Tk()
-    root.withdraw()
     f = filedialog.askdirectory(initialdir = proxy_path_root, title = "Link proxies")
     if f is None:
         print("User cancelled dialog. Exiting.")
@@ -45,11 +46,9 @@ def filter_files(dir_, acceptable_exts):
     """Filter files by allowed filetype
     """
 
+    # print(f"{Fore.CYAN}{timeline.GetName()} - Video track count: {track_len}")
     allowed = [x for x in dir_ if os.path.splitext(x) in acceptable_exts]
     return allowed
-
-
-    print(f"{Fore.CYAN}{timeline.GetName()} - Video track count: {track_len}")
 
 def get_track_items(timeline, track_type="video"):
     """Retrieve all video track items from a given timeline object"""

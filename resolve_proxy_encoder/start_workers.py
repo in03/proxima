@@ -81,6 +81,7 @@ def launch_workers(workers_to_launch: int):
 
         sys.stdout.write(Fore.GREEN + f"\rLAUNCHING{dots}")
         sys.stdout.flush()
+    print()
     return
     
 def main(workers:int=0):

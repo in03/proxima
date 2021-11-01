@@ -7,7 +7,7 @@ import webbrowser
 import typer
 from colorama import Fore, init
 from pyfiglet import Figlet
-from rich.pretty import pprint
+from rich import print as pprint
 from rich.prompt import Confirm
 
 # Print CLI title
@@ -16,14 +16,11 @@ fig = Figlet()
 text = fig.renderText('Resolve Proxy Encoder')
 print(Fore.GREEN + text)
 
-from resolve_proxy_encoder import link_proxies, resolve_queue_proxies, start_workers
 from resolve_proxy_encoder.settings import app_settings
+from resolve_proxy_encoder import link_proxies, resolve_queue_proxies, start_workers
 
 config = app_settings.get_user_settings()
 app = typer.Typer()
-
-# Check before anything else
-app_settings.check_settings()
 
 @app.command()
 def queue():
@@ -68,7 +65,7 @@ def mon():
     Launch Flower Celery monitor in default browser new window 
     """
 
-    pprint("[green]Launching Flower celery monitor[/] :flower:")
+    pprint("[green]Launching Flower celery monitor[/] :sunflower:")
     webbrowser.open_new(config['celery_settings']['flower_url'])
 
 def main():

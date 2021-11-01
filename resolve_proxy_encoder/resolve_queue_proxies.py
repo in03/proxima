@@ -14,65 +14,30 @@ import traceback
 from celery import group
 from colorama import Fore, init
 from pyfiglet import Figlet
-from win10toast import ToastNotifier
 
-from resolve_proxy_encoder.python_get_resolve import GetResolve
-from resolve_proxy_encoder import link_proxies
+from resolve_proxy_encoder import helpers, python_get_resolve
+from resolve_proxy_encoder.link_proxies import link_proxies
 
 
 # 'tasks' python file matches 'tasks' variable. 
 # Want to keep app terminology close to Celery's.
 from resolve_proxy_encoder.proxy_encoder import tasks as do
 from resolve_proxy_encoder.proxy_encoder.celery import app
-
 from resolve_proxy_encoder.settings import app_settings
+
 config = app_settings.get_user_settings()
 
 # Get global variables
-resolve = GetResolve()
+resolve = python_get_resolve.GetResolve()
 project = resolve.GetProjectManager().GetCurrentProject()
 timeline = project.GetCurrentTimeline()
 resolve_job_name = f"{project.GetName().upper()} - {timeline.GetName().upper()}"
 proxy_path_root = os.path.normpath(config['paths']['proxy_path_root'])
 
+# Prevent TKinter root window showing
+root = tkinter.Tk()
+root.withdraw()
 
-def app_exit(level, force_explicit_exit=True):
-    """ Standard exitcodes for 'level' """
-
-    f = Figlet()
-    print(f.renderText("Done!"))
-
-    if config['loglevel'] or force_explicit_exit or level > 1: 
-
-        input("Press ENTER to exit.")
-        sys.exit(level)
-
-    else: 
-        exit_in_seconds(seconds = 5)
-
-def toast(message, threaded = True):
-    toaster.show_toast(
-        "Queue Proxies", 
-        message, 
-        # icon_path = icon_path, 
-        threaded = threaded,
-    )
-    return
-
-def exit_in_seconds(seconds=5, level=0):
-    """ Allow time to read console before exit """
-
-    ansi_colour = Fore.CYAN
-    if level > 0: ansi_colour = Fore.RED
-
-    for i in range(seconds, -1, -1):
-        sys.stdout.write(f"{ansi_colour}\rExiting in " + str(i))
-        time.sleep(1)
-        
-    erase_line = '\x1b[2K' 
-    sys.stdout.write(f"\r{erase_line}")
-    print()
-    sys.exit(level)
 
 def create_tasks(clips, **kwargs):
     """ Create metadata dictionaries to send as Celery tasks' """
@@ -186,7 +151,7 @@ def search_and_link():
     
 
     linked = []
-    failed = []
+    # failed = []
 
     #TODO: Get this working. R
 
@@ -280,6 +245,7 @@ def confirm(title, message):
         message = message,
     )
 
+    global some_action_taken
     some_action_taken = True
     return answer
 
@@ -505,7 +471,7 @@ def handle_none_queuable(clips):
             sys.exit(1)
         else:
             print(f"{Fore.GREEN}All clips linked now. No encoding necessary.")
-            app_exit(0)
+            helpers.app_exit(0)
 
     # Final Prompt confirm
     if not confirm(
@@ -600,7 +566,7 @@ def remove_duplicate_elements(elements):
 def wait_encode(job):
     """ Wait for job to finish, return statuses and notify user."""
 
-    toast('Started encoding job')
+    helpers.toast('Started encoding job')
     print(f"{Fore.YELLOW}Waiting for job to finish. Feel free to minimize.")
     
     job_metadata = job.join()
@@ -612,22 +578,19 @@ def wait_encode(job):
             f"Check flower dashboard at address: {config['celery_settings']['flower_url']}."
         )
         print(Fore.RED + fail_message)
-        toast(fail_message)
+        helpers.toast(fail_message)
 
     # Notify complete
     complete_message = f"Completed encoding {job.completed_count()} videos."
     print(Fore.GREEN + complete_message)
     print()
 
-    toast(complete_message)
+    helpers.toast(complete_message)
 
     return job_metadata
 
 def main():
     """ Main function"""
-
-    global toaster
-    toaster = ToastNotifier()
 
     try:       
 
@@ -669,7 +632,7 @@ def main():
         except:
             
             print(Fore.RED + "Couldn't link clips. Link manually...")
-            app_exit(1)
+            helpers.app_exit(1, -1)
 
     
     except Exception as e:
@@ -679,7 +642,7 @@ def main():
         tkinter.messagebox.showerror("ERROR", tb)
         print("ERROR - " + str(e))
 
-        app_exit(1)
+        helpers.app_exit(1)
         
 if __name__ == "__main__":
     main()

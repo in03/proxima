@@ -51,3 +51,5 @@ def get_user_settings():
     with open(os.path.join(USER_SETTINGS_FILE)) as file: 
         return yaml.safe_load(file)
 
+# Perform on import
+check_settings()
