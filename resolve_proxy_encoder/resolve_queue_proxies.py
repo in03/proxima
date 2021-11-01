@@ -51,7 +51,7 @@ def queue_job(tasks):
 
     # Wrap job object in task function
     callable_tasks = [do.encode.s(x) for x in tasks]
-    if config['loglevel']: print(callable_tasks)
+    if config['loglevel'] == "DEBUG": print(callable_tasks)
 
 
     # Create job group to retrieve job results as batch
@@ -171,7 +171,7 @@ def search_and_link():
     #     unlinked_source = [x for x in clips if x not in linked]
 
     #     if len(unlinked_source) == 0:
-    #         if config['loglevel']: print(f"{Fore.YELLOW}No more clips to link in {timeline_data['name']}")
+    #         if config['loglevel'] == "DEBUG": print(f"{Fore.YELLOW}No more clips to link in {timeline_data['name']}")
     #         continue
     #     else:
     #         print(f"{Fore.CYAN}Searching timeline {timeline_data['name']}")
@@ -190,7 +190,7 @@ def search_and_link():
     #     linked.extend(linked_)
     #     failed.extend(failed_)
 
-    #     if config['loglevel']: print(f"Linked: {linked}, Failed: {failed}")
+    #     if config['loglevel'] == "DEBUG": print(f"Linked: {linked}, Failed: {failed}")
 
     # if len(failed) > 0:
     #     print(f"{Fore.RED}The following files matched, but couldn't be linked. Suggest rerendering them:")
@@ -401,9 +401,9 @@ def handle_existing_unlinked(media_list):
 
 
                 existing.sort(key=os.path.getmtime)
-                if config['loglevel']: print(f"{Fore.MAGENTA} [x] Found {len(existing)} existing matches for {media['File Name']}")
+                if config['loglevel'] == "DEBUG": print(f"{Fore.MAGENTA} [x] Found {len(existing)} existing matches for {media['File Name']}")
                 existing = existing[0]
-                if config['loglevel']: print(f"{Fore.MAGENTA} [x] Using newest: '{existing}'")
+                if config['loglevel'] == "DEBUG": print(f"{Fore.MAGENTA} [x] Using newest: '{existing}'")
 
 
                 media.update({'Unlinked Proxy': existing})
@@ -535,10 +535,10 @@ def get_source_metadata(media_pool_items):
             source_metadata = media_pool_item.GetClipProperty()
 
             source_ext = os.path.splitext(source_metadata['File Path'])[1].lower()
-            if config['loglevel']: print(source_ext)
+            if config['loglevel'] == "DEBUG": print(source_ext)
 
             if source_ext not in config['filters']['acceptable_exts']:
-                if config['loglevel']: print(f"Ignoring unacceptable file type: '{source_metadata['File Path']}'")
+                if config['loglevel'] == "DEBUG": print(f"Ignoring unacceptable file type: '{source_metadata['File Path']}'")
                 continue
 
             # Add the Resolve API media pool item object so we can call it directly to link
@@ -546,7 +546,7 @@ def get_source_metadata(media_pool_items):
             all_source_metadata.append(source_metadata)
 
         except:
-            if config['loglevel']: print(f"{Fore.MAGENTA}Skipping {media_pool_item.GetName()}, no linked media pool item.")    
+            if config['loglevel'] == "DEBUG": print(f"{Fore.MAGENTA}Skipping {media_pool_item.GetName()}, no linked media pool item.")    
             continue
 
     print(f"{Fore.GREEN}Total clips on timeline: {len(all_source_metadata)}")
