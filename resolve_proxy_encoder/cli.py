@@ -17,7 +17,6 @@ text = fig.renderText('Resolve Proxy Encoder')
 print(Fore.GREEN + text)
 
 from resolve_proxy_encoder.settings import app_settings
-from resolve_proxy_encoder import link_proxies, resolve_queue_proxies, start_workers
 
 config = app_settings.get_user_settings()
 app = typer.Typer()
@@ -29,6 +28,8 @@ def queue():
     DaVinci Resolve timeline 
     """
     pprint("[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
+
+    from resolve_proxy_encoder import resolve_queue_proxies
     resolve_queue_proxies.main()
 
 @app.command()
@@ -38,6 +39,7 @@ def link():
     source media in open DaVinci Resolve project 
     """
 
+    from resolve_proxy_encoder import link_proxies
     link_proxies.main()
 
 @app.command()
@@ -46,6 +48,8 @@ def work(number:int=0):
     if number > 0:
         pprint(f"[green]Starting workers! :construction_worker:[/]")
     pprint(f"[cyan]Starting worker launcher prompt :construction_worker:[/]")
+
+    from resolve_proxy_encoder import start_workers
     start_workers.main(number)
 
 @app.command()
