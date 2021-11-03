@@ -9,20 +9,8 @@ import traceback
 from tkinter import filedialog
 
 from colorama import Fore, init
-from rich import print as pprint
 
-from resolve_proxy_encoder import helpers
-
-# More informative import warning ##########################################################
-
-try:
-    from resolve_proxy_encoder import python_get_resolve
-except ImportError:
-    pprint("[Red] :warning: Couldn't access the Resolve Python API. Is Resolve Open?[/]")
-    helpers.app_exit(1, -1)
-
-############################################################################################
-
+from resolve_proxy_encoder import helpers, python_get_resolve
 from resolve_proxy_encoder.settings import app_settings
 
 config = app_settings.get_user_settings()

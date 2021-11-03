@@ -5,6 +5,8 @@ This file serves to return a DaVinci Resolve object
 """
 import imp
 import sys
+from rich import print as pprint
+from resolve_proxy_encoder import helpers
 
 def GetResolve():
     ext = ".so"
@@ -25,6 +27,7 @@ def GetResolve():
     if resolve:
         sys.modules[__name__] = resolve
     else:
-        raise ImportError("Could not locate module dependencies")
+        pprint("[Red] :warning: Couldn't access the Resolve Python API. Is Resolve Open?[/]")
+        helpers.app_exit(1, -1)
 
     return bmd.scriptapp("Resolve")

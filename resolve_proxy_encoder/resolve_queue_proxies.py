@@ -12,20 +12,8 @@ import traceback
 
 from celery import group
 from colorama import Fore
-from rich import print as pprint
 
-from resolve_proxy_encoder import helpers
-
-# More informative import warning ##########################################################
-
-try:
-    from resolve_proxy_encoder import python_get_resolve
-except ImportError:
-    pprint("[Red] :warning: Couldn't access the Resolve Python API. Is Resolve Open?[/]")
-    helpers.app_exit(1, -1)
-
-############################################################################################
-
+from resolve_proxy_encoder import helpers, python_get_resolve
 from resolve_proxy_encoder.link_proxies import link_proxies
 
 # 'tasks' python file matches 'tasks' variable. 
