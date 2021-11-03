@@ -57,7 +57,7 @@ def purge():
         "All current jobs will be lost![/]"
     ):
         pprint("[green]Purging all worker queues[/] :fire:")
-        subprocess.run(["celery_app", "-A", "proxy_encoder", "purge"])
+        subprocess.run(["celery", "-A", "resolve_proxy_encoder.proxy_encoder", "purge"])
 
 @app.command()
 def mon():

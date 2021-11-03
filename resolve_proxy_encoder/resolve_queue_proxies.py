@@ -12,8 +12,7 @@ import tkinter.messagebox
 import traceback
 
 from celery import group
-from colorama import Fore, init
-from pyfiglet import Figlet
+from colorama import Fore
 
 from resolve_proxy_encoder import helpers, python_get_resolve
 from resolve_proxy_encoder.link_proxies import link_proxies

@@ -12,7 +12,7 @@ import logging
 import sys
 
 from colorama import Fore, init
-from pyfiglet import Figlet
+
 
 # VARIABLES #
 # windows_worker_cmd = """start /min py -m celery -A proxy_encoder worker -l INFO -E -P solo"""
@@ -20,7 +20,7 @@ from pyfiglet import Figlet
 
 SEP = os.path.sep
 APP_NAME = 'proxy_encoder'
-start_worker_cmd = """start /min py -m celery -A proxy_encoder worker -l INFO -E -P solo"""
+start_worker_cmd = """start /min celery -A resolve_proxy_encoder.proxy_encoder worker -l INFO -E -P solo"""
 
 
 def exit_in_seconds(timeout):

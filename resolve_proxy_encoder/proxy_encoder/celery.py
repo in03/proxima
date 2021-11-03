@@ -9,7 +9,7 @@ from celery import Celery
 import os
 import sys
 
-from .. settings import app_settings
+from resolve_proxy_encoder.settings import app_settings
 config = app_settings.get_user_settings()
 
 
@@ -18,6 +18,10 @@ if sys.platform == "win32":
     os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
 
 app = Celery('proxy_encoder')
+
+app.autodiscover_tasks(
+    ['resolve_proxy_encoder.proxy_encoder.tasks']
+)
 
 if not os.getenv('BROKER_URL'):
     try:

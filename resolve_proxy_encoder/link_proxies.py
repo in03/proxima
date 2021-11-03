@@ -55,7 +55,7 @@ def get_track_items(timeline, track_type="video"):
 
     track_len = timeline.GetTrackCount("video") 
 
-    if config['loglevel']: 
+    if config['loglevel'] == "DEBUG": 
         print(f"{Fore.CYAN}{timeline.GetName()} - Video track count: {track_len}")
 
     items = []
@@ -118,7 +118,7 @@ def __link_proxies(proxy_files, clips):
 
             proxy_name = os.path.splitext(os.path.basename(proxy))[0]
             if proxy in failed_proxies:
-                if config['loglevel']: print(f"{Fore.YELLOW}Skipping {proxy_name}, already failed.")
+                if config['loglevel'] == "DEBUG": print(f"{Fore.YELLOW}Skipping {proxy_name}, already failed.")
                 break
 
             try:
@@ -143,7 +143,7 @@ def __link_proxies(proxy_files, clips):
 
             except AttributeError:
 
-                if config['loglevel']: 
+                if config['loglevel'] == "DEBUG": 
                     print(f"{Fore.YELLOW}{clip.GetName()} has no 'file path' attribute," + 
                     " probably Resolve internal media.")
 
@@ -169,7 +169,7 @@ def link_proxies(proxy_files):
         unlinked_source = [x for x in clips if x not in linked]
 
         if len(unlinked_source) == 0:
-            if config['loglevel']: print(f"{Fore.YELLOW}No more clips to link in {timeline_data['name']}")
+            if config['loglevel'] == "DEBUG": print(f"{Fore.YELLOW}No more clips to link in {timeline_data['name']}")
             continue
         else:
             print(f"{Fore.CYAN}Searching timeline {timeline_data['name']}")
@@ -188,7 +188,7 @@ def link_proxies(proxy_files):
         linked.extend(linked_)
         failed.extend(failed_)
 
-        if config['loglevel']: print(f"Linked: {linked}, Failed: {failed}")
+        if config['loglevel'] == "DEBUG": print(f"Linked: {linked}, Failed: {failed}")
 
     if len(failed) > 0:
         print(f"{Fore.RED}The following files matched, but couldn't be linked. Suggest rerendering them:")
