@@ -52,7 +52,7 @@ rprox
 ```
 If you're unfamiliar with using Poetry for dependency management and packaging, [give it a look](https://python-poetry.org/docs/basic-usage).
 
-## Usage
+## How do I use it?
 
 ```
 Usage: rprox [OPTIONS] COMMAND [ARGS]...
