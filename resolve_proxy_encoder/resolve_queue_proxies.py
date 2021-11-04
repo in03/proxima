@@ -4,6 +4,7 @@
 import glob
 import os
 import pathlib
+from pydoc import resolve
 import shutil
 import sys
 import tkinter
@@ -13,7 +14,7 @@ import traceback
 from celery import group
 from colorama import Fore
 
-from resolve_proxy_encoder import helpers, python_get_resolve
+from resolve_proxy_encoder import helpers
 from resolve_proxy_encoder.link_proxies import link_proxies
 
 # 'tasks' python file matches 'tasks' variable. 
@@ -25,9 +26,12 @@ from resolve_proxy_encoder.settings import app_settings
 config = app_settings.get_user_settings()
 
 # Get global variables
-resolve = python_get_resolve.GetResolve()
-project = resolve.GetProjectManager().GetCurrentProject()
-timeline = project.GetCurrentTimeline()
+resolve_obj = helpers.get_resolve_objects()
+resolve = resolve_obj['resolve']
+project = resolve_obj['project']
+timeline = resolve_obj['timeline']
+media_pool = resolve_obj['media_pool']
+
 resolve_job_name = f"{project.GetName().upper()} - {timeline.GetName().upper()}"
 proxy_path_root = os.path.normpath(config['paths']['proxy_path_root'])
 

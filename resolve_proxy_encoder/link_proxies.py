@@ -10,16 +10,18 @@ from tkinter import filedialog
 
 from colorama import Fore, init
 
-from resolve_proxy_encoder import helpers, python_get_resolve
+from resolve_proxy_encoder import helpers
 from resolve_proxy_encoder.settings import app_settings
 
 config = app_settings.get_user_settings()
 
 
 # Get global variables
-resolve = python_get_resolve.GetResolve()
-project = resolve.GetProjectManager().GetCurrentProject()
-media_pool = project.GetMediaPool()
+resolve_obj = helpers.get_resolve_objects()
+resolve = resolve_obj['resolve']
+project = resolve_obj['project']
+timeline = resolve_obj['timeline']
+media_pool = resolve_obj['media_pool']
 
 root = tkinter.Tk()
 root.withdraw()

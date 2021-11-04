@@ -9,7 +9,8 @@ from rich.logging import RichHandler
 from rich.prompt import Prompt
 from win10toast import ToastNotifier
 
-from .settings import app_settings
+from resolve_proxy_encoder import python_get_resolve
+from resolve_proxy_encoder.settings import app_settings
 
 config = app_settings.get_user_settings()
 
@@ -84,3 +85,63 @@ def toast(message, threaded = True):
         threaded = threaded,
     )
     return
+
+def get_resolve_objects():
+    """ Return necessary Resolve objects with error handling"""
+
+    logger = get_rich_logger()
+
+    try:
+
+        resolve = python_get_resolve.GetResolve()
+
+    except:
+
+        logger.warning("[red] :warning: Couldn't access the Resolve Python API. Is DaVinci Resolve running?[/]", 
+            extra = {"markup":True}
+        )
+        app_exit(1, -1)
+
+    try:
+
+        project = resolve.GetProjectManager().GetCurrentProject()
+
+    except:
+
+        logger.warning(
+            "[red] :warning: Couldn't get current project. Is a project open in Resolve?[/]",
+            extra = {"markup":True}
+        )
+        app_exit(1, -1)
+
+    try:
+
+        timeline = project.GetCurrentTimeline()
+
+    except:
+
+        logger.warning(
+            "[red] :warning: Couldn't get current timeline. Is a timeline open in Resolve?[/]",
+            extra = {"markup":True}
+        )
+        app_exit(1, -1)
+
+    try:
+
+        media_pool = project.GetMediaPool()
+
+    except:
+
+        logger.warning(
+            "[red] :warning: Couldn't get Resolve's media pool.[/]",
+            extra = {"markup":True}
+        )
+        app_exit(1, -1)
+        
+
+    return dict(
+        resolve = resolve, 
+        project = project,
+        timeline = timeline,
+        media_pool = media_pool,
+    )
