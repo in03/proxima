@@ -30,7 +30,7 @@ This app has a few non-negotiable prerequisites:
 
 It also makes a few assumptions about the way you have your environment set up:
 - Running Windows (Mac OS, Linux and BSD untested - though should be easy to make work)
-- All source media is accessible from a signel networked volume / mapped-drive
+- All source media is accessible from a single networked volume / mapped-drive
 - All proxies are to be encoded to and accessible from a single networked volume / mapped-drive
 
 
