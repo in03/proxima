@@ -1,46 +1,73 @@
 # Resolve Proxy Encoder
- 
- **NOTE: Work in progress!**
- 
- Please excuse junk files and stray thrown together versions. I, inappropriately, run all of our production machines off our network storage that hosts this repo for the time being. When I get some time to develop I usually just make a 'v2' file... The whole point of git, right?
- 
+
+## Work in progress! ⚠️
+
+ Please excuse anything that doesn't make sense in this repository. I code when I can find the time (which is scarce!) and often I'll leave quick-fixes and band-aid-  solutions sitting pretty. I'm doing my best to separate configuration from code and keep things cross platform, but at times I bend the rules to keep this working   everyday in our specific office environment. If you have the time to contribute to this repo, please do! Forks, PRs, issues and suggestions welcome.
+
  ---
  
- ## What this does ##
- Queue proxies for render directly from Resolve using Celery and RabbitMQ.
- This works using four major parts, the Celery worker to run the tasks on other computers,
- the *RESOLVE_queue_proxies.py* script to interface with DaVinci Resolve's API and get the proxies needed for render,
- RabbitMQ (Celery's default broker) to delegate tasks, and Flower to monitor tasks. 
- It's not included here, but there are containers available on DockerHub if you want to constantly monitor tasks.
+## What's it for? ##
+DaVinci Resolve Studio has a fantastic remote-rendering system built-in that allows queuing renders on other networked Resolve computers.
+Unfortunately Resolve doesn't have a remote-rendering, or even background-rendering solution for proxies. 
+Resolve Proxy Encoder is a Python application that can be used in a similar way to Resolve's remote-rendering system, but for proxies.
+ 
+## How does it work? ##
+Resolve Proxy Encoder works using four major parts:
+- the Celery app that manages and runs the workers
+- the `resolve_queue_proxies` module responsible for interfacing with DaVinci Resolve's python API 
+- the broker (Redis or RabbitMQ server) that's responsible for sending data between Celery instances
 
- The Resolve script makes a few assumptions about your environment and workflow.
- I personally use this workflow within our local office network only. All of our media is stored and managed on a NAS.
- There was previously some complicated overwrite checking logic to protect proxies from being overwritten
- but our NAS frequently has issues with deleting files if they're potentially in use. 
- This script takes the naive approach of simply overwriting proxy files if they exist.
- For this reason, it's recommended you keep your proxy files on a separate volume to your source media.
- If your 'proxy_path_root' is set incorrectly 
+It's not included here, but there's also a dashboard web-app called 'Flower' that can be used to monitor a Celery system.
+There are containers available on DockerHub if you want to monitor tasks constantly.
 
- ## Prerequisites
- - DaVinci Resolve Studio, with scripting enabled and environment ready
- - RabbitMQ broker / Redis running and accessible (preferably running on a NAS or server)
- - Computers capable of being workers (encoding video, running python, connected to LAN)
+## What does it need?
+This app has a few non-negotiable prerequisites:
+- Python 3.6 **ONLY** (DaVinci Resolve's Python API requires it)
+- DaVinci Resolve Studio, with scripting set up (read Resolve's scripting README)
+- Redis or RabbitMQ broker (preferably running on a NAS or server)
+- Worker computers (decent resources, connected to LAN, can access source media and proxies output folder)
+- Resolve Proxy Encoder installed on every computer involved except broker
 
- ## Installing Resolve Script
- Clone the repo, create a new virtualenv, activate it and run `pip install -r requirements.txt`.
- You can call python scripts from a Streamdeck if you don't have spaces in the filepath. (Even with quotes it seems to fail)
- Otherwise you can make a shortcut to the script on your desktop or taskbar, or use a program like AutoHotkey to assign the script to a keyboard shortcut.
+It also makes a few assumptions about the way you have your environment set up:
+- Running Windows (Mac OS, Linux and BSD untested - though should be easy to make work)
+- All source media is accessible from a signel networked volume / mapped-drive
+- All proxies are to be encoded to and accessible from a single networked volume / mapped-drive
 
- ### Installing the worker on Docker
- To run as a container with Docker, pull the image and run it with the relevant environment variables set.
- Check out the .env-sample if you need a reference.
 
- ### Installing the worker locally 
- To run locally, clone the repo, make a virtualenv, activate it and run `pip install -r requirements.txt`.
+## How do I install it?
+Install directly with pip:
+```
+py -3.6 -m pip install git+https://github.com/in03/Resolve-Proxy-Encoder
+```
 
- On your workers, run `celery -A proxy_encoder worker`
- For convenience, add a shortcut to **start_worker.bat** in *shell:startup* if you want it to run when Windows starts.
- If you want it to run without logging in, look into starting it as a service.
+## How can I contribute?
+Clone the repo, install dependencies, call from poetry shell:
+```
+git clone https://github.com/in03/Resolve-Proxy-Encoder
+cd Resolve-Proxy-Encoder
+py -3.6 -m pip install poetry
+py -3.6 -m poetry shell
+poetry install
+rprox
+```
+If you're unfamiliar with using Poetry for dependency management and packaging, [give it a look](https://python-poetry.org/docs/basic-usage).
 
- For Linux you can usually register a service using systemctl.
- Give it a distro-specific Google.
+## Usage
+
+```
+Usage: rprox [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  --install-completion  Install completion for the current shell.
+  --show-completion     Show completion for the current shell, to copy it or
+                        customize the installation.
+
+  --help                Show this message and exit.
+
+Commands:
+  link   Manually link proxies from directory to source media in open...
+  mon    Launch Flower Celery monitor in default browser new window
+  purge  Purge all proxy jobs from all queues
+  queue  Queue proxies from the currently open DaVinci Resolve timeline
+  work   Prompt to start Celery workers on local machine
+  ```
