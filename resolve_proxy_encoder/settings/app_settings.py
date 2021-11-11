@@ -11,7 +11,7 @@ import yaml
 
 
 DEFAULT_SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "default_settings.yml")
-USER_SETTINGS_FILE = os.path.join(Path.home(), "resolve_proxy_encoder", "user_settings.yml")
+USER_SETTINGS_FILE = os.path.join(Path.home(), ".config","resolve_proxy_encoder", "user_settings.yml")
 
 
 def get_defaults():
