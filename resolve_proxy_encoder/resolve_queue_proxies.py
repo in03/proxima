@@ -4,7 +4,6 @@
 import glob
 import os
 import pathlib
-from pydoc import resolve
 import shutil
 import sys
 import tkinter
@@ -38,6 +37,10 @@ proxy_path_root = os.path.normpath(config['paths']['proxy_path_root'])
 # Prevent TKinter root window showing
 root = tkinter.Tk()
 root.withdraw()
+
+# Set global flags
+global some_action_taken
+some_action_taken = False
 
 
 def create_tasks(clips, **kwargs):
