@@ -1,7 +1,7 @@
 loglevel: INFO
 
 paths:
-  proxy_path_root: C:/ProxyMedia
+  proxy_path_root: R:/ProxyMedia
 
 proxy_settings:
   vid_codec: dnxhd
@@ -44,6 +44,8 @@ celery_settings:
   worker_max_tasks_per_child: 1
   worker_send_task_events: True
   worker_cancel_long_running_tasks_on_connection_loss: True
+  worker_use_win_terminal: True
+  worker_start_minimized: True
 
 
 

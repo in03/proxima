@@ -39,8 +39,7 @@ root = tkinter.Tk()
 root.withdraw()
 
 # Set global flags
-global some_action_taken
-some_action_taken = False
+SOME_ACTION_TAKEN = False
 
 
 def create_tasks(clips, **kwargs):
@@ -249,8 +248,8 @@ def confirm(title, message):
         message = message,
     )
 
-    global some_action_taken
-    some_action_taken = True
+    global SOME_ACTION_TAKEN
+    SOME_ACTION_TAKEN = True
     return answer
 
 def get_expected_proxy_path(media_list):
@@ -307,8 +306,8 @@ def handle_orphaned_proxies(media_list):
                                         message=f"{len(orphaned_proxies)} clip(s) have orphaned proxy media. " +
                                         "Would you like to attempt to automatically move these proxies to the up-to-date proxy folder?\n\n" +
                                         "For help, check 'Managing Proxies' in our YouTour documentation portal.")
-        global some_action_taken
-        some_action_taken = True
+        global SOME_ACTION_TAKEN
+        SOME_ACTION_TAKEN = True
         
         if answer == True:
             print(f"{Fore.YELLOW}Moving orphaned proxies.")
@@ -360,8 +359,8 @@ def handle_offline_proxies(media_list):
         answer = tkinter.messagebox.askyesnocancel(title="Offline proxies",
                                         message=f"{len(offline_proxies)} clip(s) have offline proxies.\n" +
                                         "Would you like to rerender them?")
-        global some_action_taken
-        some_action_taken = True
+        global SOME_ACTION_TAKEN
+        SOME_ACTION_TAKEN = True
 
 
         if answer == True:
@@ -419,8 +418,8 @@ def handle_existing_unlinked(media_list):
         answer = tkinter.messagebox.askyesnocancel(title="Found unlinked proxy media",
                                         message=f"{len(existing_unlinked)} clip(s) have existing but unlinked proxy media. " +
                                         "Would you like to link them? If you select 'No' they will be re-rendered.")
-        global some_action_taken
-        some_action_taken = True
+        global SOME_ACTION_TAKEN
+        SOME_ACTION_TAKEN = True
 
         if answer == True:
             media_list = legacy_link(media_list)
@@ -467,8 +466,8 @@ def handle_none_queuable(clips):
     or confirm with count of queuable jobs."""
 
     if len(clips) == 0:
-        global some_action_taken
-        if not some_action_taken:
+        global SOME_ACTION_TAKEN
+        if not SOME_ACTION_TAKEN:
             print(f"{Fore.RED}No clips to queue.")
             tkinter.messagebox.showwarning("No new media to queue", "Looks like all your media is already linked. \n" +
                                            "If you want to re-rerender some proxies, unlink those existing proxies within Resolve and try again.")

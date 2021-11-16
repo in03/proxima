@@ -12,15 +12,14 @@ import sys
 from resolve_proxy_encoder.settings import app_settings
 config = app_settings.get_user_settings()
 
-
 # Windows can't fork processes. It'll choke if you make it try.
 if sys.platform == "win32":
     os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
 
-app = Celery('proxy_encoder')
+app = Celery('worker')
 
 app.autodiscover_tasks(
-    ['resolve_proxy_encoder.proxy_encoder.tasks']
+    ['resolve_proxy_encoder.worker.tasks']
 )
 
 if not os.getenv('BROKER_URL'):
