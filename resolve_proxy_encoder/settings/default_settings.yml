@@ -28,12 +28,11 @@ celery_settings:
   result_backend: redis://192.168.1.19:6379/0
 
   # Additional settings
-  enable_utc: True
-  timezone: Australia/Brisbane
-  result_expires: 60 # 10 mins
   
   task_serializer: json
   result_serializer: json
+
+  result_expires: 60 # 10 mins
 
   acks_late: True
   accept_content: [json, pickle, application/x-python-serialize]
@@ -43,5 +42,8 @@ celery_settings:
   worker_prefetch_multiplier: 1
   worker_pool_restarts: True
   worker_max_tasks_per_child: 1
+  worker_send_task_events: True
+  worker_cancel_long_running_tasks_on_connection_loss: True
+
 
 
