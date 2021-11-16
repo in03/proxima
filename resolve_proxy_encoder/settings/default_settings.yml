@@ -28,16 +28,20 @@ celery_settings:
   result_backend: redis://192.168.1.19:6379/0
 
   # Additional settings
-  # worker_max_tasks_per_child: 1
-  # worker_concurrency: 1
-
-  task_serializer: json
-  result_serializer: json
-  accept_content: [json, pickle, application/x-python-serialize]
-  result_accept_content: [json, pickle, application/x-python-serialize]
-  acks_late: True
-  worker_prefetch_multiplier: 1
   enable_utc: True
   timezone: Australia/Brisbane
-  result_expires: 18000 # 5 hours
+  result_expires: 60 # 10 mins
+  
+  task_serializer: json
+  result_serializer: json
+
+  acks_late: True
+  accept_content: [json, pickle, application/x-python-serialize]
+  result_accept_content: [json, pickle, application/x-python-serialize]
+  
+  worker_concurrency: 1
+  worker_prefetch_multiplier: 1
   worker_pool_restarts: True
+  worker_max_tasks_per_child: 1
+
+
