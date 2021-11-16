@@ -1,7 +1,7 @@
 loglevel: INFO
 
 paths:
-  proxy_path_root: C:/Videos
+  proxy_path_root: C:/ProxyMedia
 
 proxy_settings:
   vid_codec: dnxhd

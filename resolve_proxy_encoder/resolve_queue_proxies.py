@@ -18,8 +18,8 @@ from resolve_proxy_encoder.link_proxies import link_proxies
 
 # 'tasks' python file matches 'tasks' variable. 
 # Want to keep app terminology close to Celery's.
-from resolve_proxy_encoder.proxy_encoder import tasks as do
-from resolve_proxy_encoder.proxy_encoder.celery import app
+from resolve_proxy_encoder.worker.tasks.standard.tasks import encode_proxy
+from resolve_proxy_encoder.worker.celery import app
 from resolve_proxy_encoder.settings import app_settings
 
 config = app_settings.get_user_settings()
@@ -54,7 +54,7 @@ def queue_job(tasks):
     """ Send tasks as a celery job 'group' """
 
     # Wrap job object in task function
-    callable_tasks = [do.encode.s(x) for x in tasks]
+    callable_tasks = [encode_proxy.s(x) for x in tasks]
     if config['loglevel'] == "DEBUG": print(callable_tasks)
 
 

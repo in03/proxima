@@ -5,7 +5,6 @@
 
 import multiprocessing
 import platform
-import os
 import subprocess
 import time
 import logging
@@ -14,13 +13,7 @@ import sys
 from colorama import Fore, init
 
 
-# VARIABLES #
-# windows_worker_cmd = """start /min py -m celery -A proxy_encoder worker -l INFO -E -P solo"""
-# linux_worker_cmd = """xterm py -m celery -A proxy_encoder worker -l INFO -E -P solo"""
-
-SEP = os.path.sep
-APP_NAME = 'proxy_encoder'
-start_worker_cmd = """start /min celery -A resolve_proxy_encoder.proxy_encoder worker -l INFO -E -P solo"""
+START_WIN_WORKER = """start /min celery -A resolve_proxy_encoder.proxy_encoder worker -l INFO -E -P solo"""
 
 
 def exit_in_seconds(timeout):
@@ -70,7 +63,7 @@ def launch_workers(workers_to_launch: int):
 
         # Add worker number to differentiate
         multi_worker_fmt = f" -n worker{i+1}@%h"
-        launch_cmd = start_worker_cmd + multi_worker_fmt
+        launch_cmd = START_WIN_WORKER + multi_worker_fmt
 
         logging.info(launch_cmd)
 
