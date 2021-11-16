@@ -467,8 +467,10 @@ def handle_none_queuable(clips):
     or confirm with count of queuable jobs."""
 
     if len(clips) == 0:
+
         global some_action_taken
         if not some_action_taken:
+            
             print(f"{Fore.RED}No clips to queue.")
             tkinter.messagebox.showwarning("No new media to queue", "Looks like all your media is already linked. \n" +
                                            "If you want to re-rerender some proxies, unlink those existing proxies within Resolve and try again.")
