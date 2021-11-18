@@ -22,8 +22,24 @@ app.autodiscover_tasks(
     ['resolve_proxy_encoder.worker.tasks']
 )
 
-if not os.getenv('BROKER_URL'):
-    try:
-        app.config_from_object(config['celery_settings'])
-    except:
-        raise Exception('Environment variables must be set or celery_settings present in YAML config')
+try:
+    app.config_from_object(config['celery_settings'])
+except Exception as e:
+    raise Exception("Couldn't load settings from YAML!")
+
+# Fragile! Moved from user settings to here.
+app.conf.update(
+
+    task_serializer = "json", # Pickle allows us to post-encode link using remote objects
+    result_serializer = "json", # Keep same as above
+    result_extended = True, # Allows us to get task args after task completion
+
+    acks_late = True,
+    accept_content = ["json", "pickle", "application/x-python-serialize"],
+    result_accept_content = ["json", "pickle", "application/x-python-serialize"],
+
+    worker_pool_restarts = True,
+    worker_send_task_events = True,
+    worker_cancel_long_running_tasks_on_connection_loss = True,
+)
+

@@ -19,33 +19,20 @@ filters:
   acceptable_exts : [.mov, .mp4, .mxf, .avi]
 
 celery_settings:
-  # Structure: <protocol>://<user>:<password>@<IP address>:<port>/<virtual host>
+
+  # REQUIRED - User details:
+
   host_address: 192.168.1.19
   broker_url:  redis://192.168.1.19:6379/0
   flower_url: http://192.168.1.19:5555
-
-  # Using the database to store task state and results.
   result_backend: redis://192.168.1.19:6379/0
 
-  # Additional settings
-  
-  task_serializer: json
-  result_serializer: json
+  # REQUIRED - User preference:
 
   result_expires: 60 # 10 mins
-
-  acks_late: True
-  accept_content: [json, pickle, application/x-python-serialize]
-  result_accept_content: [json, pickle, application/x-python-serialize]
-  
   worker_concurrency: 1
   worker_prefetch_multiplier: 1
-  worker_pool_restarts: True
   worker_max_tasks_per_child: 1
-  worker_send_task_events: True
-  worker_cancel_long_running_tasks_on_connection_loss: True
   worker_use_win_terminal: True
   worker_start_minimized: True
-
-
-
+  

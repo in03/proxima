@@ -95,8 +95,6 @@ def encode_proxy(job):
         ff.run()
     except FFRuntimeError as e:
         print(e)
-        return ("FAILED encoding job: %s", 
-                job['File Path'])
+        return (f"{job['File Path']} encoding FAILED")
     else:
-        return ("SUCCESS encoding job: %s", 
-                job['File Path'])
+        return (f"{job['File Path']} encoded successfully")

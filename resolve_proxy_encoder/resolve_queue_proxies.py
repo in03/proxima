@@ -567,12 +567,12 @@ def remove_duplicate_elements(elements):
     return unique_dict_list
 
 def wait_encode(job):
-    """ Wait for job to finish, return statuses and notify user."""
+    """ Block until all queued jobs finish, notify results."""
 
     helpers.toast('Started encoding job')
     print(f"{Fore.YELLOW}Waiting for job to finish. Feel free to minimize.")
     
-    job_metadata = job.join()
+    result = job.join()
 
     # Notify failed
     if job.failed():
@@ -590,7 +590,7 @@ def wait_encode(job):
 
     helpers.toast(complete_message)
 
-    return job_metadata
+    return result
 
 def main():
     """ Main function"""
@@ -625,7 +625,8 @@ def main():
         )
 
         job = queue_job(tasks)
-        job_metadata = wait_encode(job)
+        wait_encode(job)
+        
 
         # ATTEMPT POST ENCODE LINK
         try:
