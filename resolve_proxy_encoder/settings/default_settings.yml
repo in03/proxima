@@ -20,14 +20,10 @@ filters:
 
 celery_settings:
 
-  # REQUIRED - User details:
-
   host_address: 192.168.1.19
   broker_url:  redis://192.168.1.19:6379/0
   flower_url: http://192.168.1.19:5555
   result_backend: redis://192.168.1.19:6379/0
-
-  # REQUIRED - User preference:
 
   result_expires: 60 # 10 mins
   worker_concurrency: 1

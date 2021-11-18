@@ -628,10 +628,12 @@ def main():
         wait_encode(job)
         
 
+
         # ATTEMPT POST ENCODE LINK
         try:
 
             clips = legacy_link(clips)
+            helpers.app_exit(0)
 
         except:
             
@@ -647,6 +649,6 @@ def main():
         print("ERROR - " + str(e))
 
         helpers.app_exit(1)
-        
+  
 if __name__ == "__main__":
     main()

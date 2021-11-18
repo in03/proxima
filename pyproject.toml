@@ -15,6 +15,7 @@ pyfiglet = "^0.8.post1"
 win10toast = "^0.9"
 PyYAML = "^6.0"
 redis = "^3.5.3"
+mkdocs-material = "^7.3.6"
 
 [tool.poetry.dev-dependencies]
 
