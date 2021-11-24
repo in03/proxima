@@ -3,25 +3,24 @@
 
 # Launch multiple workers
 
-import multiprocessing
-import platform
-import os
-import subprocess
-import time
 import logging
+import multiprocessing
+import os
+import platform
+import subprocess
 import sys
+import time
 
 from colorama import Fore, init
 
+from resolve_proxy_encoder.settings.app_settings import get_user_settings
+config = get_user_settings()
 
-# VARIABLES #
-# windows_worker_cmd = """start /min py -m celery -A proxy_encoder worker -l INFO -E -P solo"""
-# linux_worker_cmd = """xterm py -m celery -A proxy_encoder worker -l INFO -E -P solo"""
+# TODO: 
+# Use rich here instead of colorama and manual prompt func 
 
-SEP = os.path.sep
-APP_NAME = 'proxy_encoder'
-start_worker_cmd = """start /min celery -A resolve_proxy_encoder.proxy_encoder worker -l INFO -E -P solo"""
-
+# Make sure the module path in the command below is up to date!
+START_WIN_WORKER = """celery -A resolve_proxy_encoder.worker worker -l INFO -P solo"""
 
 def exit_in_seconds(timeout):
     '''Allow time to read console before exit'''
@@ -62,6 +61,7 @@ def prompt_worker_amount(cpu_cores: int):
 def launch_workers(workers_to_launch: int):
 
     # Start launching
+    print(Fore.GREEN + "LAUNCHING")
     for i in range(0, workers_to_launch):
 
         dots = "."
@@ -70,7 +70,13 @@ def launch_workers(workers_to_launch: int):
 
         # Add worker number to differentiate
         multi_worker_fmt = f" -n worker{i+1}@%h"
-        launch_cmd = start_worker_cmd + multi_worker_fmt
+        launch_cmd = START_WIN_WORKER + multi_worker_fmt
+
+        # Start min or norm?
+        if config['celery_settings']['worker_start_minimized']:
+            launch_cmd = "start /min " + launch_cmd
+        else:
+            launch_cmd = "start " + launch_cmd
 
         logging.info(launch_cmd)
 
@@ -79,8 +85,9 @@ def launch_workers(workers_to_launch: int):
             shell = True,
         )
 
-        sys.stdout.write(Fore.GREEN + f"\rLAUNCHING{dots}")
+        sys.stdout.write(dots)
         sys.stdout.flush()
+
     print()
     return
     
@@ -112,8 +119,13 @@ def main(workers:int=0):
     else:
         launch_workers(prompt_worker_amount(cpu_cores))
 
-    print(f"{Fore.GREEN}Done!")
+    print(f"\n{Fore.GREEN}Done!")
     exit_in_seconds(5)
 
 if __name__ == "__main__":
+
+    # Change to the expected directory of START_WIN_WORKER
+    module_path = os.path.dirname(os.path.abspath(__file__))
+    package_path = os.path.dirname(module_path)
+    os.chdir(package_path)
     main(0)

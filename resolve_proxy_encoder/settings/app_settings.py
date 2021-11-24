@@ -32,9 +32,12 @@ def check_settings():
 
             # Create dir, copy file, open
             try:
-                os.mkdir(os.path.dirname(USER_SETTINGS_FILE))
+                os.makedirs(os.path.dirname(USER_SETTINGS_FILE))
             except FileExistsError:
                 typer.echo("Directory exists, skipping...")
+            except OSError:
+                typer.echo("Error creating directory!")
+                sys.exit(1)
 
             shutil.copy(DEFAULT_SETTINGS_FILE, USER_SETTINGS_FILE)
             typer.echo(f"Copied default settings to {USER_SETTINGS_FILE}")
