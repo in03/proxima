@@ -12,32 +12,93 @@ Unfortunately Resolve doesn't have a remote-rendering, or even background-render
 Resolve Proxy Encoder is a Python application that can be used in a similar way to Resolve's remote-rendering system, but for proxies.
  
 ## How does it work? ##
-Resolve Proxy Encoder works using four major parts:
+**Resolve Proxy Encoder works using three major parts:**
 - the Celery app that manages and runs the workers
 - the `resolve_queue_proxies` module responsible for interfacing with DaVinci Resolve's python API 
 - the broker (Redis or RabbitMQ server) that's responsible for sending data between Celery instances
 
-It's not included here, but there's also a dashboard web-app called 'Flower' that can be used to monitor a Celery system.
-There are containers available on DockerHub if you want to monitor tasks constantly.
-
 ## What does it need?
-This app has a few non-negotiable prerequisites:
+**This app has a few non-negotiable prerequisites:**
 - Python 3.6 **ONLY** (DaVinci Resolve's Python API requires it)
 - DaVinci Resolve Studio, with scripting set up (read Resolve's scripting README)
 - Redis or RabbitMQ broker (preferably running on a NAS or server)
 - Worker computers (decent resources, connected to LAN, can access source media and proxies output folder)
-- Resolve Proxy Encoder installed on every computer involved except broker
+- Resolve Proxy Encoder installed on every 'queuer' and 'worker'. Not necessary to run broker.
 
-It also makes a few assumptions about the way you have your environment set up:
+**It also makes a few assumptions about the way you have your environment set up:**
 - Running Windows (Mac OS, Linux and BSD untested - though should be easy to make work)
 - All source media is accessible from a single networked volume / mapped-drive
 - All proxies are to be encoded to and accessible from a single networked volume / mapped-drive
 
 
 ## How do I install it?
-Install directly with pip:
+
+### CLI / Worker
+The CLI app is bundled with everything necessary to queue from Resolve and start workers that run the encoding.
 ```
 py -3.6 -m pip install git+https://github.com/in03/Resolve-Proxy-Encoder
+```
+### Broker
+The broker needs to be accessible by each computer over LAN.
+Install Redis on an always-on computer or server (nice and easy to run in a docker container):
+```
+docker run -d --name some-redis -p 6379:6379 redis-server --append-only yes
+```
+OR RabbitMQ:
+```
+docker run -d --hostname my-rabbit --name some-rabbit -p 5672:5672 -p 8080:15672 rabbitmq:3-management
+```
+
+### Monitor / Notifications
+If you want to monitor your jobs, it's a good idea to install Flower.
+```
+docker run --name flower -e $POSTGRES_PASSWORD -e $POSTGRES_USER -d flower
+```
+Make sure you set the environment variables for `CELERY_BROKER_URL` or Flower won't be able to connect to the broker. Also consider setting `FLOWER_PURGE_OFFLINE_WORKERS` if you don't have a well-defined set of computers to run the workers, or there's potential to change hostnames. `300` for example, would clear the list of offline workers every 5 minutes. This just keeps things tidy.
+
+If you opt not to run Flower, keep in mind some non-essential CLI commands may not work.
+
+## Configuration
+On first run, you'll be prompted to alter your settings. The app will copy the default settings to `$XDG_HOME_CONFIG/resolve_proxy_encoder/user_settings.yml` (A hidden config folder in the local user's home folder). 
+
+### Some Key Settings
+
+The default global log-level:
+```
+loglevel: INFO 
+```
+
+All proxies will be encoded to this directory. They'll retain the source media's directory structure:
+```
+paths:
+  proxy_path_root: R:/ProxyMedia
+``` 
+These are celery specific settings. Make sure you set all of the below addresses as per your environment!
+```
+celery_settings:
+
+  host_address: 192.168.1.19
+  broker_url:  redis://192.168.1.19:6379/0
+  flower_url: http://192.168.1.19:5555
+  result_backend: redis://192.168.1.19:6379/0
+```
+
+Set this to a reasonable value in minutes so that the broker doesn't fill with results and run out of memory!
+If you need persistent results, consider configuring your broker for persistent storage. Both Redis and RabbitMQ have options for persistence, though they come with some trade-offs. Consider your needs carefully.
+```
+celery_settings:
+  result_expires: 60
+```
+Windows doesn't support preforking for concurrency. Actually, Celery doesn't officially support Windows anymore at all. Running workers on Mac Os, Linux or in Linux containers gets around this limitation. By default we encourage starting multiple workers as 'solo' instead. Change this as necessary to reduce overhead:
+```
+celery_settings:
+  worker_concurrency: 1
+```
+  
+Encoding is a long-running task. Tasks won't get divided nicely between workers if they fetch more than one task at a time:
+```
+celery_settings:
+  worker_prefetch_multiplier: 1 
 ```
 
 ## How can I contribute?
