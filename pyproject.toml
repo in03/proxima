@@ -17,6 +17,7 @@ PyYAML = "^6.0"
 redis = "^3.5.3"
 
 [tool.poetry.dev-dependencies]
+mkdocs-material = "^7.3.6"
 
 
 [build-system]

@@ -5,14 +5,24 @@ from __future__ import absolute_import
 import os
 
 from ffmpy import FFmpeg, FFRuntimeError
-from .celery import app
-from .helpers import check_wsl, get_wsl_path
-
+from resolve_proxy_encoder.worker.celery import app
+from resolve_proxy_encoder.worker.helpers import check_wsl, get_wsl_path
 from resolve_proxy_encoder.settings import app_settings
+
 config = app_settings.get_user_settings()
 
-@app.task(acks_late = True, track_started = True, prefetch_limit = 1)
-def encode(job):
+@app.task(
+
+    name='resolve_proxy_encoder.worker.tasks.standard.encode',
+    acks_late = True, 
+    track_started = True, 
+    prefetch_limit = 1
+)
+def encode_proxy(job):
+    """ 
+    Celery task to encode proxy media using parameters in job argument
+    and user-defined settings
+    """
   
     expected_proxy_path = job['Expected Proxy Path']
 
@@ -85,8 +95,6 @@ def encode(job):
         ff.run()
     except FFRuntimeError as e:
         print(e)
-        return ("FAILED encoding job: %s", 
-                job['File Path'])
+        return (f"{job['File Path']} encoding FAILED")
     else:
-        return ("SUCCESS encoding job: %s", 
-                job['File Path'])
+        return (f"{job['File Path']} encoded successfully")
