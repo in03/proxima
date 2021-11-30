@@ -19,7 +19,7 @@ if sys.platform == "win32":
 app = Celery('worker')
 
 app.autodiscover_tasks(
-    ['resolve_proxy_encoder.worker.tasks']
+    ['resolve_proxy_encoder.worker.tasks.standard']
 )
 
 try:

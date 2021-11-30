@@ -380,8 +380,6 @@ def handle_already_linked(media_list: list, offline_types: list=['Offline', 'Non
         media_list = [x for x in media_list if x not in already_linked]
         print()
 
-    ic(len(media_list))
-
     return media_list
 
 def handle_offline_proxies(media_list: list) -> list:
