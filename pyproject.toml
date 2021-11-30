@@ -18,6 +18,7 @@ redis = "^3.5.3"
 
 [tool.poetry.dev-dependencies]
 mkdocs-material = "^7.3.6"
+icecream = "^2.1.1"
 
 
 [build-system]

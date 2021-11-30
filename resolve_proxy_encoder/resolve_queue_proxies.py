@@ -15,12 +15,14 @@ from colorama import Fore
 
 from resolve_proxy_encoder import helpers
 from resolve_proxy_encoder.link_proxies import link_proxies
-
+from resolve_proxy_encoder.settings import app_settings
+from resolve_proxy_encoder.worker.celery import app
 # 'tasks' python file matches 'tasks' variable. 
 # Want to keep app terminology close to Celery's.
 from resolve_proxy_encoder.worker.tasks.standard.tasks import encode_proxy
-from resolve_proxy_encoder.worker.celery import app
-from resolve_proxy_encoder.settings import app_settings
+
+# Dev dependencies
+from icecream import ic
 
 config = app_settings.get_user_settings()
 
@@ -252,8 +254,20 @@ def confirm(title, message):
     SOME_ACTION_TAKEN = True
     return answer
 
-def get_expected_proxy_path(media_list):
-    """Retrieves the current expected proxy path using the source media path.
+def get_expected_proxy_path(media_list: list) -> list:
+    """Adds the current expected proxy path to each media item in the media list.
+    
+    Having `Expected Proxy Path` allows us to check if unlinked proxies exist
+    and prompt the user to link them.
+
+    Args: 
+        media_list: list of dictionary media items to add `Expected Proxy Path` to.
+
+    Returns:
+        media_list: modified list of dictionary media items with added `Expected Proxy Path`.
+
+    Raises:
+        ValueError: If `expected_proxy_path` cannot be resolved.
     """
 
     for media in media_list:
@@ -263,14 +277,26 @@ def get_expected_proxy_path(media_list):
 
         # Tack the source media relative path onto the proxy media path
         expected_proxy_path = os.path.join(proxy_path_root, os.path.dirname(p.relative_to(*p.parts[:1])))
-        media.update({'Expected Proxy Path': expected_proxy_path})
+
+        if expected_proxy_path:
+            media.update({'Expected Proxy Path': expected_proxy_path})
+        else:
+            raise ValueError(f"Could not find expected proxy path for '{file_path}'")
 
     return media_list
 
-def handle_orphaned_proxies(media_list):
+def handle_orphaned_proxies(media_list: list) -> list:
     """Prompts user to tidy orphaned proxies into the current proxy path structure.
+
     Orphans can become separated from a project if source media file-path structure changes.
-    Saves unncessary re-rendering time and lost disk space."""
+    Finding them saves unncessary re-rendering time and lost disk space.
+
+    Args: 
+        media_list: list of dictionary media items to check orphaned proxies for.
+
+    Returns:
+        media_list: unmodified `media_list`, returns for ease of chaining.
+    """
 
     print(f"{Fore.CYAN}Checking for orphaned proxies.")
     orphaned_proxies = []
@@ -283,7 +309,7 @@ def handle_orphaned_proxies(media_list):
             file_path = clip['File Path']
             p = pathlib.Path(file_path)
 
-            # Tack the source media relative path onto the proxy media path
+            # Append the source media relative path onto the proxy media path
             output_dir = os.path.join(proxy_path_root, os.path.dirname(p.relative_to(*p.parts[:1])))
             new_output_path = os.path.join(output_dir, os.path.basename(file_path))
             new_output_path = os.path.splitext(new_output_path)
@@ -325,19 +351,28 @@ def handle_orphaned_proxies(media_list):
 
 
         elif answer == None:
-            print("Exiting...")
-            sys.exit(1)
+            helpers.app_exit()
     
     return media_list
     
-def handle_already_linked(media_list):
-    """Remove media from the queue if the source media already has a linked proxy that is online.
-    As re-rendering linked clips is rarely desired behaviour, it makes sense to avoid clunky prompting.
-    To re-render linked clips, simply unlink their proxies and try queueing proxies again. 
-    You'll be prompted to handle offline proxies."""
+def handle_already_linked(media_list: list, offline_types: list=['Offline', 'None']) -> list:
+    """Remove items from media-list that are already linked to a proxy.
+    
+    Since re-rendering linked clips is rarely desired behaviour, we remove them without prompting.
+    If we do want to re-render proxies, we can unlink them from Resolve and we'll be prompted with the 
+    'unlinked media' warning. By default if a proxy item is marked as 'Offline' it won't be removed
+    since we most likely need to re-render it.
+
+    Args: 
+        media_list: list of dictionary media items to check for linked proxies.\
+        retain_types: list of strings of `Proxy` types to keep in returned `media_list` even if linked.
+
+    Returns:
+        media_list: refined list of dictionary media items that are not linked to a proxy.
+    """
 
     print(f"{Fore.CYAN}Checking for source media with linked proxies.")
-    already_linked = [x for x in media_list if x['Proxy'] != "None"]
+    already_linked = [x for x in media_list if str(x['Proxy']) not in offline_types]
 
     if len(already_linked) > 0:
         
@@ -345,15 +380,27 @@ def handle_already_linked(media_list):
         media_list = [x for x in media_list if x not in already_linked]
         print()
 
+    ic(len(media_list))
+
     return media_list
 
-def handle_offline_proxies(media_list):
+def handle_offline_proxies(media_list: list) -> list:
+    """Prompt to rerender proxies that are 'linked' but their media does not exist.
+    
+    Resolve refers to proxies that are linked but inaccessible as 'offline'. 
+    This prompt can warn users to find that media if it's missing, or rerender if intentionally unavailable.
+
+    Args: 
+        media_list: list of dictionary media items to check for `Proxy` value.
+
+    Returns:
+        media_list: Modified list of dictionary media items with `Proxy` set to `None` if re-rendering.
+    """
 
     print(f"{Fore.CYAN}Checking for offline proxies")
     offline_proxies = [x for x in media_list if x['Proxy'] == "Offline"]
 
     if len(offline_proxies) > 0:
-
 
         print(f"{Fore.CYAN}Offline proxies: {len(offline_proxies)}")
         answer = tkinter.messagebox.askyesnocancel(title="Offline proxies",
@@ -362,31 +409,35 @@ def handle_offline_proxies(media_list):
         global SOME_ACTION_TAKEN
         SOME_ACTION_TAKEN = True
 
-
         if answer == True:
             print(f"{Fore.YELLOW}Rerendering offline: {len(offline_proxies)}")
             # Set all offline clips to None, so they'll rerender
-            # [media['Proxy'] == "None" for media in media_list if media['Proxy'] == "Offline"]
             for media in media_list:
                 if media['Proxy'] == "Offline":
                     media['Proxy'] = "None"
             print()
 
-
         if answer == None:
-            print(f"{Fore.RED}Exiting...")
-            sys.exit(0)
+            helpers.app_exit(0)
     
     return media_list
 
-def handle_existing_unlinked(media_list):
-    """Prompts user to either link or re-render proxy media that exists in the expected location, 
-    but has either been unlinked at some point or was never linked after proxies finished rendering.
-    Saves confusion and unncessary re-rendering time."""
+def handle_existing_unlinked(media_list: list) -> list:
+
+    """Prompts user to either link or re-render unlinked proxy media that exists in the expected location.
+
+    Handling existing unlinked proxies can occur if proxies are either unlinked at some point
+    or were never linked after proxies finished rendering.
+
+    Args: 
+        media_list: list of dictionary media items to check for `Expected Proxy Path` on.
+
+    Returns:
+        media_list: refined list of dictionary media items that are not linked to a proxy.
+    """
 
     print(f"{Fore.CYAN}Checking for existing, unlinked media.")
     existing_unlinked = []
-
     
     get_expected_proxy_path(media_list)
 
@@ -430,18 +481,31 @@ def handle_existing_unlinked(media_list):
             print()
 
         else:
-            print("Exiting...")
-            sys.exit(0)
+            helpers.app_exit(0)
 
     return media_list
 
 def handle_workers():
-    """Detect amount of online workers. Warn if none."""
+    """Detect amount of online workers. Warn if no workers detected.
+    
+    Args:
+        None
+    
+    Returns:
+        None
 
-    i = app.control.inspect().active_queues()
+    Raises:
+        Unhandled exception if can't access Celery app.control
+    """
+
+    try:
+
+        i = app.control.inspect().active_queues()
+
+    except Exception as e:
+        raise Exception("Unhandled exception: " + str(e))
 
     if i is not None:
-        # print(i)
         worker_count = len(i)
 
         if worker_count > 0:
@@ -459,13 +523,22 @@ def handle_workers():
 
         else:
             print("Exiting...")
-            sys.exit(0)
+            helpers.app_exit(0)
 
-def handle_none_queuable(clips):
-    """ Handle final queuing prompt. Warn and exit if nothing to queue,
-    or confirm with count of queuable jobs."""
+def handle_final_queuable(media_list: list):
+    """Final prompt to confirm number queueable or warn if none.
 
-    if len(clips) == 0:
+    Args:
+        media_list: list of dictionary media items to check length for.
+    
+    Returns:
+        None: No need to chain anything here.
+
+    Raises:
+        TypeError: if media_list is not a list
+    """
+
+    if len(media_list) == 0:
         global SOME_ACTION_TAKEN
         if not SOME_ACTION_TAKEN:
             print(f"{Fore.RED}No clips to queue.")
@@ -479,10 +552,10 @@ def handle_none_queuable(clips):
     # Final Prompt confirm
     if not confirm(
         "Go time!", 
-        f"{len(clips)} clip(s) are ready to queue!\n" +
+        f"{len(media_list)} clip(s) are ready to queue!\n" +
         "Continue?"
     ):
-        sys.exit(0)
+        helpers.app_exit(0)
     return
 
 def get_video_track_items(timeline):
@@ -612,11 +685,11 @@ def main():
         clips = source_metadata
 
         # Prompt user for intervention if necessary
-        clips = handle_already_linked(clips)
+        clips = handle_already_linked(clips, ['Offline', 'None'])
         clips = handle_offline_proxies(clips)
         clips = handle_existing_unlinked(clips)
 
-        handle_none_queuable(clips)
+        handle_final_queuable(clips)
 
         tasks = create_tasks(
             clips,
