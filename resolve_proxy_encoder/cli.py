@@ -54,14 +54,25 @@ def work(number:int=0):
 
 @app.command()
 def purge():
-    """ Purge all proxy jobs from all queues """
+    """Purge all tasks from Celery.
 
-    if Confirm(
-        "[yellow]Are you sure you want to purge all worker queues?"
-        "All current jobs will be lost![/]"
+    All tasks will be removed from all queues,
+    including results and any history in Flower.
+
+    Args:
+        None
+    Returns:
+        None
+    Raises:
+        None
+    """
+
+    if Confirm.ask(
+        "[yellow]Are you sure you want to purge all tasks?\n"
+        "All active tasks and task history will be lost![/]"
     ):
         pprint("[green]Purging all worker queues[/] :fire:")
-        subprocess.run(["celery", "-A", "resolve_proxy_encoder.proxy_encoder", "purge"])
+        subprocess.run(["celery", "-A", "resolve_proxy_encoder.worker", "purge", "-f"])
 
 @app.command()
 def mon():
