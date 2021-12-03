@@ -40,6 +40,7 @@ app.conf.update(
 
     worker_pool_restarts = True,
     worker_send_task_events = True,
+    
     worker_cancel_long_running_tasks_on_connection_loss = True,
 )
 
