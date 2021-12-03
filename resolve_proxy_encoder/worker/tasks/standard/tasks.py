@@ -47,7 +47,6 @@ def encode_proxy(job):
     # Video
     h_res = config['proxy_settings']['h_res']
     v_res = config['proxy_settings']['v_res']
-    fps = job['FPS']
 
 
     # Flip logic:
@@ -78,12 +77,13 @@ def encode_proxy(job):
                     'dnxhr_sq', 
                     '-vf',
                     f'scale={h_res}:{v_res},{flippage}' + 
-                    f'fps={fps},' + 
+                    '-vsync', # Necessary to match VFR
                     'format=yuv422p', 
                     '-c:a',
                     'pcm_s16le', 
                     '-ar', 
                     '48000',
+                    '-copyts', # Timecode MUST match source
                 ]
         },
     )

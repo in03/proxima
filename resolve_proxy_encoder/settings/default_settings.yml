@@ -1,6 +1,7 @@
 loglevel: INFO
 
 paths:
+  # Path to directory containing all proxy media
   proxy_path_root: R:/ProxyMedia
 
 proxy_settings:
@@ -16,7 +17,10 @@ proxy_settings:
   ext: .mxf
 
 filters:
-  acceptable_exts : [.mov, .mp4, .mxf, .avi]
+  # Necessary to prevent queueing internally generated media
+  extension_whitelist : [.mov, .mp4, .mxf, .avi]
+  use_framerate_whitelist: false
+  framerate_whitelist : [24, 25, 30, 50, 60]
 
 celery_settings:
 

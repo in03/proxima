@@ -24,6 +24,8 @@ from resolve_proxy_encoder.worker.tasks.standard.tasks import encode_proxy
 # Dev dependencies
 from icecream import ic
 
+logger = helpers.get_rich_logger()
+
 config = app_settings.get_user_settings()
 
 # Get global variables
@@ -593,39 +595,78 @@ def get_media_pool_items(track_items):
     return all_media_pool_items
 
 def get_source_metadata(media_pool_items):
-    """ Return source metadata for each media pool item that passes criteria:
+    """ Return source metadata for each media pool item that passes configured criteria.
 
-    - has file path (internally generated assets don't)
-    - correct extension (BRAW loses its RAW and performs fine without proxies)
-    - has linked media pool item (adjustment layers, nested timelines or offline footage don)
+    each media pool item must meet the following criteria:
+        - return valid clip properties (needed for encoding, internal track items don't have them)
+        - whitelisted extension (e.g, BRAW performs fine without proxies)
+        - whitelisted framerate (optional) FFmpeg should handle most
+
+    Args:
+        media_pool_items: list of Resolve API media pool items
+
+    Returns:
+        filtered_metadata: a list of dictionaries containing all valid media and its Resolve-given properties. 
+
+    Raises:
+        none
 
     """
 
-    all_source_metadata = []
+    # Successfully filtered metadata
+    filtered_metadata = []
+
+    # Prevent filtering same media item multiple times
+    # since multiple clips can have same source media
+    seen_item = [] 
 
     for media_pool_item in media_pool_items:
-        try:
-            
-            source_metadata = media_pool_item.GetClipProperty()
 
-            source_ext = os.path.splitext(source_metadata['File Path'])[1].lower()
-            if config['loglevel'] == "DEBUG": print(source_ext)
+        # print(media_pool_item)
 
-            if source_ext not in config['filters']['acceptable_exts']:
-                if config['loglevel'] == "DEBUG": print(f"Ignoring unacceptable file type: '{source_metadata['File Path']}'")
-                continue
-
-            # Add the Resolve API media pool item object so we can call it directly to link
-            # source_metadata.update({'media_pool_item_object':media_pool_item})
-            all_source_metadata.append(source_metadata)
-
-        except:
-            if config['loglevel'] == "DEBUG": print(f"{Fore.MAGENTA}Skipping {media_pool_item.GetName()}, no linked media pool item.")    
+        if str(media_pool_item) in seen_item:
+            logger.debug(f"Skipping already seen media_pool_item {media_pool_item}")
             continue
 
-    print(f"{Fore.GREEN}Total clips on timeline: {len(all_source_metadata)}")
+        seen_item.append(str(media_pool_item))
 
-    return all_source_metadata
+        if not hasattr(media_pool_item, "GetClipProperty()"):
+            logger.debug(f"[yellow]No linked media pool item: '{source_metadata['File Path']}' Skipping... [/]", extra = {"markup":True})
+            continue
+
+        source_metadata = media_pool_item.GetClipProperty()
+        source_path = source_metadata['File Path']
+        source_ext = os.path.splitext(source_path)[1].lower()
+
+        # Might still get media that has clip properties, but internally generated
+        if source_path is '':
+            logger.debug(f"{media_pool_item} clip properties did not return valid filepath. Skipping...")
+            continue
+
+        # Filter extension
+        logger.debug(f"{source_path}, parsed ext: '{source_ext}'")
+        if source_ext not in config['filters']['extension_whitelist']:
+
+            logger.warning(f"[yellow]Ignoring non-whitelisted file extension: '{source_ext}' " + 
+                            f"from '{source_metadata['File Path']}'[/]", extra = {"markup":True})
+            continue
+
+        # Filter framerate
+        source_framerate = source_metadata['FPS']
+        if config['filters']['use_framerate_whitelist'] == True:
+            if source_framerate not in config['filters']['framerate_whitelist']:
+
+                logger.warning(f"[yellow]Ignoring non-whitelisted framerate: '{source_framerate}' " +
+                            f"from '{source_metadata['File Path']}' [/]", extra = {"markup":True})
+                continue
+
+        # Add the Resolve API media pool item object so we can call it directly to link
+        # source_metadata.update({'media_pool_item_object':media_pool_item})
+        filtered_metadata.append(source_metadata)
+
+    print(f"{Fore.GREEN}Total queuable clips on timeline: {len(filtered_metadata)}")
+
+    return filtered_metadata
 
 def remove_duplicate_elements(elements):
     """ Ensure each element is unique so we don't process it multiple times."""
@@ -633,7 +674,7 @@ def remove_duplicate_elements(elements):
     unique_sets = set(frozenset(d.items()) for d in elements)
     unique_dict_list = [dict(s) for s in unique_sets]
 
-    print(f"{Fore.GREEN}Unique: {len(unique_dict_list)}")
+    print(f"{Fore.GREEN}Unique queuable: {len(unique_dict_list)}")
 
     return unique_dict_list
 
