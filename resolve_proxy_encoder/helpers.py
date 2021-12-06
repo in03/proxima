@@ -1,10 +1,12 @@
 """ Helper functions for main module """
-
+import json
 import logging
 import sys
 import time
 from typing import Union
 
+import pkg_resources
+import semver
 from rich.logging import RichHandler
 from rich.prompt import Prompt
 from win10toast import ToastNotifier
@@ -145,3 +147,44 @@ def get_resolve_objects():
         timeline = timeline,
         media_pool = media_pool,
     )
+
+def get_package_last_commit(package_name):
+    """ Get the ID of the last VCS commit pushed when this package was installed.
+    
+    Uses `direct_url.json` from the site-package's `dist-info`.
+
+    Args:
+        package_name (str): The name of the package to get last commit from.
+
+    Returns:
+        package_last_commit_id (str): The commit ID.
+        None
+
+    Raises:
+        none: 
+    """
+
+    dist = pkg_resources.get_distribution(package_name)
+
+    try:
+
+        vcs_metadata_file = dist.get_metadata("direct_url.json")
+        vcs_metadata = json.loads(vcs_metadata_file)
+        package_last_commit_id = vcs_metadata['vcs_info']['commit_id']
+
+    except KeyError:
+        print("Couldn't get commit_id from 'direct_url.json'")
+
+    return package_last_commit_id
+
+# def get_package_semver(package_name):
+#     """ Get and parse a package's semver if exists.
+
+#     Args:
+#         package_name (str): the name of the package
+    
+#     Returns:
+#     """
+
+#     dist = pkg_resources.get_distribution(package_name)
+#     semver.VersionInfo.parse(dist)

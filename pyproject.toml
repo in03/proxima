@@ -20,6 +20,16 @@ icecream = "^2.1.1"
 [tool.poetry.dev-dependencies]
 mkdocs-material = "^7.3.6"
 
+[tool.semantic_release]
+version_variable = [
+    "resolve_proxy_encoder/__init__.py:__version__",
+    "pyproject.toml:version"
+]
+branch = "main"
+upload_to_pypi = false
+upload_to_release = true
+build_command = "pip install poetry && poetry build"
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
