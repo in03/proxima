@@ -9,6 +9,11 @@ from pyfiglet import Figlet
 from rich import print as pprint
 from rich.prompt import Confirm
 
+import sys
+
+from helpers import get_remote_last_commit
+get_remote_last_commit("https://github.com/in03/resolve-proxy-encoder")
+sys.exit(1)
 # Print CLI title
 init(autoreset=True)
 fig = Figlet()

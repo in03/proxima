@@ -1,6 +1,7 @@
 """ Helper functions for main module """
 import json
 import logging
+import requests
 import sys
 import time
 from typing import Union
@@ -176,6 +177,18 @@ def get_package_last_commit(package_name):
         print("Couldn't get commit_id from 'direct_url.json'")
 
     return package_last_commit_id
+
+def get_remote_last_commit(github_url):
+
+    owner, sep, repo_name = github_url.split(".com")[1].split("/")
+    api_endpoint = f"https://api.github.com/repos{owner}/{repo_name}/commits"
+    headers = {'content-type': 'application/json'}
+
+    print(api_endpoint)
+
+    results = requests.get(api_endpoint)
+    print(results)
+    return results
 
 # def get_package_semver(package_name):
 #     """ Get and parse a package's semver if exists.
