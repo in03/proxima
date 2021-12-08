@@ -10,10 +10,8 @@ from rich import print as pprint
 from rich.prompt import Confirm
 
 import sys
+from helpers import check_for_updates, get_rich_logger
 
-from helpers import get_remote_last_commit
-get_remote_last_commit("https://github.com/in03/resolve-proxy-encoder")
-sys.exit(1)
 # Print CLI title
 init(autoreset=True)
 fig = Figlet()
@@ -23,6 +21,15 @@ print(Fore.GREEN + text)
 from resolve_proxy_encoder.settings import app_settings
 
 config = app_settings.get_user_settings()
+logger = get_rich_logger(config["loglevel"])
+
+check_for_updates(
+    github_url="https://github.com/in03/resolve-proxy-encoder",
+    package_name="resolve_proxy_encoder",
+)
+
+sys.exit(1)
+
 app = typer.Typer()
 
 @app.command()

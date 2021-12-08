@@ -40,6 +40,8 @@ def get_rich_logger(loglevel:Union[int, str]="WARNING"):
     logger = logging.getLogger("rich")
     return logger
 
+logger = get_rich_logger(config["loglevel"])
+
 def app_exit(level:int=0, timeout:int=5, cleanup_funcs:list=None):
 
     """ 
@@ -175,29 +177,39 @@ def get_package_last_commit(package_name):
 
     except KeyError:
         print("Couldn't get commit_id from 'direct_url.json'")
+        return None
 
     return package_last_commit_id
 
 def get_remote_last_commit(github_url):
 
-    owner, sep, repo_name = github_url.split(".com")[1].split("/")
-    api_endpoint = f"https://api.github.com/repos{owner}/{repo_name}/commits"
-    headers = {'content-type': 'application/json'}
+    url_list = github_url.split(".com")[1].split("/")
+    api_endpoint = f"https://api.github.com/repos/{url_list[1]}/{url_list[2]}/commits/main"
+    # print(api_endpoint)
 
-    print(api_endpoint)
+    r = requests.get(api_endpoint, timeout=5)
+    if r.status_code != 200:
+        print(f"Couldn't fetch from API: {r}")
+        return None
 
-    results = requests.get(api_endpoint)
-    print(results)
-    return results
+    results = r.json()
+    return results["sha"]
 
-# def get_package_semver(package_name):
-#     """ Get and parse a package's semver if exists.
+def check_for_updates(github_url, package_name):
 
-#     Args:
-#         package_name (str): the name of the package
-    
-#     Returns:
-#     """
+    logger.info("[cyan]Checking for updates...[/]", extra={"markup":True})
+    remote_last_commit = get_remote_last_commit(github_url)
+    package_last_commit = get_package_last_commit(package_name)
 
-#     dist = pkg_resources.get_distribution(package_name)
-#     semver.VersionInfo.parse(dist)
+    if not remote_last_commit or not package_last_commit:
+        logger.warning("[red]Failed to check for updates[/]", extra={"markup":True})
+
+    if remote_last_commit != package_last_commit:
+
+        logger.warning("[yellow]Updates available[/].", extra={"markup":True})
+        logger.warning("[yellow]Ensure all workers and queuers are same version.[/]", extra={"markup":True})
+        logger.info(f"Remote commit SHA: '{remote_last_commit}'") 
+        logger.info(f"Installed commit SHA: '{package_last_commit}'")
+
+    else:
+        logger.info("[green]Installation up-to-date[/]", extra={"markup":True})
