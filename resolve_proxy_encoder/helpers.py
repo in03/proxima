@@ -94,6 +94,8 @@ def get_resolve_objects():
     try:
 
         resolve = python_get_resolve.GetResolve()
+        if resolve is None:
+            raise TypeError
 
     except:
 
@@ -106,6 +108,8 @@ def get_resolve_objects():
     try:
 
         project = resolve.GetProjectManager().GetCurrentProject()
+        if project is None:
+            raise TypeError
 
     except:
 
@@ -118,7 +122,8 @@ def get_resolve_objects():
     try:
 
         timeline = project.GetCurrentTimeline()
-
+        if timeline is None:
+            raise TypeError
     except:
 
         logger.warning(
@@ -130,6 +135,8 @@ def get_resolve_objects():
     try:
 
         media_pool = project.GetMediaPool()
+        if media_pool is None:
+            raise TypeError
 
     except:
 

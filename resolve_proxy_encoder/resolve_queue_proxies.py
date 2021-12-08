@@ -13,6 +13,8 @@ import traceback
 from celery import group
 from colorama import Fore
 from icecream import ic
+from rich.pretty import pprint
+
 from resolve_proxy_encoder import helpers
 from resolve_proxy_encoder.link_proxies import link_proxies
 from resolve_proxy_encoder.settings import app_settings
