@@ -1,5 +1,7 @@
 # Resolve Proxy Encoder
 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 ## Work in progress! ⚠️
 
  Please excuse anything that doesn't make sense in this repository. I code when I can find the time (which is scarce!) and often I'll leave quick-fixes and band-aid-  solutions sitting pretty. I'm doing my best to separate configuration from code and keep things cross platform, but at times I bend the rules to keep this working   everyday in our specific office environment. If you have the time to contribute to this repo, please do! Forks, PRs, issues and suggestions welcome.

@@ -19,6 +19,9 @@ icecream = "^2.1.1"
 
 [tool.poetry.dev-dependencies]
 mkdocs-material = "^7.3.6"
+black = "^21.12b0"
+isort = "^5.10.1"
+pre-commit = "^2.16.0"
 
 
 [build-system]

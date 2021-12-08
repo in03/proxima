@@ -5,8 +5,11 @@ This file serves to return a DaVinci Resolve object
 """
 import imp
 import sys
+
 from rich import print as pprint
+
 # from resolve_proxy_encoder import helpers
+
 
 def GetResolve():
     ext = ".so"
@@ -19,7 +22,6 @@ def GetResolve():
         path = "/opt/resolve/libs/Fusion/"
     else:
         raise Exception("Unsupported system! " + sys.platform)
-
 
     bmd = imp.load_dynamic("fusionscript", path + "fusionscript" + ext)
     resolve = bmd.scriptapp("Resolve")
@@ -34,11 +36,15 @@ def GetResolve():
 
     return resolve
 
-def _fail_import():
-    """ Internally fail if can't import Python remote mmodule """
 
-    pprint("[red] :warning: Couldn't access the Resolve Python API. Is DaVinci Resolve running?[/]")
+def _fail_import():
+    """Internally fail if can't import Python remote mmodule"""
+
+    pprint(
+        "[red] :warning: Couldn't access the Resolve Python API. Is DaVinci Resolve running?[/]"
+    )
     # helpers.app_exit(1, -1)
+
 
 if __name__ == "__main__":
     GetResolve()
