@@ -17,6 +17,7 @@ PyYAML = "^6.0"
 redis = "^3.5.3"
 icecream = "^2.1.1"
 semver = "^2.13.0"
+requests = "^2.26.0"
 
 [tool.poetry.dev-dependencies]
 mkdocs-material = "^7.3.6"
