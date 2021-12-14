@@ -1,7 +1,4 @@
-name: ci-docs# 
-
-You can change the name to your liking.
-
+name: ci-docs
 
 on:
   push:
