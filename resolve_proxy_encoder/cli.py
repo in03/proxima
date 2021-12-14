@@ -5,21 +5,25 @@ import subprocess
 import webbrowser
 
 import typer
-from colorama import Fore, init
 from pyfiglet import Figlet
-from resolve_proxy_encoder.settings import app_settings
-from rich import print as pprint
+from rich import print
 from rich.prompt import Confirm
 
+from resolve_proxy_encoder.helpers import get_rich_logger
+from resolve_proxy_encoder.settings import app_settings
+
 # Print CLI title
-init(autoreset=True)
 fig = Figlet()
 text = fig.renderText("Resolve Proxy Encoder")
-print(Fore.GREEN + text)
-
+print(f"[green]{text}[/]")
 
 config = app_settings.get_user_settings()
+logger = get_rich_logger(config["loglevel"])
 app = typer.Typer()
+
+# default_loglevel = app_settings.get_defaults()["loglevel"]
+# if config.get("loglevel") != default_loglevel:
+#     print(f"Custom loglevel set:[/]'{config.get('loglevel')}'\n")
 
 
 @app.command()
@@ -28,7 +32,7 @@ def queue():
     Queue proxies from the currently open
     DaVinci Resolve timeline
     """
-    pprint("[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
+    print("[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
 
     from resolve_proxy_encoder import resolve_queue_proxies
 
@@ -51,8 +55,8 @@ def link():
 def work(number: int = 0):
     """Prompt to start Celery workers on local machine"""
     if number > 0:
-        pprint(f"[green]Starting workers! :construction_worker:[/]")
-    pprint(f"[cyan]Starting worker launcher prompt :construction_worker:[/]")
+        print(f"[green]Starting workers! :construction_worker:[/]")
+    print(f"[cyan]Starting worker launcher prompt :construction_worker:[/]")
 
     from resolve_proxy_encoder import start_workers
 
@@ -78,7 +82,7 @@ def purge():
         "[yellow]Are you sure you want to purge all tasks?\n"
         "All active tasks and task history will be lost![/]"
     ):
-        pprint("[green]Purging all worker queues[/] :fire:")
+        print("[green]Purging all worker queues[/] :fire:")
         subprocess.run(["celery", "-A", "resolve_proxy_encoder.worker", "purge", "-f"])
 
 
@@ -88,7 +92,7 @@ def mon():
     Launch Flower Celery monitor in default browser new window
     """
 
-    pprint("[green]Launching Flower celery monitor[/] :sunflower:")
+    print("[green]Launching Flower celery monitor[/] :sunflower:")
     webbrowser.open_new(config["celery_settings"]["flower_url"])
 
 

@@ -14,7 +14,7 @@ from win10toast import ToastNotifier
 config = app_settings.get_user_settings()
 
 
-def get_rich_logger(loglevel: Union[int, str] = "WARNING"):
+def get_rich_logger(loglevel: Union[int, str]):
 
     """Set logger to rich, allowing for console markup."""
 
@@ -89,7 +89,7 @@ def toast(message, threaded=True):
 def get_resolve_objects():
     """Return necessary Resolve objects with error handling"""
 
-    logger = get_rich_logger()
+    logger = get_rich_logger(config["loglevel"])
 
     try:
 
