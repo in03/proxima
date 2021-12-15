@@ -16,6 +16,8 @@ win10toast = "^0.9"
 PyYAML = "^6.0"
 redis = "^3.5.3"
 icecream = "^2.1.1"
+notify-py = "^0.3.3"
+pydantic = "^1.8.2"
 
 [tool.poetry.dev-dependencies]
 mkdocs-material = "^7.3.6"

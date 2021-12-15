@@ -9,7 +9,7 @@ from resolve_proxy_encoder import python_get_resolve
 from resolve_proxy_encoder.settings import app_settings
 from rich.logging import RichHandler
 from rich.prompt import Prompt
-from win10toast import ToastNotifier
+from notifypy import Notify
 
 config = app_settings.get_user_settings()
 
@@ -33,6 +33,13 @@ def get_rich_logger(loglevel: Union[int, str]):
     )
     logger = logging.getLogger("rich")
     return logger
+
+
+def install_rich_tracebacks(show_locals=True):
+    """Install rich tracebacks"""
+    from rich.traceback import install
+
+    install(show_locals=show_locals)
 
 
 def app_exit(level: int = 0, timeout: int = 5, cleanup_funcs: list = None):
@@ -75,15 +82,35 @@ def app_exit(level: int = 0, timeout: int = 5, cleanup_funcs: list = None):
     sys.exit(level)
 
 
-def toast(message, threaded=True):
-    toaster = ToastNotifier()
-    toaster.show_toast(
-        "Queue Proxies",
-        message,
-        # icon_path = icon_path,
-        threaded=threaded,
-    )
-    return
+def notify(message: str, title: str = "Resolve Proxy Encoder"):
+    """Cross platform system notification
+
+    Args:
+        message(str): Message to display
+        title(str): Title of notification
+
+    Returns:
+        True/False(bool): Success/Failure
+
+    Raises:
+        none
+
+    """
+
+    logger = get_rich_logger(config["loglevel"])
+
+    try:
+
+        notification = Notify()
+        notification.title = title
+        notification.message = message
+        notification.send(block=False)
+
+    except Exception as e:
+        logger.exception(f"[red] :warning: Couldn't send notification.[/]\n{e}")
+        return False
+
+    return True
 
 
 def get_resolve_objects():

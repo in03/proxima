@@ -11,12 +11,13 @@ import sys
 import time
 
 from colorama import Fore, init
+from rich.traceback import install
+from resolve_proxy_encoder.helpers import get_rich_logger
 from resolve_proxy_encoder.settings.app_settings import get_user_settings
 
+install(show_locals=True)
 config = get_user_settings()
-
-# TODO:
-# Use rich here instead of colorama and manual prompt func
+logger = get_rich_logger(config["loglevel"])
 
 # Make sure the module path in the command below is up to date!
 START_WIN_WORKER = """celery -A resolve_proxy_encoder.worker worker -l INFO -P solo"""
@@ -89,7 +90,10 @@ def launch_workers(workers_to_launch: int):
             shell=True,
         )
 
-        sys.stdout.write(dots)
+        if config["loglevel"] == "WARNING":
+
+            sys.stdout.write(dots)
+
         sys.stdout.flush()
 
     print()

@@ -8,13 +8,13 @@ import shutil
 import sys
 import tkinter
 import tkinter.messagebox
-import traceback
 from typing import Union
 
 from celery import group
 from icecream import ic
 from rich import print
-from rich.traceback import install as install_rich_tracebacks
+
+# from rich.traceback import install as install_rich_tracebacks
 
 from resolve_proxy_encoder import helpers
 from resolve_proxy_encoder.link_proxies import link_proxies
@@ -23,7 +23,7 @@ from resolve_proxy_encoder.worker.celery import app
 from resolve_proxy_encoder.worker.tasks.standard.tasks import encode_proxy
 
 
-install_rich_tracebacks(show_locals=True)
+# install_rich_tracebacks(show_locals=True)
 config = app_settings.get_user_settings()
 logger = helpers.get_rich_logger(config["loglevel"])
 
@@ -34,7 +34,7 @@ project = resolve_obj["project"]
 timeline = resolve_obj["timeline"]
 media_pool = resolve_obj["media_pool"]
 
-resolve_job_name = f"{project.GetName().upper()} - {timeline.GetName().upper()}"
+resolve_job_name = f"{project.GetName()} - {timeline.GetName()}"
 proxy_path_root = os.path.normpath(config["paths"]["proxy_path_root"])
 
 # Prevent TKinter root window showing
@@ -45,88 +45,61 @@ root.withdraw()
 SOME_ACTION_TAKEN = False
 
 
-def create_tasks(clips, **kwargs):
-    """Create metadata dictionaries to send as Celery tasks'"""
+def confirm(title, message):
+    """General tkinter confirmation prompt using ok/cancel.
+    Keeps things tidy"""
 
-    # Append project details to each clip
-    tasks = [dict(item, **kwargs) for item in clips]
-    return tasks
+    answer = tkinter.messagebox.askokcancel(
+        title=title,
+        message=message,
+    )
 
-
-def queue_job(tasks):
-    """Send tasks as a celery job 'group'"""
-
-    # Wrap job object in task function
-    callable_tasks = [encode_proxy.s(x) for x in tasks]
-    if config["loglevel"] == "DEBUG":
-        print(callable_tasks)
-
-    # Create job group to retrieve job results as batch
-    job = group(callable_tasks)
-
-    # Queue job
-    print(f"[cyan]Sending job.[/]")
-    return job.apply_async()
+    global SOME_ACTION_TAKEN
+    SOME_ACTION_TAKEN = True
+    return answer
 
 
-def postencode_link(media_list):
-    """Iterate through media mutated during script call, attempt to link the source media"""
+def handle_workers():
+    """Detect amount of online workers. Warn if no workers detected.
 
-    print(f"[cyan]Linking {len(media_list)} proxies.[/]")
+    Args:
+        None
 
-    link_success = []
-    link_fail = []
+    Returns:
+        None
 
-    # Iterate through all available proxies
-    for media in media_list:
-        proxy = media.get("Unlinked Proxy", None)
-        if proxy == None:
-            continue
+    Raises:
+        Unhandled exception if can't access Celery app.control
+    """
 
-        # Check they exist
-        if not os.path.exists(proxy):
-            tkinter.messagebox.showerror(
-                title="Error linking proxy",
-                message=f"Proxy media not found at '{proxy}'",
-            )
-            print(f"[red]Error linking proxy: Proxy media not found at '{proxy}'")
-            continue
+    try:
 
-        else:
-            media.update({"Unlinked Proxy": None})  # Set existing to none once linked
+        i = app.control.inspect().active_queues()
 
-        media.update({"Proxy": "1280x720"})
+    except Exception as e:
+        raise Exception("Unhandled exception: " + str(e))
 
-        # Actually link proxies
-        media_pool_item_obj = media["media_pool_item_obj"]
-        if media_pool_item_obj.LinkProxyMedia(proxy):
+    if i is not None:
+        worker_count = len(i)
 
-            # TODO get this working!
-            print(f"[green]Linked {media['File Name']}[/]")
-            link_success.append(proxy)
+        if worker_count > 0:
+            print(f"[cyan]{worker_count} workers online[/]")
+            return
+
+    else:
+        print(f"[yellow]No workers online![/]")
+        answer = tkinter.messagebox.askokcancel(
+            title="No workers online",
+            message=f"You haven't got any workers running!\n"
+            + f"Don't forget to start one after queuing :) ",
+        )
+
+        if answer is True:
+            return
 
         else:
-            print(f"[red]Failed link.\n[/]")
-            link_fail.append(proxy)
-
-    if link_success:
-        print(f"[green]Succeeeded linking: {len(link_success)}[/]")
-
-    if link_fail:
-        print(f"[red]Failed linking: {len(link_success)}[/]")
-
-    # link_proxies(existing_proxies)
-
-    print("\n")
-
-    pre_len = len(media_list)
-    media_list = [x for x in media_list if "Unlinked Proxy" not in x]
-    post_len = len(media_list)
-    print(f"{pre_len - post_len} proxy(s) linked, will not be queued.")
-    print(f"[magenta]Queueing {post_len}[/]")
-    print("\n")
-
-    return media_list
+            print("Exiting...")
+            helpers.app_exit(0)
 
 
 def get_resolve_timelines(active_timeline_first=True):
@@ -154,118 +127,6 @@ def get_resolve_timelines(active_timeline_first=True):
         return False
 
     return timelines
-
-
-def search_and_link():
-    """Search through all existing media in active project and
-    attempt to find linkable proxies in expected directory
-    """
-
-    print("Not yet implemented!")
-    print("Run the manual link program in 'Misc Tools' on the Streamdeck")
-    sys.exit(1)
-
-    linked = []
-    # failed = []
-
-    # TODO: Get this working. R
-
-    timelines = get_resolve_timelines()
-    if not timelines:
-        raise Exception("No timelines exist in current project.")
-
-    # Get clips from all timelines.
-    for timeline in timelines:
-
-        track_items = get_video_track_items(timeline)
-        media_pool_items = get_media_pool_items(track_items)
-        source_metadata = get_source_metadata(media_pool_items)
-        source_metadata = remove_duplicate_elements(source_metadata)
-
-    #     clips = timeline_data['clips']
-    #     unlinked_source = [x for x in clips if x not in linked]
-
-    #     if len(unlinked_source) == 0:
-    #         if config['loglevel'] == "DEBUG": print(f"[yellow]No more clips to link in {timeline_data['name']}[/]")
-    #         continue
-    #     else:
-    #         print(f"[cyan]Searching timeline {timeline_data['name']}[/]")
-
-    #     unlinked_proxies = [x for x in proxy_files if x not in linked]
-    #     print(f"Unlinked source count: {len(unlinked_source)}")
-    #     print(f"Unlinked proxies count: {len(unlinked_proxies)}")
-
-    #     if len(unlinked_proxies) == 0:
-    #         print(f"[yellow]No more proxies to link in {timeline_data['name']}[/]")
-    #         return
-
-    #     linked_, failed_ = (__link_proxies(proxy_files, clips))
-
-    #     linked.extend(linked_)
-    #     failed.extend(failed_)
-
-    #     if config['loglevel'] == "DEBUG": print(f"Linked: {linked}, Failed: {failed}")
-
-    # if len(failed) > 0:
-    #     print(f"[red]The following files matched, but couldn't be linked. Suggest rerendering them:[/]")
-    #     [print(os.path.basename(x)) for x in failed]
-    #     print("\n")
-
-    return linked
-
-
-def legacy_link(media_list):
-    """This is sooooo dank. But it's the only way that works atm."""
-
-    print(f"[cyan]Linking {len(media_list)} proxies.[/]")
-    existing_proxies = []
-
-    for media in media_list:
-        proxy = media.get("Unlinked Proxy", None)
-        if proxy == None:
-            continue
-
-        existing_proxies.append(proxy)
-
-        if not os.path.exists(proxy):
-            tkinter.messagebox.showerror(
-                title="Error linking proxy",
-                message=f"Proxy media not found at '{proxy}'",
-            )
-            print(f"[red]Error linking proxy: Proxy media not found at '{proxy}'[/]")
-            continue
-
-        else:
-            media.update({"Unlinked Proxy": None})  # Set existing to none once linked
-
-        media.update({"Proxy": "1280x720"})
-
-    link_proxies(existing_proxies)
-
-    print("\n")
-
-    pre_len = len(media_list)
-    media_list = [x for x in media_list if "Unlinked Proxy" not in x]
-    post_len = len(media_list)
-    print(f"{pre_len - post_len} proxy(s) linked, will not be queued.")
-    print(f"[magenta]Queueing {post_len}[/]")
-    print("\n")
-
-    return media_list
-
-
-def confirm(title, message):
-    """General tkinter confirmation prompt using ok/cancel.
-    Keeps things tidy"""
-
-    answer = tkinter.messagebox.askokcancel(
-        title=title,
-        message=message,
-    )
-
-    global SOME_ACTION_TAKEN
-    SOME_ACTION_TAKEN = True
-    return answer
 
 
 def add_expected_proxy_path(media_list: list) -> list:
@@ -302,6 +163,280 @@ def add_expected_proxy_path(media_list: list) -> list:
             raise ValueError(f"Could not find Expected Proxy Dir for '{file_path}'")
 
     return media_list_
+
+
+def handle_file_collisions(media_list: list) -> list:
+    """Increment output filenames if necessary to prevent file collisions"""
+
+    def _increment_file_if_exist(input_path: str, increment_num: int = 1) -> str:
+        """Increment the filename in a given filepath if it already exists
+
+        Calls itself recursively in case any incremented files already exist.
+        It should get the latest increment, i.e. 'filename_4.mp4'
+        if 'filename_3.mp4', 'filename_2.mp4', 'filename_1.mp4' and 'filename.mp4'
+        already exist.
+
+        Args:
+            input_path(str): full filepath to check.
+
+        Returns:
+            output_path(str): a modified output path, incremented.
+
+        Raises:
+            none
+        """
+
+        # Split filename, extension
+        file_name, file_ext = os.path.splitext(input_path)
+
+        # If file exists...
+        if os.path.exists(input_path):
+
+            # Check if already incremented
+            if file_name.endswith(f"_{increment_num}"):
+
+                # Increment again
+                increment_num += 1
+                _increment_file_if_exist(input_path, increment_num)
+
+            else:
+                # First increment
+                file_name = file_name + "_1"
+
+        return str(file_name + file_ext)
+
+    media_list_ = []
+    multiple_versions_count = 0
+
+    for item in media_list:
+
+        current_path = item.get("Expected Proxy Dir")
+
+        # !ERROR: no expected path key
+        if not current_path:
+            logger.error(
+                f"Expected proxy Dir was missing for an item: {item}. Skipping..."
+            )
+            continue
+
+        final_path = _increment_file_if_exist(current_path)
+
+        # Increment multiple version flag
+        if final_path != current_path:
+            multiple_versions_count += 1
+
+        # !ERROR: Couldn't get final path
+        if not final_path:
+            logger.error(f"Couldn't get final path for an item: {item}. Skipping...")
+            continue
+
+    if multiple_versions_count:
+
+        logger.warning(
+            f"[yellow]{multiple_versions_count} files have outdated proxies! Recommend manually deleting when possible.",
+            extra={"markup": True},
+        )
+
+    return media_list_
+
+
+def handle_final_queuable(media_list: list):
+    """Final prompt to confirm number queueable or warn if none.
+
+    Args:
+        media_list: list of dictionary media items to check length for.
+
+    Returns:
+        None: No need to chain anything here.
+
+    Raises:
+        TypeError: if media_list is not a list
+    """
+
+    if len(media_list) == 0:
+        global SOME_ACTION_TAKEN
+        if not SOME_ACTION_TAKEN:
+            print(f"[red]No clips to queue.[/]")
+            tkinter.messagebox.showwarning(
+                "No new media to queue",
+                "Looks like all your media is already linked. \n"
+                + "If you want to re-rerender some proxies, unlink those existing proxies within Resolve and try again.",
+            )
+            sys.exit(1)
+        else:
+            print(f"[green]All clips linked now. No encoding necessary.[/]")
+            helpers.app_exit(0)
+
+    # Final Prompt confirm
+    if not confirm(
+        "Go time!", f"{len(media_list)} clip(s) are ready to queue!\n" + "Continue?"
+    ):
+        helpers.app_exit(0)
+    return
+
+
+def get_video_track_items(timeline):
+    """Get all video track items from the provided timeline"""
+
+    all_track_items = []
+
+    # Get count of tracks (index) in active timeline
+    track_len = timeline.GetTrackCount("video")
+    print(f"[green]Video track count: {track_len}[/]")
+
+    # For each track in timeline (using index)
+    for i in range(1, track_len + 1):
+
+        # Get items
+        track_items = timeline.GetItemListInTrack("video", i)
+
+        if track_items is None:
+            print(f"[yellow]No items found in track {i}[/]")
+            continue
+
+        else:
+            all_track_items.append(track_items)
+
+    return all_track_items
+
+
+def get_media_pool_items(track_items):
+    """Return media pool items for all track items"""
+
+    all_media_pool_items = []
+
+    for track in track_items:
+        for item in track:
+            media_item = item.GetMediaPoolItem()
+            all_media_pool_items.append(media_item)
+
+    return all_media_pool_items
+
+
+def get_source_metadata(media_pool_items):
+    """Return source metadata for each media pool item that passes configured criteria.
+
+    each media pool item must meet the following criteria:
+        - return valid clip properties (needed for encoding, internal track items don't have them)
+        - whitelisted extension (e.g, BRAW performs fine without proxies)
+        - whitelisted framerate (optional) FFmpeg should handle most
+
+    Args:
+        - media_pool_items: list of Resolve API media pool items
+
+    Returns:
+        - filtered_metadata: a list of dictionaries containing all valid media and its Resolve-given properties.
+
+    Raises:
+        - none
+
+    """
+
+    # Lists
+    filtered_metadata = []
+
+    # Prevent filtering same media item multiple times
+    # since multiple clips can have same source media
+    seen_item = []
+
+    for media_pool_item in media_pool_items:
+
+        # Check media pool item is valid, get UUID
+        try:
+
+            mpi_uuid = str(media_pool_item).split("UUID:")[1].split("]")[0]
+
+        except:
+
+            logger.debug(
+                f"[magenta]Media Pool Item: 'None'[/]\n"
+                + f"[yellow]Invalid item: has no UUID[/]\n",
+                extra={"markup": True},
+            )
+            continue
+
+        if str(media_pool_item) in seen_item:
+
+            logger.debug(
+                f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
+                + "[yellow]Already seen media pool item. Skipping...[/]\n",
+                extra={"markup": True},
+            )
+            continue
+
+        else:
+
+            # Add first encounter to list for comparison
+            seen_item.append(str(media_pool_item))
+
+        # Check media pool item has clip properties
+        if not hasattr(media_pool_item, "GetClipProperty()"):
+
+            logger.debug(
+                f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
+                + "[yellow]Media pool item has no clip properties. Skipping...[/]\n",
+                extra={"markup": True},
+            )
+            continue
+
+        # Get source metadata, path, extension
+        source_metadata = media_pool_item.GetClipProperty()
+        source_path = source_metadata["File Path"]
+        source_ext = os.path.splitext(source_path)[1].lower()
+
+        # Might still get media that has clip properties, but empty attributes
+        # Should only be internally generated media that returns this way
+        if source_path is "":
+
+            logger.debug(
+                f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
+                + f"clip properties did not return a valid filepath. Skipping...\n",
+                extra={"markup": True},
+            )
+            continue
+
+        # Filter extension
+        if source_ext not in config["filters"]["extension_whitelist"]:
+
+            logger.warning(
+                f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
+                + f"[yellow]Ignoring non-whitelisted file extension: '{source_ext}'[/]\n"
+                + f"from '{source_metadata['File Path']}'[/]\n",
+                extra={"markup": True},
+            )
+            continue
+
+        # Filter framerate
+        source_framerate = source_metadata["FPS"]
+        if config["filters"]["use_framerate_whitelist"] == True:
+            if source_framerate not in config["filters"]["framerate_whitelist"]:
+
+                logger.warning(
+                    f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
+                    + f"[yellow]Ignoring non-whitelisted framerate: '{source_framerate}'[/] "
+                    + f"from '{source_metadata['File Path']}' [/]\n",
+                    extra={"markup": True},
+                )
+                continue
+
+        # TODO: Add the Resolve API media pool item object so we can call it directly to link
+        # source_metadata.update({'media_pool_item_object':media_pool_item})
+        filtered_metadata.append(source_metadata)
+
+    print(f"[green]Total queuable clips on timeline: {len(filtered_metadata)}[/]")
+
+    return filtered_metadata
+
+
+def remove_duplicate_elements(elements):
+    """Ensure each element is unique so we don't process it multiple times."""
+
+    unique_sets = set(frozenset(d.items()) for d in elements)
+    unique_dict_list = [dict(s) for s in unique_sets]
+
+    print(f"[green]Unique queuable: {len(unique_dict_list)}[/]")
+
+    return unique_dict_list
 
 
 def get_newest_proxy_file(expected_path: str) -> Union[str, None]:
@@ -539,7 +674,7 @@ def handle_existing_unlinked(media_list: list) -> list:
     # If any unlinked, prompt for linking
     if len(existing_unlinked) > 0:
 
-        print(f"[yellow]Found {len(existing_unlinked)} unlinked[/]")
+        print(f"\n[yellow]Found {len(existing_unlinked)} unlinked[/]")
 
         answer = tkinter.messagebox.askyesnocancel(
             title="Found unlinked proxy media",
@@ -563,327 +698,35 @@ def handle_existing_unlinked(media_list: list) -> list:
     return media_list
 
 
-def handle_workers():
-    """Detect amount of online workers. Warn if no workers detected.
+def create_tasks(clips, **kwargs):
+    """Create metadata dictionaries to send as Celery tasks'"""
 
-    Args:
-        None
+    # Append project details to each clip
+    tasks = [dict(item, **kwargs) for item in clips]
+    return tasks
 
-    Returns:
-        None
 
-    Raises:
-        Unhandled exception if can't access Celery app.control
-    """
+def queue_job(tasks):
+    """Send tasks as a celery job 'group'"""
 
-    try:
+    # Wrap job object in task function
+    callable_tasks = [encode_proxy.s(x) for x in tasks]
+    logger.debug(f"callable_tasks: {callable_tasks}")
 
-        i = app.control.inspect().active_queues()
+    # Create job group to retrieve job results as batch
+    job = group(callable_tasks)
 
-    except Exception as e:
-        raise Exception("Unhandled exception: " + str(e))
+    # Queue job
+    queued_job = job.apply_async()
+    logger.info(f"[cyan]Queued job {queued_job}[/]")
 
-    if i is not None:
-        worker_count = len(i)
-
-        if worker_count > 0:
-            print(f"[cyan]{worker_count} workers online[/]")
-            return
-
-    else:
-        print(f"[yellow]No workers online![/]")
-        answer = tkinter.messagebox.askokcancel(
-            title="No workers online",
-            message=f"You haven't got any workers running!\n"
-            + f"Don't forget to start one after queuing :) ",
-        )
-
-        if answer is True:
-            return
-
-        else:
-            print("Exiting...")
-            helpers.app_exit(0)
-
-
-def handle_file_collisions(media_list: list) -> list:
-    """Increment output filenames if necessary to prevent file collisions"""
-
-    def _increment_file_if_exist(input_path: str, increment_num: int = 1) -> str:
-        """Increment the filename in a given filepath if it already exists
-
-        Calls itself recursively in case any incremented files already exist.
-        It should get the latest increment, i.e. 'filename_4.mp4'
-        if 'filename_3.mp4', 'filename_2.mp4', 'filename_1.mp4' and 'filename.mp4'
-        already exist.
-
-        Args:
-            input_path(str): full filepath to check.
-
-        Returns:
-            output_path(str): a modified output path, incremented.
-
-        Raises:
-            none
-        """
-
-        # Split filename, extension
-        file_name, file_ext = os.path.splitext(input_path)
-
-        # If file exists...
-        if os.path.exists(input_path):
-
-            # Check if already incremented
-            if file_name.endswith(f"_{increment_num}"):
-
-                # Increment again
-                increment_num += 1
-                _increment_file_if_exist(input_path, increment_num)
-
-            else:
-                # First increment
-                file_name = file_name + "_1"
-
-        return str(file_name + file_ext)
-
-    media_list_ = []
-    multiple_versions_count = 0
-
-    for item in media_list:
-
-        current_path = item.get("Expected Proxy Path")
-
-        # !ERROR: no expected path key
-        if not current_path:
-            logger.error(
-                f"Expected proxy path was missing for an item: {item}. Skipping..."
-            )
-            continue
-
-        final_path = _increment_file_if_exist(current_path)
-
-        # Increment multiple version flag
-        if final_path != current_path:
-            multiple_versions_count += 1
-
-        # !ERROR: Couldn't get final path
-        if not final_path:
-            logger.error(f"Couldn't get final path for an item: {item}. Skipping...")
-            continue
-
-    if multiple_versions_count:
-
-        logger.warning(
-            f"[yellow]{multiple_versions_count} files have outdated proxies! Recommend manually deleting when possible.",
-            extra={"markup": True},
-        )
-
-    return media_list_
-
-
-def handle_final_queuable(media_list: list):
-    """Final prompt to confirm number queueable or warn if none.
-
-    Args:
-        media_list: list of dictionary media items to check length for.
-
-    Returns:
-        None: No need to chain anything here.
-
-    Raises:
-        TypeError: if media_list is not a list
-    """
-
-    if len(media_list) == 0:
-        global SOME_ACTION_TAKEN
-        if not SOME_ACTION_TAKEN:
-            print(f"[red]No clips to queue.[/]")
-            tkinter.messagebox.showwarning(
-                "No new media to queue",
-                "Looks like all your media is already linked. \n"
-                + "If you want to re-rerender some proxies, unlink those existing proxies within Resolve and try again.",
-            )
-            sys.exit(1)
-        else:
-            print(f"[green]All clips linked now. No encoding necessary.[/]")
-            helpers.app_exit(0)
-
-    # Final Prompt confirm
-    if not confirm(
-        "Go time!", f"{len(media_list)} clip(s) are ready to queue!\n" + "Continue?"
-    ):
-        helpers.app_exit(0)
-    return
-
-
-def get_video_track_items(timeline):
-    """Get all video track items from the provided timeline"""
-
-    all_track_items = []
-
-    # Get count of tracks (index) in active timeline
-    track_len = timeline.GetTrackCount("video")
-    print(f"[green]Video track count: {track_len}[/]")
-
-    # For each track in timeline (using index)
-    for i in range(1, track_len + 1):
-
-        # Get items
-        track_items = timeline.GetItemListInTrack("video", i)
-
-        if track_items is None:
-            print(f"[yellow]No items found in track {i}[/]")
-            continue
-
-        else:
-            all_track_items.append(track_items)
-
-    return all_track_items
-
-
-def get_media_pool_items(track_items):
-    """Return media pool items for all track items"""
-
-    all_media_pool_items = []
-
-    for track in track_items:
-        for item in track:
-            media_item = item.GetMediaPoolItem()
-            all_media_pool_items.append(media_item)
-
-    return all_media_pool_items
-
-
-def get_source_metadata(media_pool_items):
-    """Return source metadata for each media pool item that passes configured criteria.
-
-    each media pool item must meet the following criteria:
-        - return valid clip properties (needed for encoding, internal track items don't have them)
-        - whitelisted extension (e.g, BRAW performs fine without proxies)
-        - whitelisted framerate (optional) FFmpeg should handle most
-
-    Args:
-        - media_pool_items: list of Resolve API media pool items
-
-    Returns:
-        - filtered_metadata: a list of dictionaries containing all valid media and its Resolve-given properties.
-
-    Raises:
-        - none
-
-    """
-
-    # Lists
-    filtered_metadata = []
-
-    # Prevent filtering same media item multiple times
-    # since multiple clips can have same source media
-    seen_item = []
-
-    for media_pool_item in media_pool_items:
-
-        # Check media pool item is valid, get UUID
-        try:
-
-            mpi_uuid = str(media_pool_item).split("UUID:")[1].split("]")[0]
-
-        except:
-
-            logger.debug(
-                f"[magenta]Media Pool Item: 'None'[/]\n"
-                + f"[yellow]Invalid item: has no UUID[/]\n",
-                extra={"markup": True},
-            )
-            continue
-
-        if str(media_pool_item) in seen_item:
-
-            logger.debug(
-                f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
-                + "[yellow]Already seen media pool item. Skipping...[/]\n",
-                extra={"markup": True},
-            )
-            continue
-
-        else:
-
-            # Add first encounter to list for comparison
-            seen_item.append(str(media_pool_item))
-
-        # Check media pool item has clip properties
-        if not hasattr(media_pool_item, "GetClipProperty()"):
-
-            logger.debug(
-                f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
-                + "[yellow]Media pool item has no clip properties. Skipping...[/]\n",
-                extra={"markup": True},
-            )
-            continue
-
-        # Get source metadata, path, extension
-        source_metadata = media_pool_item.GetClipProperty()
-        source_path = source_metadata["File Path"]
-        source_ext = os.path.splitext(source_path)[1].lower()
-
-        # Might still get media that has clip properties, but empty attributes
-        # Should only be internally generated media that returns this way
-        if source_path is "":
-
-            logger.debug(
-                f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
-                + f"clip properties did not return a valid filepath. Skipping...\n",
-                extra={"markup": True},
-            )
-            continue
-
-        # Filter extension
-        if source_ext not in config["filters"]["extension_whitelist"]:
-
-            logger.warning(
-                f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
-                + f"[yellow]Ignoring non-whitelisted file extension: '{source_ext}'[/]\n"
-                + f"from '{source_metadata['File Path']}'[/]\n",
-                extra={"markup": True},
-            )
-            continue
-
-        # Filter framerate
-        source_framerate = source_metadata["FPS"]
-        if config["filters"]["use_framerate_whitelist"] == True:
-            if source_framerate not in config["filters"]["framerate_whitelist"]:
-
-                logger.warning(
-                    f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
-                    + f"[yellow]Ignoring non-whitelisted framerate: '{source_framerate}'[/] "
-                    + f"from '{source_metadata['File Path']}' [/]\n",
-                    extra={"markup": True},
-                )
-                continue
-
-        # TODO: Add the Resolve API media pool item object so we can call it directly to link
-        # source_metadata.update({'media_pool_item_object':media_pool_item})
-        filtered_metadata.append(source_metadata)
-
-    print(f"[green]Total queuable clips on timeline: {len(filtered_metadata)}[/]")
-
-    return filtered_metadata
-
-
-def remove_duplicate_elements(elements):
-    """Ensure each element is unique so we don't process it multiple times."""
-
-    unique_sets = set(frozenset(d.items()) for d in elements)
-    unique_dict_list = [dict(s) for s in unique_sets]
-
-    print(f"[green]Unique queuable: {len(unique_dict_list)}[/]")
-
-    return unique_dict_list
+    return queued_job
 
 
 def wait_encode(job):
     """Block until all queued jobs finish, notify results."""
 
-    helpers.toast("Started encoding job")
+    helpers.notify(f"Started encoding job '{resolve_job_name}'")
     print(f"[yellow]Waiting for job to finish. Feel free to minimize.[/]")
 
     result = job.join()
@@ -895,73 +738,220 @@ def wait_encode(job):
             + f"Check flower dashboard at address: {config['celery_settings']['flower_url']}."
         )
         print("[red]fail_message[/]")
-        helpers.toast(fail_message)
+        helpers.notify(fail_message)
 
     # Notify complete
-    complete_message = f"Completed encoding {job.completed_count()} videos."
-    print("[green]complete_message[/]")
+    complete_message = f"Completed encoding {job.completed_count()} proxies."
+    print(f"[green]{complete_message}[/]")
     print("\n")
 
-    helpers.toast(complete_message)
+    helpers.notify(complete_message)
 
     return result
+
+
+def postencode_link(media_list):
+    """Iterate through media mutated during script call, attempt to link the source media"""
+
+    print(f"[cyan]Linking {len(media_list)} proxies.[/]")
+
+    link_success = []
+    link_fail = []
+
+    # Iterate through all available proxies
+    for media in media_list:
+        proxy = media.get("Unlinked Proxy", None)
+        if proxy == None:
+            continue
+
+        # Check they exist
+        if not os.path.exists(proxy):
+            tkinter.messagebox.showerror(
+                title="Error linking proxy",
+                message=f"Proxy media not found at '{proxy}'",
+            )
+            print(f"[red]Error linking proxy: Proxy media not found at '{proxy}'")
+            continue
+
+        else:
+            media.update({"Unlinked Proxy": None})  # Set existing to none once linked
+
+        media.update({"Proxy": "1280x720"})
+
+        # Actually link proxies
+        media_pool_item_obj = media["media_pool_item_obj"]
+        if media_pool_item_obj.LinkProxyMedia(proxy):
+
+            # TODO get this working!
+            print(f"[green]Linked {media['File Name']}[/]")
+            link_success.append(proxy)
+
+        else:
+            print(f"[red]Failed link.\n[/]")
+            link_fail.append(proxy)
+
+    if link_success:
+        print(f"[green]Succeeeded linking: {len(link_success)}[/]")
+
+    if link_fail:
+        print(f"[red]Failed linking: {len(link_success)}[/]")
+
+    # link_proxies(existing_proxies)
+
+    print("\n")
+
+    pre_len = len(media_list)
+    media_list = [x for x in media_list if "Unlinked Proxy" not in x]
+    post_len = len(media_list)
+    print(f"{pre_len - post_len} proxy(s) linked, will not be queued.")
+    print(f"[magenta]Queueing {post_len}[/]")
+    print("\n")
+
+    return media_list
+
+
+def search_and_link():
+    """Search through all existing media in active project and
+    attempt to find linkable proxies in expected directory
+    """
+
+    print("Not yet implemented!")
+    print("Run the manual link program in 'Misc Tools' on the Streamdeck")
+    sys.exit(1)
+
+    linked = []
+    # failed = []
+
+    # TODO: Get this working. R
+
+    timelines = get_resolve_timelines()
+    if not timelines:
+        raise Exception("No timelines exist in current project.")
+
+    # Get clips from all timelines.
+    for timeline in timelines:
+
+        track_items = get_video_track_items(timeline)
+        media_pool_items = get_media_pool_items(track_items)
+        source_metadata = get_source_metadata(media_pool_items)
+        source_metadata = remove_duplicate_elements(source_metadata)
+
+    #     clips = timeline_data['clips']
+    #     unlinked_source = [x for x in clips if x not in linked]
+
+    #     if len(unlinked_source) == 0:
+    #         if config['loglevel'] == "DEBUG": print(f"[yellow]No more clips to link in {timeline_data['name']}[/]")
+    #         continue
+    #     else:
+    #         print(f"[cyan]Searching timeline {timeline_data['name']}[/]")
+
+    #     unlinked_proxies = [x for x in proxy_files if x not in linked]
+    #     print(f"Unlinked source count: {len(unlinked_source)}")
+    #     print(f"Unlinked proxies count: {len(unlinked_proxies)}")
+
+    #     if len(unlinked_proxies) == 0:
+    #         print(f"[yellow]No more proxies to link in {timeline_data['name']}[/]")
+    #         return
+
+    #     linked_, failed_ = (__link_proxies(proxy_files, clips))
+
+    #     linked.extend(linked_)
+    #     failed.extend(failed_)
+
+    #     if config['loglevel'] == "DEBUG": print(f"Linked: {linked}, Failed: {failed}")
+
+    # if len(failed) > 0:
+    #     print(f"[red]The following files matched, but couldn't be linked. Suggest rerendering them:[/]")
+    #     [print(os.path.basename(x)) for x in failed]
+    #     print("\n")
+
+    return linked
+
+
+def legacy_link(media_list):
+    """This is sooooo dank. But it's the only way that works atm."""
+
+    print(f"[cyan]Linking {len(media_list)} proxies.[/]")
+    existing_proxies = []
+
+    for media in media_list:
+        proxy = media.get("Unlinked Proxy", None)
+        if proxy == None:
+            continue
+
+        existing_proxies.append(proxy)
+
+        if not os.path.exists(proxy):
+            tkinter.messagebox.showerror(
+                title="Error linking proxy",
+                message=f"Proxy media not found at '{proxy}'",
+            )
+            print(f"[red]Error linking proxy: Proxy media not found at '{proxy}'[/]")
+            continue
+
+        else:
+            media.update({"Unlinked Proxy": None})  # Set existing to none once linked
+
+        media.update({"Proxy": "1280x720"})
+
+    link_proxies(existing_proxies)
+
+    print("\n")
+
+    pre_len = len(media_list)
+    media_list = [x for x in media_list if "Unlinked Proxy" not in x]
+    post_len = len(media_list)
+    print(f"{pre_len - post_len} proxy(s) linked, will not be queued.")
+    print(f"[magenta]Queueing {post_len}[/]")
+    print("\n")
+
+    return media_list
 
 
 def main():
     """Main function"""
 
+    print(f"[cyan]Working on: {resolve_job_name}[/]")
+    handle_workers()
+    print("\n")
+
+    # Lets make it happen!
+    track_items = get_video_track_items(timeline)
+    media_pool_items = get_media_pool_items(track_items)
+    source_metadata = get_source_metadata(media_pool_items)
+    # TODO: Remove. Not necessary anymore
+    # source_metadata = remove_duplicate_elements(source_metadata)
+
+    print("\n")
+
+    clips = source_metadata
+
+    # Prompt user for intervention if necessary
+    clips = handle_already_linked(clips, ["Offline", "None"])
+    clips = handle_offline_proxies(clips)
+    clips = handle_existing_unlinked(clips)
+
+    handle_final_queuable(clips)
+
+    tasks = create_tasks(
+        clips,
+        project=project.GetName(),
+        timeline=timeline.GetName(),
+    )
+
+    job = queue_job(tasks)
+    wait_encode(job)
+
+    # ATTEMPT POST ENCODE LINK
     try:
 
-        print(f"[cyan]Working on: {resolve_job_name}[/]")
-        handle_workers()
-        print("\n")
+        clips = legacy_link(clips)
+        helpers.app_exit(0)
 
-        # Lets make it happen!
-        track_items = get_video_track_items(timeline)
-        media_pool_items = get_media_pool_items(track_items)
-        source_metadata = get_source_metadata(media_pool_items)
-        # TODO: Remove. Not necessary anymore
-        # source_metadata = remove_duplicate_elements(source_metadata)
+    except:
 
-        print("\n")
-
-        clips = source_metadata
-
-        # Prompt user for intervention if necessary
-        clips = handle_already_linked(clips, ["Offline", "None"])
-        clips = handle_offline_proxies(clips)
-        clips = handle_existing_unlinked(clips)
-
-        handle_final_queuable(clips)
-
-        tasks = create_tasks(
-            clips,
-            project=project.GetName(),
-            timeline=timeline.GetName(),
-        )
-
-        job = queue_job(tasks)
-        wait_encode(job)
-
-        # ATTEMPT POST ENCODE LINK
-        try:
-
-            clips = legacy_link(clips)
-            helpers.app_exit(0)
-
-        except:
-
-            print("[red]Couldn't link clips. Link manually...[/]")
-            helpers.app_exit(1, -1)
-
-    except Exception as e:
-        tb = traceback.format_exc()
-        print(tb)
-
-        tkinter.messagebox.showerror("ERROR", tb)
-        print("ERROR - " + str(e))
-
-        helpers.app_exit(1)
+        print("[red]Couldn't link clips. Link manually...[/]")
+        helpers.app_exit(1, -1)
 
 
 if __name__ == "__main__":
