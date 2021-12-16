@@ -6,13 +6,12 @@ paths:
 
 proxy_settings:
   vid_codec: dnxhd
-  h_res: 1280 
-  v_res: 720
+  h_res: "1280" 
+  v_res: "720"
   vid_profile: dnxhr_sq 
   pix_fmt: yuv422p
-  audio:
-    audio_codec: pcm_s16le
-    audio_samplerate: 48000
+  audio_codec: pcm_s16le
+  audio_samplerate: "48000"
   misc_args: [-hide_banner, -stats, -loglevel error]
   ext: .mxf
 
@@ -30,6 +29,7 @@ celery_settings:
   result_backend: redis://192.168.1.19:6379/0
 
   result_expires: 60 # 10 mins
+  worker_loglevel: INFO
   worker_concurrency: 1
   worker_prefetch_multiplier: 1
   worker_max_tasks_per_child: 1

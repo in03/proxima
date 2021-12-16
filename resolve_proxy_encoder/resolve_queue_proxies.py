@@ -24,7 +24,8 @@ from resolve_proxy_encoder.worker.tasks.standard.tasks import encode_proxy
 
 
 # install_rich_tracebacks(show_locals=True)
-config = app_settings.get_user_settings()
+settings = app_settings.Settings
+
 logger = helpers.get_rich_logger(config["loglevel"])
 
 # Get global variables
