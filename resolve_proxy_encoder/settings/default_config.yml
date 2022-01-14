@@ -17,6 +17,7 @@ proxy_settings:
 
 filters:
   # Necessary to prevent queueing internally generated media
+  use_framerate_whitelist: true
   extension_whitelist : [.mov, .mp4, .mxf, .avi]
   use_framerate_whitelist: false
   framerate_whitelist : [24, 25, 30, 50, 60]

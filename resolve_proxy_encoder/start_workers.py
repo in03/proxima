@@ -13,10 +13,14 @@ import time
 from colorama import Fore, init
 from rich.traceback import install
 from resolve_proxy_encoder.helpers import get_rich_logger
-from resolve_proxy_encoder.settings.app_settings import get_user_settings
+from resolve_proxy_encoder.settings import app_settings
 
 install(show_locals=True)
-config = get_user_settings()
+settings = app_settings.Settings()
+config = settings.get_user_settings()
+
+print(config.get("loglevel"))
+
 logger = get_rich_logger(config["loglevel"])
 
 # Make sure the module path in the command below is up to date!

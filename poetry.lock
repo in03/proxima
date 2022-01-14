@@ -229,6 +229,14 @@ pyyaml = "*"
 test = ["pathlib"]
 
 [[package]]
+name = "contextlib2"
+version = "21.6.0"
+description = "Backports and enhancements for the contextlib module"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
 name = "contextvars"
 version = "2.4"
 description = "PEP 567 Backport"
@@ -783,6 +791,17 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
+name = "schema"
+version = "0.7.5"
+description = "Simple data validation library"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+contextlib2 = ">=0.5.5"
+
+[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -924,7 +943,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6.2,<3.7.*"
-content-hash = "a5371710a3c8bb50a803ab223b14fbef3b2bc8f6fcbfd62bd0643e040b81be21"
+content-hash = "8eaac8656f10d0931cc3ca16e39b3d929d9a720032f360ef68717bbc666716f9"
 
 [metadata.files]
 aiocontextvars = [
@@ -990,6 +1009,10 @@ commonmark = [
 confuse = [
     {file = "confuse-1.7.0-py2.py3-none-any.whl", hash = "sha256:f002a733b3a4c16f73a094fcca3c80715b66e0ec08000983dc755267e2bd069f"},
     {file = "confuse-1.7.0.tar.gz", hash = "sha256:c9fe8474516a62397f8e52fcf89547bb2f2737b1a4a6f6dec11a286f0b3a7401"},
+]
+contextlib2 = [
+    {file = "contextlib2-21.6.0-py2.py3-none-any.whl", hash = "sha256:3fbdb64466afd23abaf6c977627b75b6139a5a3e8ce38405c5b413aed7a0471f"},
+    {file = "contextlib2-21.6.0.tar.gz", hash = "sha256:ab1e2bfe1d01d968e1b7e8d9023bc51ef3509bba217bb730cee3827e1ee82869"},
 ]
 contextvars = [
     {file = "contextvars-2.4.tar.gz", hash = "sha256:f38c908aaa59c14335eeea12abea5f443646216c4e29380d7bf34d2018e2c39e"},
@@ -1346,6 +1369,10 @@ rich = [
     {file = "ruamel.yaml.clib-0.2.6-cp39-cp39-win32.whl", hash = "sha256:3fb9575a5acd13031c57a62cc7823e5d2ff8bc3835ba4d94b921b4e6ee664104"},
     {file = "ruamel.yaml.clib-0.2.6-cp39-cp39-win_amd64.whl", hash = "sha256:825d5fccef6da42f3c8eccd4281af399f21c02b32d98e113dbc631ea6a6ecbc7"},
     {file = "ruamel.yaml.clib-0.2.6.tar.gz", hash = "sha256:4ff604ce439abb20794f05613c374759ce10e3595d1867764dd1ae675b85acbd"},
+]
+schema = [
+    {file = "schema-0.7.5-py2.py3-none-any.whl", hash = "sha256:f3ffdeeada09ec34bf40d7d79996d9f7175db93b7a5065de0faa7f41083c1e6c"},
+    {file = "schema-0.7.5.tar.gz", hash = "sha256:f06717112c61895cabc4707752b88716e8420a8819d71404501e114f91043197"},
 ]
 six = [
     {file = "six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254"},

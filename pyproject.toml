@@ -20,6 +20,7 @@ notify-py = "^0.3.3"
 pydantic = "^1.8.2"
 "ruamel.yaml" = "^0.17.17"
 confuse = "^1.7.0"
+schema = "^0.7.5"
 
 [tool.poetry.dev-dependencies]
 mkdocs-material = "^7.3.6"

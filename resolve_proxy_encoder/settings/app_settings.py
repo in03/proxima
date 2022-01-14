@@ -1,6 +1,5 @@
 #!/usr/bin/env python3.6
 
-import sys
 import os
 import shutil
 import webbrowser
@@ -13,14 +12,13 @@ from resolve_proxy_encoder.helpers import (
     get_rich_logger,
     install_rich_tracebacks,
 )
+from schema import SchemaError
 
-from confuse import Configuration
+from settings import settings_schema
 
 # # Hardcoded because we haven't loaded user settings yet
 logger = get_rich_logger("WARNING")
 install_rich_tracebacks()
-
-config = Configuration("resolve_proxy_encoder", __name__)
 
 DEFAULT_SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "default_settings.yml")
 USER_SETTINGS_FILE = os.path.join(
@@ -29,11 +27,15 @@ USER_SETTINGS_FILE = os.path.join(
 
 
 class Settings:
-    def __init__(self, DEFAULT_SETTINGS_FILE, USER_SETTINGS_FILE):
+    def __init__(
+        self,
+        default_settings_file=DEFAULT_SETTINGS_FILE,
+        user_settings_file=USER_SETTINGS_FILE,
+    ):
 
         self.yaml = YAML()
-        self.default_file = DEFAULT_SETTINGS_FILE
-        self.user_file = USER_SETTINGS_FILE
+        self.default_file = default_settings_file
+        self.user_file = user_settings_file
 
     def get_default_settings(self):
         """Load default settings from yaml"""
@@ -81,6 +83,18 @@ class Settings:
                 webbrowser.open(self.user_file)  # Technically unsupported method
 
             app_exit(0)
+
+    # TODO: Get this working! Needs to integrate with _ensure_keys
+    def _validate_schema(self):
+        """Validate user settings against schema"""
+
+        logger.debug(f"Validating user settings against schema")
+
+        try:
+            settings_schema.validate(self.get_user_settings())
+        except SchemaError as e:
+            typer.echo(f"Error validating settings: {e}")
+            app_exit(1)
 
     def _ensure_keys(self):
         """Copy defaults for any missing keys if they don't exist"""
