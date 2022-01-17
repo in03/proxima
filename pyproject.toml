@@ -18,6 +18,8 @@ redis = "^3.5.3"
 icecream = "^2.1.1"
 notify-py = "^0.3.3"
 pydantic = "^1.8.2"
+better-ffmpeg-progress = "^2.0.3"
+pymediainfo = "^5.1.0"
 
 [tool.poetry.dev-dependencies]
 mkdocs-material = "^7.3.6"
