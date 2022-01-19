@@ -6,15 +6,17 @@ import webbrowser
 from pathlib import Path
 
 import typer
-from ruamel.yaml import YAML
+from attrdict import AttrDict
 from resolve_proxy_encoder.helpers import (
     app_exit,
     get_rich_logger,
     install_rich_tracebacks,
 )
+from ruamel.yaml import YAML
+
 from schema import SchemaError
 
-from settings import settings_schema
+from .schema import settings_schema
 
 # # Hardcoded because we haven't loaded user settings yet
 logger = get_rich_logger("WARNING")
@@ -37,7 +39,14 @@ class Settings:
         self.default_file = default_settings_file
         self.user_file = user_settings_file
 
-    def get_default_settings(self):
+        self.default_settings = self._get_default_settings()
+        self.user_settings = self._get_user_settings()
+
+        self._ensure_file()
+        # self._ensure_keys()
+        self._validate_schema()
+
+    def _get_default_settings(self):
         """Load default settings from yaml"""
 
         logger.debug(f"Loading default settings from {self.default_file}")
@@ -45,12 +54,12 @@ class Settings:
         with open(os.path.join(self.default_file)) as file:
             return self.yaml.load(file)
 
-    def get_user_settings(self):
+    def _get_user_settings(self):
         """Load user settings from yaml"""
 
         logger.debug(f"Loading user settings from {self.user_file}")
 
-        with open(os.path.join(self.user_file)) as file:
+        with open(self.user_file, "r") as file:
             return self.yaml.load(file)
 
     def _ensure_file(self):
@@ -84,42 +93,53 @@ class Settings:
 
             app_exit(0)
 
-    # TODO: Get this working! Needs to integrate with _ensure_keys
+    def _ensure_keys(self):
+        """Copy defaults for any missing keys if they don't exist"""
+
+        logger.debug(f"Ensuring all settings keys exist in {self.user_file}")
+
+        # Add missing keys
+
+        # TODO: This won't work how I want it to...
+        # I need to insert the missing keys into the user settings file
+        # WHERE THEY ARE MISSING. This will append them to the end.
+        # Instead, load the user settings to dict, write default to file,
+        # update the defaults with the user values.
+        # Warn on missing keys
+
+        with open(self.user_file, "r+") as file_:
+            user_settings = self.yaml.load(file_)
+
+            needs_write = False
+            for key, value in self.default_settings.items():
+
+                print(key)
+                if key not in user_settings:
+
+                    logger.warning(
+                        f"Adding missing key '{key}' to user settings with value '{value}'"
+                    )
+                    user_settings[key] = value
+
+                self.yaml.dump(user_settings, file_)
+
+        # Warn unsupported keys
+        for key in user_settings:
+            if key not in self.default_settings:
+                logger.warning(f"Found unused key '{key}' in user settings")
+
     def _validate_schema(self):
         """Validate user settings against schema"""
 
         logger.debug(f"Validating user settings against schema")
 
         try:
-            settings_schema.validate(self.get_user_settings())
+
+            settings_schema.validate(self.user_settings)
+
         except SchemaError as e:
-            typer.echo(f"Error validating settings: {e}")
+
+            logger.error(f"Error validating settings: {e}")
             app_exit(1)
 
-    def _ensure_keys(self):
-        """Copy defaults for any missing keys if they don't exist"""
-
-        yaml = YAML()
-
-        user_settings = self.get_user_settings()
-        default_settings = self.get_default_settings()
-
-        logger.debug(f"Ensuring all settings keys exist in {self.user_file}")
-
-        # Add missing keys
-
-        with open(self.user_file, "w") as file:
-            user_settings = yaml.load(file)
-
-            for key in default_settings:
-                if key not in user_settings:
-
-                    logger.warning(f"Adding missing key '{key}' to user settings")
-                    user_settings[key] = default_settings[key]
-
-            yaml.dump(user_settings, file)
-
-        # Warn unsupported keys
-        for key in user_settings:
-            if key not in default_settings:
-                logger.warning(f"Found unsupported key '{key}' in user settings")
+        logger.info("Settings validated successfully")

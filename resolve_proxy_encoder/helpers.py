@@ -33,7 +33,7 @@ def get_rich_logger(loglevel: Union[int, str]):
     return logger
 
 
-def install_rich_tracebacks(show_locals=True):
+def install_rich_tracebacks(show_locals=False):
     """Install rich tracebacks"""
     from rich.traceback import install
 
