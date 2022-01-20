@@ -6,11 +6,12 @@ import os
 
 from ffmpy import FFmpeg, FFRuntimeError
 from resolve_proxy_encoder.helpers import get_rich_logger, install_rich_tracebacks
-from resolve_proxy_encoder.settings import app_settings
+from resolve_proxy_encoder.settings.app_settings import Settings
 from resolve_proxy_encoder.worker.celery import app
 from resolve_proxy_encoder.worker.helpers import check_wsl, get_wsl_path
 
-config = app_settings.get_user_settings()
+settings = Settings()
+config = settings.user_settings
 logger = get_rich_logger(config["celery_settings"]["worker_loglevel"])
 # install_rich_tracebacks()
 

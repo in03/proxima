@@ -2,7 +2,6 @@
 
 # Launch multiple workers
 
-import logging
 import multiprocessing
 import os
 import platform
@@ -17,8 +16,7 @@ from resolve_proxy_encoder.settings.app_settings import Settings
 install_rich_tracebacks()
 settings = Settings()
 config = settings.user_settings
-
-logger = get_rich_logger(config["loglevel"])
+logger = get_rich_logger(loglevel=config["celery_settings"]["worker_loglevel"])
 
 # Make sure the module path in the command below is up to date!
 START_WIN_WORKER = """celery -A resolve_proxy_encoder.worker worker -l INFO -P solo"""
@@ -84,7 +82,8 @@ def launch_workers(workers_to_launch: int):
         else:
             launch_cmd = "start " + launch_cmd
 
-        logging.info(launch_cmd)
+        logger.info(launch_cmd)
+        print(launch_cmd)
 
         process = subprocess.Popen(
             launch_cmd,
@@ -106,9 +105,6 @@ def main(workers: int = 0):
 
     # Coloured term output
     init(autoreset=True)
-
-    # Set loglevel
-    logging.basicConfig(level=logging.WARNING)
 
     os_ = platform.system()
     cpu_cores = multiprocessing.cpu_count()
