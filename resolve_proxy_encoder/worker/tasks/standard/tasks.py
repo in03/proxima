@@ -4,7 +4,8 @@ from __future__ import absolute_import
 
 import os
 
-from ffmpy import FFmpeg, FFRuntimeError
+from better_ffmpeg_progress import FfmpegProcess
+from pymediainfo import MediaInfo
 from resolve_proxy_encoder.helpers import get_rich_logger, install_rich_tracebacks
 from resolve_proxy_encoder.settings.app_settings import Settings
 from resolve_proxy_encoder.worker.celery import app
@@ -107,37 +108,77 @@ def encode_proxy(job):
 
         return flip
 
-    ff = FFmpeg(
-        global_options=[
-            "-y",  # Never prompt!
-            *misc_args,  # User global settings
-        ],
-        inputs={source_file: None},
-        outputs={
-            output_file: [
-                "-c:v",
-                vid_codec,
-                "-profile:v",
-                vid_profile,
-                "-vsync",
-                "-1",  # Necessary to match VFR
-                "-vf",
-                f"scale={h_res}:{v_res},{get_orientation(job)}" f"format={pix_fmt}",
-                "-c:a",
-                audio_codec,
-                "-ar",
-                audio_samplerate,
-                "-copyts",  # Timecode MUST match source
-            ]
-        },
+    def get_timecode(job):
+        """Get timecode using MediaInfo"""
+
+        file_path = job["File Path"]
+        media_info = MediaInfo.parse(file_path)
+
+        data_track_exists = False
+        for track in media_info.tracks:
+
+            if track.track_type == "Other":
+
+                data_track_exists = True
+                if track.time_code_of_first_frame:
+
+                    logger.info("Using embedded timecode.")
+                    return str(track.time_code_of_first_frame)
+
+        if data_track_exists:
+            logger.warning("Couldn't get timecode from media's data track.")
+        else:
+            logger.info(
+                "No embedded timecode found in media file. Using default timecode."
+            )
+        return "00:00:00:00"
+
+    ffmpeg_command = [
+        "ffmpeg",
+        "-y",  # Never prompt!
+        *misc_args,  # User global settings
+        "-i",
+        source_file,
+        "-c:v",
+        vid_codec,
+        "-profile:v",
+        vid_profile,
+        "-vsync",
+        "-1",  # Necessary to match VFR
+        "-vf",
+        f"scale={h_res}:{v_res},{get_orientation(job)}" f"format={pix_fmt}",
+        "-c:a",
+        audio_codec,
+        "-ar",
+        audio_samplerate,
+        "-timecode",
+        get_timecode(job),
+        output_file,
+    ]
+
+    logger.info(f"FFmpeg command:\n{' '.join(ffmpeg_command)}")
+
+    process = FfmpegProcess(
+        command=[*ffmpeg_command], ffmpeg_loglevel=proxy_settings["ffmpeg_loglevel"]
     )
-    logger.info(ff.cmd)
 
+    # Per-file encode log location
+    encode_log_dir = os.path.join(
+        os.path.dirname(output_file),
+        "encoding_logs",
+    )
+
+    # Make logs subfolder
+    os.makedirs(encode_log_dir, exist_ok=True)
+    encode_log_file = os.path.join(
+        encode_log_dir, os.path.splitext(os.path.basename(output_file))[0] + ".txt"
+    )
+
+    # Run encode job
     try:
-
-        ff.run()
+        process.run(ffmpeg_output_file=encode_log_file)
 
     except Exception as e:
-        raise Exception(f"[red] :warning: Couldn't encode proxy.[/]\n{e}")
+        logger.exception(f"[red] :warning: Couldn't encode proxy.[/]\n{e}")
 
     return f"{source_file} encoded successfully"

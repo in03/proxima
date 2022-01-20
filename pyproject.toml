@@ -23,6 +23,8 @@ confuse = "^1.7.0"
 schema = "^0.7.5"
 attrdict = "^2.0.1"
 deepdiff = "^5.7.0"
+better-ffmpeg-progress = "^2.0.3"
+pymediainfo = "^5.1.0"
 
 [tool.poetry.dev-dependencies]
 mkdocs-material = "^7.3.6"

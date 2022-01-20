@@ -1,5 +1,4 @@
 ---  # Resolve Proxy Encoder User configuration file
-
 loglevel: WARNING
 
 paths:
