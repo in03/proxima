@@ -1,3 +1,4 @@
+---  # Resolve Proxy Encoder User configuration file
 loglevel: WARNING
 
 paths:
@@ -5,7 +6,7 @@ paths:
   proxy_path_root: R:/ProxyMedia
 
 proxy_settings:
-  ffmpeg_loglevel: error # Set to "verbose" to see FFMPEG output
+  ffmpeg_loglevel: error # "quiet", "panic", "fatal", "error", "warning", "info", "verbose", "debug"
   vid_codec: dnxhd
   h_res: "1280" 
   v_res: "720"
@@ -18,19 +19,19 @@ proxy_settings:
 
 filters:
   # Necessary to prevent queueing internally generated media
+  use_extension_whitelist: true
   extension_whitelist : [.mov, .mp4, .mxf, .avi]
   use_framerate_whitelist: false
   framerate_whitelist : [24, 25, 30, 50, 60]
 
 celery_settings:
-
   host_address: 192.168.1.19
   broker_url:  redis://192.168.1.19:6379/0
   flower_url: http://192.168.1.19:5555
   result_backend: redis://192.168.1.19:6379/0
 
   result_expires: 60 # 10 mins
-  
+
   worker_loglevel: WARNING
   worker_concurrency: 1
   worker_prefetch_multiplier: 1

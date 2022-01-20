@@ -10,20 +10,18 @@ from rich import print
 from rich.prompt import Confirm
 
 from resolve_proxy_encoder.helpers import get_rich_logger
-from resolve_proxy_encoder.settings import app_settings
+from resolve_proxy_encoder.settings.app_settings import Settings
 
 # Print CLI title
 fig = Figlet()
 text = fig.renderText("Resolve Proxy Encoder")
 print(f"[green]{text}[/]")
 
-config = app_settings.get_user_settings()
+settings = Settings()
+config = settings.user_settings
+
 logger = get_rich_logger(config["loglevel"])
 app = typer.Typer()
-
-# default_loglevel = app_settings.get_defaults()["loglevel"]
-# if config.get("loglevel") != default_loglevel:
-#     print(f"Custom loglevel set:[/]'{config.get('loglevel')}'\n")
 
 
 @app.command()

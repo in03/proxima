@@ -5,13 +5,11 @@ import sys
 import time
 from typing import Union
 
-from resolve_proxy_encoder import python_get_resolve
-from resolve_proxy_encoder.settings import app_settings
+from notifypy import Notify
 from rich.logging import RichHandler
 from rich.prompt import Prompt
-from notifypy import Notify
 
-config = app_settings.get_user_settings()
+from resolve_proxy_encoder import python_get_resolve
 
 
 def get_rich_logger(loglevel: Union[int, str]):
@@ -35,14 +33,14 @@ def get_rich_logger(loglevel: Union[int, str]):
     return logger
 
 
-def install_rich_tracebacks(show_locals=True):
+def install_rich_tracebacks(show_locals=False):
     """Install rich tracebacks"""
     from rich.traceback import install
 
     install(show_locals=show_locals)
 
 
-def app_exit(level: int = 0, timeout: int = 5, cleanup_funcs: list = None):
+def app_exit(level: int = 0, timeout: int = -1, cleanup_funcs: list = None):
 
     """
     Exit function to allow time to
@@ -51,18 +49,11 @@ def app_exit(level: int = 0, timeout: int = 5, cleanup_funcs: list = None):
     Provide a list of functions to call on cleanup if necessary.
     """
 
-    logger = get_rich_logger(config["loglevel"])
-
     # Run any cleanup functions
     if cleanup_funcs:
 
-        logger.debug(f"Running cleanup funcs: {cleanup_funcs}")
-
         for x in cleanup_funcs:
-
             if x is not None:
-
-                logger.debug(f"Running: {x}")
                 x()
 
     if timeout < 0:
@@ -97,7 +88,7 @@ def notify(message: str, title: str = "Resolve Proxy Encoder"):
 
     """
 
-    logger = get_rich_logger(config["loglevel"])
+    logger = get_rich_logger("WARNING")
 
     try:
 
@@ -116,7 +107,7 @@ def notify(message: str, title: str = "Resolve Proxy Encoder"):
 def get_resolve_objects():
     """Return necessary Resolve objects with error handling"""
 
-    logger = get_rich_logger(config["loglevel"])
+    logger = get_rich_logger("WARNING")
 
     try:
 

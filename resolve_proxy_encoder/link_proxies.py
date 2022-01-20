@@ -9,9 +9,10 @@ from tkinter import filedialog
 
 from colorama import Fore, init
 from resolve_proxy_encoder import helpers
-from resolve_proxy_encoder.settings import app_settings
+from resolve_proxy_encoder.settings.app_settings import Settings
 
-config = app_settings.get_user_settings()
+settings = Settings()
+config = settings.user_settings
 
 
 # Get global variables

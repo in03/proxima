@@ -18,13 +18,15 @@ from rich import print
 
 from resolve_proxy_encoder import helpers
 from resolve_proxy_encoder.link_proxies import link_proxies
-from resolve_proxy_encoder.settings import app_settings
+from resolve_proxy_encoder.settings.app_settings import Settings
 from resolve_proxy_encoder.worker.celery import app
 from resolve_proxy_encoder.worker.tasks.standard.tasks import encode_proxy
 
 
 # install_rich_tracebacks(show_locals=True)
-config = app_settings.get_user_settings()
+settings = Settings()
+config = settings.user_settings
+
 logger = helpers.get_rich_logger(config["loglevel"])
 
 # Get global variables
