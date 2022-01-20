@@ -1,5 +1,5 @@
 import os
-from schema import Schema, And, Optional, Use
+from schema import Schema, And, Optional
 
 
 settings_schema = Schema(
@@ -21,12 +21,12 @@ settings_schema = Schema(
                 "debug",
             ],
             "vid_codec": str,
-            "h_res": Use(str),
-            "v_res": Use(str),
+            "h_res": str,
+            "v_res": str,
             "vid_profile": str,
             "pix_fmt": str,
             "audio_codec": str,
-            "audio_samplerate": Use(str),
+            "audio_samplerate": str,
             Optional("misc_args"): list,
             "ext": And(str, lambda s: s.startswith(".")),
         },

@@ -23,10 +23,6 @@ config = settings.user_settings
 logger = get_rich_logger(config["loglevel"])
 app = typer.Typer()
 
-# default_loglevel = app_settings.get_defaults()["loglevel"]
-# if config.get("loglevel") != default_loglevel:
-#     print(f"Custom loglevel set:[/]'{config.get('loglevel')}'\n")
-
 
 @app.command()
 def queue():

@@ -267,6 +267,20 @@ optional = false
 python-versions = ">=3.6, <3.7"
 
 [[package]]
+name = "deepdiff"
+version = "5.7.0"
+description = "Deep Difference and Search of any Python object/data."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+ordered-set = "4.0.2"
+
+[package.extras]
+cli = ["click (==8.0.3)", "pyyaml (==5.4.1)", "toml (==0.10.2)", "clevercsv (==0.7.1)"]
+
+[[package]]
 name = "distlib"
 version = "0.3.4"
 description = "Distribution utilities"
@@ -577,6 +591,14 @@ python-versions = ">=3.6,<4.0"
 [package.dependencies]
 jeepney = {version = "*", markers = "sys_platform == \"linux\""}
 loguru = ">=0.5.3,<0.6.0"
+
+[[package]]
+name = "ordered-set"
+version = "4.0.2"
+description = "A set that remembers its order, and allows looking up its items by their index in that order."
+category = "main"
+optional = false
+python-versions = ">=3.5"
 
 [[package]]
 name = "packaging"
@@ -954,7 +976,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6.2,<3.7.*"
-content-hash = "a0e50027aa8dde9817438a7a2206d3d5df7973be0faf2d57c79e8d5c4f5201db"
+content-hash = "cb6d29af6ffb313ad4719c211dccf87bb597512b1c6abcf14d6b6fc1461c41c0"
 
 [metadata.files]
 aiocontextvars = [
@@ -1035,6 +1057,10 @@ contextvars = [
 dataclasses = [
     {file = "dataclasses-0.8-py3-none-any.whl", hash = "sha256:0201d89fa866f68c8ebd9d08ee6ff50c0b255f8ec63a71c16fda7af82bb887bf"},
     {file = "dataclasses-0.8.tar.gz", hash = "sha256:8479067f342acf957dc82ec415d355ab5edb7e7646b90dc6e2fd1d96ad084c97"},
+]
+deepdiff = [
+    {file = "deepdiff-5.7.0-py3-none-any.whl", hash = "sha256:1ffb38c3b5d9174eb2df95850c93aee55ec00e19396925036a2e680f725079e0"},
+    {file = "deepdiff-5.7.0.tar.gz", hash = "sha256:838766484e323dcd9dec6955926a893a83767dc3f3f94542773e6aa096efe5d4"},
 ]
 distlib = [
     {file = "distlib-0.3.4-py2.py3-none-any.whl", hash = "sha256:6564fe0a8f51e734df6333d08b8b94d4ea8ee6b99b5ed50613f731fd4089f34b"},
@@ -1222,6 +1248,9 @@ nodeenv = [
 notify-py = [
     {file = "notify_py-0.3.3-py3-none-any.whl", hash = "sha256:9b9f689631ddba2ec1313fe4b4d19b8f1f032b38bbdc118b21cdd880c134e8a6"},
     {file = "notify_py-0.3.3.tar.gz", hash = "sha256:8561c7d363eddad3b07be11405135e168c2f52e42bdbfc7f2e613b07a8e7bae0"},
+]
+ordered-set = [
+    {file = "ordered-set-4.0.2.tar.gz", hash = "sha256:ba93b2df055bca202116ec44b9bead3df33ea63a7d5827ff8e16738b97f33a95"},
 ]
 packaging = [
     {file = "packaging-21.3-py3-none-any.whl", hash = "sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522"},

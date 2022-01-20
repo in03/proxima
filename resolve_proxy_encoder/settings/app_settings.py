@@ -1,17 +1,22 @@
 #!/usr/bin/env python3.6
 
+import operator
 import os
+import re
 import shutil
+import sys
 import webbrowser
+from functools import reduce
 from pathlib import Path
 
 import typer
-from attrdict import AttrDict
+from deepdiff import DeepDiff
 from resolve_proxy_encoder.helpers import (
     app_exit,
     get_rich_logger,
     install_rich_tracebacks,
 )
+from rich import print
 from ruamel.yaml import YAML
 
 from schema import SchemaError
@@ -28,7 +33,16 @@ USER_SETTINGS_FILE = os.path.join(
 )
 
 
-class Settings:
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class Settings(metaclass=Singleton):
     def __init__(
         self,
         default_settings_file=DEFAULT_SETTINGS_FILE,
@@ -42,9 +56,13 @@ class Settings:
         self.default_settings = self._get_default_settings()
         self.user_settings = self._get_user_settings()
 
-        self._ensure_file()
-        # self._ensure_keys()
-        self._validate_schema()
+        self._ensure_user_file()
+        self._ensure_user_keys()
+
+        self._validate_schema(self.default_settings)
+        self._validate_schema(self.user_settings)
+
+        print("[green]User settings are valid :white_check_mark:[/]")
 
     def _get_default_settings(self):
         """Load default settings from yaml"""
@@ -62,7 +80,7 @@ class Settings:
         with open(self.user_file, "r") as file:
             return self.yaml.load(file)
 
-    def _ensure_file(self):
+    def _ensure_user_file(self):
         """Copy default settings to user settings if it doesn't exist
 
         Prompt the user to edit the file afterwards, then exit.
@@ -93,53 +111,68 @@ class Settings:
 
             app_exit(0)
 
-    def _ensure_keys(self):
-        """Copy defaults for any missing keys if they don't exist"""
+    def _ensure_user_keys(self):
+        """Ensure user settings have all keys in default settings"""
 
-        logger.debug(f"Ensuring all settings keys exist in {self.user_file}")
+        diffs = DeepDiff(self.default_settings, self.user_settings)
 
-        # Add missing keys
+        # Check for unknown settings
+        if diffs.get("dictionary_item_added"):
+            [
+                logger.warning(f"Unknown setting -> {x} will be ignored!")
+                for x in diffs["dictionary_item_added"]
+            ]
 
-        # TODO: This won't work how I want it to...
-        # I need to insert the missing keys into the user settings file
-        # WHERE THEY ARE MISSING. This will append them to the end.
-        # Instead, load the user settings to dict, write default to file,
-        # update the defaults with the user values.
-        # Warn on missing keys
+        # Check for missing settings
+        if diffs.get("dictionary_item_removed"):
+            [
+                logger.error(f"Missing setting -> {x}")
+                for x in diffs["dictionary_item_removed"]
+            ]
+            logger.critical(
+                "Can't continue. Please define missing settings! Exiting..."
+            )
 
-        with open(self.user_file, "r+") as file_:
-            user_settings = self.yaml.load(file_)
+            # # TODO: Figure out how to copy defaults...
+            # Prompt user to add missing settings
+            # if not typer.confirm("Can't continue without all settings defined! Copy defaults?"):
+            #     app_exit(1)
+            # # Copy defaults to user settings
+            # with open(self.user_file, "r+") as file_:
+            #     user_settings = self.yaml.load(file_)
 
-            needs_write = False
-            for key, value in self.default_settings.items():
+            #     for diff in diffs["dictionary_item_removed"]:
+            #         bracketed_strings = re.findall(r"[^[]*\[\'([^]]*)'\]", diff)
 
-                print(key)
-                if key not in user_settings:
+            #         if bracketed_strings: # Minus value
+            #             dict_path = bracketed_strings[::-1]
 
-                    logger.warning(
-                        f"Adding missing key '{key}' to user settings with value '{value}'"
-                    )
-                    user_settings[key] = value
+            #             # Get key path
+            #             def_val = reduce(operator.getitem, dict_path, self.default_settings)
+            #             print(def_val)
 
-                self.yaml.dump(user_settings, file_)
+            #     if key not in user_settings:
 
-        # Warn unsupported keys
-        for key in user_settings:
-            if key not in self.default_settings:
-                logger.warning(f"Found unused key '{key}' in user settings")
+            #         logger.warning(
+            #             f"Adding missing key '{key}' to user settings with value '{value}'"
+            #         )
+            #         user_settings[key] = value
+            #         print(self.yaml.dump(user_settings))
 
-    def _validate_schema(self):
+            #         # file_.seek(0)
+            #         # file_.truncate()
+            #         # self.yaml.dump(user_settings, file_)
+
+    def _validate_schema(self, settings):
         """Validate user settings against schema"""
 
         logger.debug(f"Validating user settings against schema")
 
         try:
 
-            settings_schema.validate(self.user_settings)
+            settings_schema.validate(settings)
 
         except SchemaError as e:
 
             logger.error(f"Error validating settings: {e}")
             app_exit(1)
-
-        logger.info("Settings validated successfully")
