@@ -54,10 +54,11 @@ class Settings(metaclass=Singleton):
         self.user_file = user_settings_file
 
         self.default_settings = self._get_default_settings()
-        self.user_settings = self._get_user_settings()
 
         self._ensure_user_file()
         self._ensure_user_keys()
+        self.user_settings = self._get_user_settings()
+
 
         self._validate_schema(self.default_settings)
         self._validate_schema(self.user_settings)

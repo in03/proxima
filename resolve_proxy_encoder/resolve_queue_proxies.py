@@ -11,7 +11,6 @@ import tkinter.messagebox
 from typing import Union
 
 from celery import group
-from icecream import ic
 from rich import print
 
 # from rich.traceback import install as install_rich_tracebacks
