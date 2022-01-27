@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3.6
 # Link proxies
 
@@ -9,67 +8,73 @@ import traceback
 from tkinter import filedialog
 
 from colorama import Fore, init
-
 from resolve_proxy_encoder import helpers
-from resolve_proxy_encoder.settings import app_settings
+from resolve_proxy_encoder.settings.app_settings import Settings
 
-config = app_settings.get_user_settings()
+settings = Settings()
+config = settings.user_settings
 
 
 # Get global variables
 resolve_obj = helpers.get_resolve_objects()
-resolve = resolve_obj['resolve']
-project = resolve_obj['project']
-timeline = resolve_obj['timeline']
-media_pool = resolve_obj['media_pool']
+resolve = resolve_obj["resolve"]
+project = resolve_obj["project"]
+timeline = resolve_obj["timeline"]
+media_pool = resolve_obj["media_pool"]
 
 root = tkinter.Tk()
 root.withdraw()
 
+
 def get_proxy_path():
 
-    proxy_path_root = config['paths']['proxy_path_root']
+    proxy_path_root = config["paths"]["proxy_path_root"]
 
-    f = filedialog.askdirectory(initialdir = proxy_path_root, title = "Link proxies")
+    f = filedialog.askdirectory(initialdir=proxy_path_root, title="Link proxies")
     if f is None:
         print("User cancelled dialog. Exiting.")
         exit(0)
     return f
+
 
 def recurse_dir(root):
     """Recursively search given directory for files
     and return full filepaths
     """
 
-    all_files = [os.path.join(root, f) for root, dirs, files in os.walk(root) for f in files]
+    all_files = [
+        os.path.join(root, f) for root, dirs, files in os.walk(root) for f in files
+    ]
     return all_files
 
+
 def filter_files(dir_, acceptable_exts):
-    """Filter files by allowed filetype
-    """
+    """Filter files by allowed filetype"""
 
     # print(f"{Fore.CYAN}{timeline.GetName()} - Video track count: {track_len}")
     allowed = [x for x in dir_ if os.path.splitext(x) in acceptable_exts]
     return allowed
 
+
 def get_track_items(timeline, track_type="video"):
     """Retrieve all video track items from a given timeline object"""
 
-    track_len = timeline.GetTrackCount("video") 
+    track_len = timeline.GetTrackCount("video")
 
-    if config['loglevel'] == "DEBUG": 
+    if config["loglevel"] == "DEBUG":
         print(f"{Fore.CYAN}{timeline.GetName()} - Video track count: {track_len}")
 
     items = []
-    
+
     for i in range(track_len):
-        i += 1 # Track index starts at one...
+        i += 1  # Track index starts at one...
         items.extend(timeline.GetItemListInTrack(track_type, i))
-        
+
     return items
 
+
 def get_resolve_timelines(active_timeline_first=True):
-    """ Return a list of all Resolve timeline objects in current project. """
+    """Return a list of all Resolve timeline objects in current project."""
 
     timelines = []
 
@@ -81,32 +86,38 @@ def get_resolve_timelines(active_timeline_first=True):
             timelines.append(timeline)
 
         if active_timeline_first:
-            active = project.GetCurrentTimeline().GetName()                     # Get active timeline
+            active = project.GetCurrentTimeline().GetName()  # Get active timeline
             timeline_names = [x.GetName() for x in timelines]
-            active_i = timeline_names.index(active)                             # It's already in the list, find it's index
-            timelines.insert(0, timelines.pop(active_i))            # Move it to the front, indexing should be the same as name list
+            active_i = timeline_names.index(
+                active
+            )  # It's already in the list, find it's index
+            timelines.insert(
+                0, timelines.pop(active_i)
+            )  # Move it to the front, indexing should be the same as name list
     else:
-         return False
+        return False
 
     return timelines
 
+
 def get_timeline_data(timeline):
-    """ Return a dictionary containing timeline names, 
+    """Return a dictionary containing timeline names,
     their tracks, clips media paths, etc.
     """
 
     clips = get_track_items(timeline, track_type="video")
     data = {
-        'timeline': timeline,
-        'name': timeline.GetName(), 
-        'track count': timeline.GetTrackCount(),
-        'clips': clips,
+        "timeline": timeline,
+        "name": timeline.GetName(),
+        "track count": timeline.GetTrackCount(),
+        "clips": clips,
     }
-    
+
     return data
 
+
 def __link_proxies(proxy_files, clips):
-    """ Actual linking function.
+    """Actual linking function.
     Matches filenames between lists of paths.
     'clips' actually needs to be a Resolve timeline item object.
     """
@@ -120,7 +131,8 @@ def __link_proxies(proxy_files, clips):
 
             proxy_name = os.path.splitext(os.path.basename(proxy))[0]
             if proxy in failed_proxies:
-                if config['loglevel'] == "DEBUG": print(f"{Fore.YELLOW}Skipping {proxy_name}, already failed.")
+                if config["loglevel"] == "DEBUG":
+                    print(f"{Fore.YELLOW}Skipping {proxy_name}, already failed.")
                 break
 
             try:
@@ -145,16 +157,18 @@ def __link_proxies(proxy_files, clips):
 
             except AttributeError:
 
-                if config['loglevel'] == "DEBUG": 
-                    print(f"{Fore.YELLOW}{clip.GetName()} has no 'file path' attribute," + 
-                    " probably Resolve internal media.")
+                if config["loglevel"] == "DEBUG":
+                    print(
+                        f"{Fore.YELLOW}{clip.GetName()} has no 'file path' attribute,"
+                        + " probably Resolve internal media."
+                    )
 
-    
     return linked_proxies, failed_proxies
 
+
 def link_proxies(proxy_files):
-    """ Attempts to match source media in active Resolve project
-     with a list of filepaths to proxy files."""
+    """Attempts to match source media in active Resolve project
+    with a list of filepaths to proxy files."""
 
     linked = []
     failed = []
@@ -165,39 +179,43 @@ def link_proxies(proxy_files):
 
     # Get clips from all timelines.
     for timeline in timelines:
-        
+
         timeline_data = get_timeline_data(timeline)
-        clips = timeline_data['clips']
+        clips = timeline_data["clips"]
         unlinked_source = [x for x in clips if x not in linked]
 
         if len(unlinked_source) == 0:
-            if config['loglevel'] == "DEBUG": print(f"{Fore.YELLOW}No more clips to link in {timeline_data['name']}")
+            if config["loglevel"] == "DEBUG":
+                print(f"{Fore.YELLOW}No more clips to link in {timeline_data['name']}")
             continue
         else:
             print(f"{Fore.CYAN}Searching timeline {timeline_data['name']}")
-        
+
         unlinked_proxies = [x for x in proxy_files if x not in linked]
         print(f"Unlinked source count: {len(unlinked_source)}")
         print(f"Unlinked proxies count: {len(unlinked_proxies)}")
 
-
         if len(unlinked_proxies) == 0:
             print(f"{Fore.YELLOW}No more proxies to link in {timeline_data['name']}")
             return
-  
-        linked_, failed_ = (__link_proxies(proxy_files, clips))
+
+        linked_, failed_ = __link_proxies(proxy_files, clips)
 
         linked.extend(linked_)
         failed.extend(failed_)
 
-        if config['loglevel'] == "DEBUG": print(f"Linked: {linked}, Failed: {failed}")
+        if config["loglevel"] == "DEBUG":
+            print(f"Linked: {linked}, Failed: {failed}")
 
     if len(failed) > 0:
-        print(f"{Fore.RED}The following files matched, but couldn't be linked. Suggest rerendering them:")
+        print(
+            f"{Fore.RED}The following files matched, but couldn't be linked. Suggest rerendering them:"
+        )
         [print(os.path.basename(x)) for x in failed]
         print()
 
     return linked
+
 
 def main():
     try:
@@ -208,7 +226,7 @@ def main():
         print(f"Passed directory: '{proxy_dir}'\n")
 
         all_files = recurse_dir(proxy_dir)
-        proxy_files = filter_files(all_files, config['filters']['acceptable_exts'])
+        proxy_files = filter_files(all_files, config["filters"]["acceptable_exts"])
         linked = link_proxies(proxy_files)
 
     except Exception as e:
@@ -216,6 +234,7 @@ def main():
         print(tb)
         tkinter.messagebox.showinfo("ERROR", tb)
         print("ERROR - " + str(e))
+
 
 if __name__ == "__main__":
     main()

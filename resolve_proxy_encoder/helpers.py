@@ -1,5 +1,6 @@
 """ Helper functions for main module """
 from asyncio import subprocess
+
 import json
 import logging
 import requests
@@ -9,17 +10,15 @@ from typing import Union
 
 import pkg_resources
 import subprocess
+from notifypy.notify import Notify
+
 from rich.logging import RichHandler
 from rich.prompt import Prompt
-from win10toast import ToastNotifier
 
 from resolve_proxy_encoder import python_get_resolve
-from resolve_proxy_encoder.settings import app_settings
-
-config = app_settings.get_user_settings()
 
 
-def get_rich_logger(loglevel: Union[int, str] = "WARNING"):
+def get_rich_logger(loglevel: Union[int, str]):
 
     """Set logger to rich, allowing for console markup."""
 
@@ -40,10 +39,17 @@ def get_rich_logger(loglevel: Union[int, str] = "WARNING"):
     return logger
 
 
-logger = get_rich_logger(config["loglevel"])
+logger = get_rich_logger("WARNING")
 
 
-def app_exit(level: int = 0, timeout: int = 5, cleanup_funcs: list = None):
+def install_rich_tracebacks(show_locals=False):
+    """Install rich tracebacks"""
+    from rich.traceback import install
+
+    install(show_locals=show_locals)
+
+
+def app_exit(level: int = 0, timeout: int = -1, cleanup_funcs: list = None):
 
     """
     Exit function to allow time to
@@ -52,18 +58,11 @@ def app_exit(level: int = 0, timeout: int = 5, cleanup_funcs: list = None):
     Provide a list of functions to call on cleanup if necessary.
     """
 
-    logger = get_rich_logger(config["loglevel"])
-
     # Run any cleanup functions
     if cleanup_funcs:
 
-        logger.debug(f"Running cleanup funcs: {cleanup_funcs}")
-
         for x in cleanup_funcs:
-
             if x is not None:
-
-                logger.debug(f"Running: {x}")
                 x()
 
     if timeout < 0:
@@ -83,25 +82,47 @@ def app_exit(level: int = 0, timeout: int = 5, cleanup_funcs: list = None):
     sys.exit(level)
 
 
-def toast(message, threaded=True):
-    toaster = ToastNotifier()
-    toaster.show_toast(
-        "Queue Proxies",
-        message,
-        # icon_path = icon_path,
-        threaded=threaded,
-    )
-    return
+def notify(message: str, title: str = "Resolve Proxy Encoder"):
+    """Cross platform system notification
+
+    Args:
+        message(str): Message to display
+        title(str): Title of notification
+
+    Returns:
+        True/False(bool): Success/Failure
+
+    Raises:
+        none
+
+    """
+
+    logger = get_rich_logger("WARNING")
+
+    try:
+
+        notification = Notify()
+        notification.title = title
+        notification.message = message
+        notification.send(block=False)
+
+    except Exception as e:
+        logger.exception(f"[red] :warning: Couldn't send notification.[/]\n{e}")
+        return False
+
+    return True
 
 
 def get_resolve_objects():
     """Return necessary Resolve objects with error handling"""
 
-    logger = get_rich_logger()
+    logger = get_rich_logger("WARNING")
 
     try:
 
         resolve = python_get_resolve.GetResolve()
+        if resolve is None:
+            raise TypeError
 
     except:
 
@@ -114,6 +135,8 @@ def get_resolve_objects():
     try:
 
         project = resolve.GetProjectManager().GetCurrentProject()
+        if project is None:
+            raise TypeError
 
     except:
 
@@ -126,7 +149,8 @@ def get_resolve_objects():
     try:
 
         timeline = project.GetCurrentTimeline()
-
+        if timeline is None:
+            raise TypeError
     except:
 
         logger.warning(
@@ -138,6 +162,8 @@ def get_resolve_objects():
     try:
 
         media_pool = project.GetMediaPool()
+        if media_pool is None:
+            raise TypeError
 
     except:
 
@@ -171,7 +197,7 @@ def get_package_current_commit(package_name: str) -> Union[str, None]:
 
     try:
 
-        logger.info("Getting commit ID from package dist info.", extra={"markup": True})
+        logger.info("Getting commit ID from package dist info.")
 
         dist = pkg_resources.get_distribution(package_name)
         vcs_metadata_file = dist.get_metadata("direct_url.json")
@@ -190,7 +216,7 @@ def get_package_current_commit(package_name: str) -> Union[str, None]:
         )
 
     try:
-        logger.info("[cyan]Getting commit ID from git[/]", extra={"markup": True})
+        logger.info("[cyan]Getting commit ID from git[/]")
 
         latest_commit_id = subprocess.check_output(
             'git --no-pager log -1 --format="%H"', stderr=subprocess.STDOUT, shell=True
@@ -232,10 +258,15 @@ def get_remote_latest_commit(github_url: str) -> Union[str, None]:
         f"https://api.github.com/repos/{url_list[1]}/{url_list[2]}/commits/main"
     )
 
-    r = requests.get(api_endpoint, timeout=5)
-    if r.status_code != 200:
-        logger.warning(f"[yellow]Couldn't fetch commits from GitHub API:\n{r}[/]")
-        return None
+    try:
+
+        r = requests.get(api_endpoint, timeout=5)
+        if r.status_code != 200:
+            logger.warning(f"[yellow]Couldn't fetch commits from GitHub API:\n{r}[/]")
+            return None
+    # TODO: catch the timeout exception properly
+    except ConnectTimeoutError:
+        logger.error("[red]Couldn't connect to GitHub.[/]")
 
     results = r.json()
     remote_latest_commit = results["sha"]
@@ -256,25 +287,26 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
         - none
     """
 
-    logger.info("[cyan]Checking for updates...[/]", extra={"markup": True})
+    logger.info("[cyan]Checking for updates...[/]")
     remote_latest_commit = get_remote_latest_commit(github_url)
     package_latest_commit = get_package_current_commit(package_name)
 
     if not remote_latest_commit or not package_latest_commit:
-        logger.warning("[red]Failed to check for updates[/]", extra={"markup": True})
+        logger.warning("[red]Failed to check for updates[/]")
 
     if remote_latest_commit != package_latest_commit:
 
         logger.warning(
-            "[yellow]Updates available.\n"
-            + "Ensure all workers and queuers are same version.[/]",
-            extra={"markup": True},
+            "[yellow]Update available.\n"
+            + "Fully uninstall and reinstall when possible:[/]\n"
+            + '"pip uninstall resolve-proxy-encoder"\n'
+            + f'"pip install git+{github_url}"\n'
         )
 
         logger.info(f"Remote: {remote_latest_commit}")
         logger.info(f"Current: {package_latest_commit}")
 
     else:
-        logger.info("[green]Installation up-to-date[/]", extra={"markup": True})
+        logger.info("[green]Installation up-to-date[/]")
 
     return

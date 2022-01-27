@@ -4,22 +4,22 @@ import subprocess
 import webbrowser
 
 import typer
-from colorama import Fore, init
 from pyfiglet import Figlet
-from rich import print as pprint
+from rich import print
 from rich.prompt import Confirm
 
+from resolve_proxy_encoder.worker.celery import app as celery_app
 from resolve_proxy_encoder.helpers import check_for_updates, get_rich_logger
+from resolve_proxy_encoder.settings.app_settings import Settings
 
 # Print CLI title
-init(autoreset=True)
 fig = Figlet()
 text = fig.renderText("Resolve Proxy Encoder")
-print(Fore.GREEN + text)
+print(f"[green]{text}[/]")
 
-from resolve_proxy_encoder.settings import app_settings
+settings = Settings()
+config = settings.user_settings
 
-config = app_settings.get_user_settings()
 logger = get_rich_logger(config["loglevel"])
 
 # Check for package / git updates
@@ -29,23 +29,33 @@ check_for_updates(
 )
 print()
 
-app = typer.Typer()
+
+def check_worker_compatability():
+    workers = celery_app.control.inspect().active_queues()
+    worker_names = {k: v for k, v in workers.items()}
+    print(worker_names)
+    # celery_app.control.broadcast()
+    return
 
 
-@app.command()
+check_worker_compatability()
+cli_app = typer.Typer()
+
+
+@cli_app.command()
 def queue():
     """
     Queue proxies from the currently open
     DaVinci Resolve timeline
     """
-    pprint("[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
+    print("[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
 
     from resolve_proxy_encoder import resolve_queue_proxies
 
     resolve_queue_proxies.main()
 
 
-@app.command()
+@cli_app.command()
 def link():
     """
     Manually link proxies from directory to
@@ -57,19 +67,19 @@ def link():
     link_proxies.main()
 
 
-@app.command()
+@cli_app.command()
 def work(number: int = 0):
     """Prompt to start Celery workers on local machine"""
     if number > 0:
-        pprint(f"[green]Starting workers! :construction_worker:[/]")
-    pprint(f"[cyan]Starting worker launcher prompt :construction_worker:[/]")
+        print(f"[green]Starting workers! :construction_worker:[/]")
+    print(f"[cyan]Starting worker launcher prompt :construction_worker:[/]")
 
     from resolve_proxy_encoder import start_workers
 
     start_workers.main(number)
 
 
-@app.command()
+@cli_app.command()
 def purge():
     """Purge all tasks from Celery.
 
@@ -88,22 +98,22 @@ def purge():
         "[yellow]Are you sure you want to purge all tasks?\n"
         "All active tasks and task history will be lost![/]"
     ):
-        pprint("[green]Purging all worker queues[/] :fire:")
+        print("[green]Purging all worker queues[/] :fire:")
         subprocess.run(["celery", "-A", "resolve_proxy_encoder.worker", "purge", "-f"])
 
 
-@app.command()
+@cli_app.command()
 def mon():
     """
     Launch Flower Celery monitor in default browser new window
     """
 
-    pprint("[green]Launching Flower celery monitor[/] :sunflower:")
+    print("[green]Launching Flower celery monitor[/] :sunflower:")
     webbrowser.open_new(config["celery_settings"]["flower_url"])
 
 
 def main():
-    app()
+    cli_app()
 
 
 if __name__ == "__main__":
