@@ -5,18 +5,16 @@ import os
 import re
 import shutil
 import sys
+import time
 import webbrowser
 from functools import reduce
 from pathlib import Path
 
-import typer
 from deepdiff import DeepDiff
-from resolve_proxy_encoder.helpers import (
-    app_exit,
-    get_rich_logger,
-    install_rich_tracebacks,
-)
+from resolve_proxy_encoder.helpers import (app_exit, get_rich_logger,
+                                           install_rich_tracebacks)
 from rich import print
+from rich.prompt import Confirm
 from ruamel.yaml import YAML
 
 from schema import SchemaError
@@ -52,12 +50,11 @@ class Settings(metaclass=Singleton):
         self.yaml = YAML()
         self.default_file = default_settings_file
         self.user_file = user_settings_file
+        self._ensure_user_file()
 
         self.default_settings = self._get_default_settings()
-
-        self._ensure_user_file()
-        self._ensure_user_keys()
         self.user_settings = self._get_user_settings()
+        self._ensure_user_keys()
 
 
         self._validate_schema(self.default_settings)
@@ -81,6 +78,7 @@ class Settings(metaclass=Singleton):
         with open(self.user_file, "r") as file:
             return self.yaml.load(file)
 
+
     def _ensure_user_file(self):
         """Copy default settings to user settings if it doesn't exist
 
@@ -91,26 +89,44 @@ class Settings(metaclass=Singleton):
 
         if not os.path.exists(self.user_file):
 
-            if typer.confirm(
-                f"No user settings found at path {self.user_file}\n"
-                + "Load defaults now for adjustment?"
-            ):
+            try:
+
+                if not Confirm.ask(
+                    
+                    f"[yellow]No user settings file found: [/]\'{self.user_file}\'\n"
+                    +"[cyan]Create using default settings[/]?"
+                ):
+                    print("[green]Exiting...\n[/]")
+                    app_exit(0)
 
                 # Create dir, copy file, open
                 try:
                     os.makedirs(os.path.dirname(self.user_file))
+                    print("\n[yellow]Creating user settings folder[/] :white_check_mark:")
                 except FileExistsError:
-                    typer.echo("Directory exists, skipping...")
-                except OSError:
-                    typer.echo("Error creating directory!")
-                    app_exit(1)
+                    print("\n[green]User settings folder exists[/] :white_check_mark:")
+                except OSError as e:
+                    logger.error(f"\n[red]Couldn't create user settings folder![/]\n{e}")
+                    app_exit(1, -1)
 
                 shutil.copy(self.default_file, self.user_file)
-                typer.echo(f"Copied default settings to {self.user_file}")
-                typer.echo("Please customize as necessary.")
-                webbrowser.open(self.user_file)  # Technically unsupported method
+                print(f"[green]Copied default settings[/] :white_check_mark:")
 
-            app_exit(0)
+                if Confirm.ask("[cyan]Customise user settings now?[/]"):
+
+                    webbrowser.open(self.user_file)  # Technically unsupported method
+                    print("\n[yellow]Run again to validate settings.[/]")
+                    app_exit(0, -1)
+
+                else:
+
+                    print("[green]Exiting...\n[/]")
+                    app_exit(0)
+
+            except KeyboardInterrupt:
+                print("[yellow]User aborted...\n[/]")
+                app_exit(1, -1)
+                    
 
     def _ensure_user_keys(self):
         """Ensure user settings have all keys in default settings"""
@@ -131,7 +147,7 @@ class Settings(metaclass=Singleton):
                 for x in diffs["dictionary_item_removed"]
             ]
             logger.critical(
-                "Can't continue. Please define missing settings! Exiting..."
+                "Can't continue. Please define missing settings! Exiting...\n"
             )
 
             # # TODO: Figure out how to copy defaults...
@@ -163,6 +179,7 @@ class Settings(metaclass=Singleton):
             #         # file_.seek(0)
             #         # file_.truncate()
             #         # self.yaml.dump(user_settings, file_)
+
 
     def _validate_schema(self, settings):
         """Validate user settings against schema"""
