@@ -1,6 +1,4 @@
 """ Helper functions for main module """
-from asyncio import subprocess
-
 import json
 import logging
 import requests
@@ -264,9 +262,10 @@ def get_remote_latest_commit(github_url: str) -> Union[str, None]:
         if r.status_code != 200:
             logger.warning(f"[yellow]Couldn't fetch commits from GitHub API:\n{r}[/]")
             return None
-    # TODO: catch the timeout exception properly
-    except ConnectTimeoutError:
-        logger.error("[red]Couldn't connect to GitHub.[/]")
+
+    except requests.exceptions.Timeout as e:
+        logger.error(f"[red]Couldn't connect to GitHub:\n{e}[/]")
+        return None
 
     results = r.json()
     remote_latest_commit = results["sha"]
