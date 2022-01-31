@@ -11,8 +11,11 @@ from functools import reduce
 from pathlib import Path
 
 from deepdiff import DeepDiff
-from resolve_proxy_encoder.helpers import (app_exit, get_rich_logger,
-                                           install_rich_tracebacks)
+from resolve_proxy_encoder.helpers import (
+    app_exit,
+    get_rich_logger,
+    install_rich_tracebacks,
+)
 from rich import print
 from rich.prompt import Confirm
 from ruamel.yaml import YAML
@@ -56,7 +59,6 @@ class Settings(metaclass=Singleton):
         self.user_settings = self._get_user_settings()
         self._ensure_user_keys()
 
-
         self._validate_schema(self.default_settings)
         self._validate_schema(self.user_settings)
 
@@ -78,7 +80,6 @@ class Settings(metaclass=Singleton):
         with open(self.user_file, "r") as file:
             return self.yaml.load(file)
 
-
     def _ensure_user_file(self):
         """Copy default settings to user settings if it doesn't exist
 
@@ -92,9 +93,8 @@ class Settings(metaclass=Singleton):
             try:
 
                 if not Confirm.ask(
-                    
-                    f"[yellow]No user settings file found: [/]\'{self.user_file}\'\n"
-                    +"[cyan]Create using default settings[/]?"
+                    f"[yellow]No user settings file found: [/]'{self.user_file}'\n"
+                    + "[cyan]Create using default settings[/]?"
                 ):
                     print("[green]Exiting...\n[/]")
                     app_exit(0)
@@ -102,11 +102,15 @@ class Settings(metaclass=Singleton):
                 # Create dir, copy file, open
                 try:
                     os.makedirs(os.path.dirname(self.user_file))
-                    print("\n[yellow]Creating user settings folder[/] :white_check_mark:")
+                    print(
+                        "\n[yellow]Creating user settings folder[/] :white_check_mark:"
+                    )
                 except FileExistsError:
                     print("\n[green]User settings folder exists[/] :white_check_mark:")
                 except OSError as e:
-                    logger.error(f"\n[red]Couldn't create user settings folder![/]\n{e}")
+                    logger.error(
+                        f"\n[red]Couldn't create user settings folder![/]\n{e}"
+                    )
                     app_exit(1, -1)
 
                 shutil.copy(self.default_file, self.user_file)
@@ -126,7 +130,6 @@ class Settings(metaclass=Singleton):
             except KeyboardInterrupt:
                 print("[yellow]User aborted...\n[/]")
                 app_exit(1, -1)
-                    
 
     def _ensure_user_keys(self):
         """Ensure user settings have all keys in default settings"""
@@ -179,7 +182,6 @@ class Settings(metaclass=Singleton):
             #         # file_.seek(0)
             #         # file_.truncate()
             #         # self.yaml.dump(user_settings, file_)
-
 
     def _validate_schema(self, settings):
         """Validate user settings against schema"""
