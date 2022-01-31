@@ -1,6 +1,11 @@
 ---  # Resolve Proxy Encoder User configuration file
 loglevel: WARNING
 
+updates:
+  # If you fork the repo, change this to your fork
+  github_url: "https://github.com/in03/resolve-proxy-encoder" 
+  warn_updates: true
+
 paths:
   # Path to directory containing all proxy media
   proxy_path_root: R:/ProxyMedia

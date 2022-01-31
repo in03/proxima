@@ -1,15 +1,14 @@
 """ Helper functions for main module """
 import json
 import logging
-import requests
+import subprocess
 import sys
 import time
 from typing import Union
 
 import pkg_resources
-import subprocess
+import requests
 from notifypy.notify import Notify
-
 from rich.logging import RichHandler
 from rich.prompt import Prompt
 
@@ -258,54 +257,18 @@ def get_remote_latest_commit(github_url: str) -> Union[str, None]:
 
     try:
 
-        r = requests.get(api_endpoint, timeout=5)
-        if r.status_code != 200:
-            logger.warning(f"[yellow]Couldn't fetch commits from GitHub API:\n{r}[/]")
+        r = requests.get(api_endpoint, timeout=8)
+        if not str(r.status_code).startswith("2"):
+            logger.warning(
+                f"[red]Couldn't connect to GitHub API\n[/]"
+                + f"[yellow]HTTP status code:[/] {r.status_code}\n\n"
+            )
             return None
 
-    except requests.exceptions.Timeout as e:
-        logger.error(f"[red]Couldn't connect to GitHub:\n{e}[/]")
+    except Exception as e:
+        logger.error(f"[red]Couldn't connect to GitHub API:[/]\n{e}")
         return None
 
     results = r.json()
     remote_latest_commit = results["sha"]
     return remote_latest_commit
-
-
-def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
-    """Compare git origin to local git or package dist for updates
-
-    Args:
-        - github_url(str): origin repo url
-        - package_name(str): offical package name
-
-    Returns:
-        - none
-
-    Raises:
-        - none
-    """
-
-    logger.info("[cyan]Checking for updates...[/]")
-    remote_latest_commit = get_remote_latest_commit(github_url)
-    package_latest_commit = get_package_current_commit(package_name)
-
-    if not remote_latest_commit or not package_latest_commit:
-        logger.warning("[red]Failed to check for updates[/]")
-
-    if remote_latest_commit != package_latest_commit:
-
-        logger.warning(
-            "[yellow]Update available.\n"
-            + "Fully uninstall and reinstall when possible:[/]\n"
-            + '"pip uninstall resolve-proxy-encoder"\n'
-            + f'"pip install git+{github_url}"\n'
-        )
-
-        logger.info(f"Remote: {remote_latest_commit}")
-        logger.info(f"Current: {package_latest_commit}")
-
-    else:
-        logger.info("[green]Installation up-to-date[/]")
-
-    return

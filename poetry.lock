@@ -242,6 +242,14 @@ python-versions = "*"
 test = ["flake8 (==3.7.8)", "hypothesis (==3.55.3)"]
 
 [[package]]
+name = "commonregex"
+version = "1.5.3"
+description = "Find all dates, times, emails, phone numbers, links, emails, ip addresses, prices, bitcoin address, and street addresses in a string."
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "confuse"
 version = "1.7.0"
 description = "Painless YAML configuration."
@@ -1134,7 +1142,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6.2,<3.7.*"
-content-hash = "a91e05f113531fe140066b5dee65ebaeba8a97d2f8eaccddd9418f0fe2f8a0ea"
+content-hash = "a88d0a90c832e922056c8087786015b8311033fb07767bddb4c5569cfe240285"
 
 [metadata.files]
 aiocontextvars = [
@@ -1208,6 +1216,9 @@ colorama = [
 commonmark = [
     {file = "commonmark-0.9.1-py2.py3-none-any.whl", hash = "sha256:da2f38c92590f83de410ba1a3cbceafbc74fee9def35f9251ba9a971d6d66fd9"},
     {file = "commonmark-0.9.1.tar.gz", hash = "sha256:452f9dc859be7f06631ddcb328b6919c67984aca654e5fefb3914d54691aed60"},
+]
+commonregex = [
+    {file = "commonregex-1.5.4.tar.gz", hash = "sha256:271530678ad8af53c0e8c233a762597969e846d0029f12215ac178791f3de0a5"},
 ]
 confuse = [
     {file = "confuse-1.7.0-py2.py3-none-any.whl", hash = "sha256:f002a733b3a4c16f73a094fcca3c80715b66e0ec08000983dc755267e2bd069f"},

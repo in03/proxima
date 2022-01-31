@@ -10,7 +10,13 @@ import sys
 import time
 
 from colorama import Fore, init
-from resolve_proxy_encoder.helpers import get_rich_logger, install_rich_tracebacks
+
+from resolve_proxy_encoder.helpers import (
+    get_package_current_commit,
+    get_rich_logger,
+    install_rich_tracebacks,
+    app_exit,
+)
 from resolve_proxy_encoder.settings.app_settings import Settings
 
 install_rich_tracebacks()
@@ -74,7 +80,19 @@ def launch_workers(workers_to_launch: int):
 
         # Add worker number to differentiate
         multi_worker_fmt = f" -n worker{i+1}@%h"
-        launch_cmd = START_WIN_WORKER + multi_worker_fmt
+
+        # Add git SHA Celery queue to prevent queuer/worker incompatibilities
+        git_full_sha = get_package_current_commit("resolve_proxy_encoder")
+        if not git_full_sha:
+            logger.error(
+                "[red]Couldn't get local package commit SHA!\n"
+                + "Necessary to prevent version mismatches between queuer and worker.[/]"
+            )
+            app_exit(1, -1)
+
+        # Use git standard 7 character short SHA
+        queue_from_sha = " -Q " + git_full_sha[::8]
+        launch_cmd = START_WIN_WORKER + multi_worker_fmt + queue_from_sha
 
         # Start min or norm?
         if config["celery_settings"]["worker_start_minimized"]:

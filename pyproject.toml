@@ -28,6 +28,7 @@ deepdiff = "^5.7.0"
 better-ffmpeg-progress = "^2.0.3"
 pymediainfo = "^5.1.0"
 notifypy = "^1.0.3"
+commonregex = "^1.5.3"
 
 [tool.poetry.dev-dependencies]
 mkdocs-material = "^7.3.6"

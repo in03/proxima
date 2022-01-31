@@ -1,3 +1,5 @@
+import re
+from commonregex import ip, link
 import os
 from schema import Schema, And, Optional
 
@@ -5,6 +7,10 @@ from schema import Schema, And, Optional
 settings_schema = Schema(
     {
         "loglevel": lambda s: s in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        "updates": {
+            "github_url": lambda s: re.match(link, s),
+            "warn_updates": bool,
+        },
         "paths": {
             "proxy_path_root": lambda p: os.path.exists(p),
         },
@@ -52,5 +58,6 @@ settings_schema = Schema(
             "worker_use_win_terminal": bool,
             "worker_start_minimized": bool,
         },
-    }
+    },
+    ignore_extra_keys=True,
 )
