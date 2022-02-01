@@ -52,6 +52,7 @@ settings_schema = Schema(
             "result_expires": int,
             "worker_loglevel": lambda s: s
             in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+            "disable_worker_compatability_check": bool,
             "worker_concurrency": int,
             "worker_prefetch_multiplier": int,
             "worker_max_tasks_per_child": int,

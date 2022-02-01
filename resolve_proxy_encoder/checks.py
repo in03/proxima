@@ -67,6 +67,13 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
 
 def check_worker_compatability():
 
+    if config["celery_settings"]["disable_worker_compatability_check"]:
+        logger.warning(
+            "[yellow]Worker compatability check disabled in user settings![/]\n"
+        )
+        time.sleep(2)
+        return
+
     console = Console()
     with console.status(
         "\n[cyan]Fetching online workers for compatability check...[/]\n"

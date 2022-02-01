@@ -8,7 +8,7 @@ from typing import Union
 
 import pkg_resources
 import requests
-from notifypy.notify import Notify
+from notifypy import Notify
 from rich.logging import RichHandler
 from rich.prompt import Prompt
 

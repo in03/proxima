@@ -94,11 +94,17 @@ def launch_workers(workers_to_launch: int):
         queue_from_sha = " -Q " + git_full_sha[::8]
         launch_cmd = START_WIN_WORKER + multi_worker_fmt + queue_from_sha
 
+        # Use windows terminal?
+        if config["celery_settings"]["worker_use_win_terminal"]:
+            start = "wt "
+        else:
+            start = "start "
+
         # Start min or norm?
         if config["celery_settings"]["worker_start_minimized"]:
-            launch_cmd = "start /min " + launch_cmd
+            launch_cmd = start + "/min " + launch_cmd
         else:
-            launch_cmd = "start " + launch_cmd
+            launch_cmd = start + launch_cmd
 
         logger.info(launch_cmd)
         print(launch_cmd)
@@ -108,7 +114,7 @@ def launch_workers(workers_to_launch: int):
             shell=True,
         )
 
-        if config["loglevel"] == "WARNING":
+        if config["celery_settings"]["worker_loglevel"] == "WARNING":
 
             sys.stdout.write(dots)
 
@@ -130,7 +136,7 @@ def main(workers: int = 0):
     print(f"{Fore.GREEN}Running on {os_} with {cpu_cores} cores.\n")
 
     # Check OS isn't Linux
-    if platform.system() == "Linux":
+    if not platform.system() == "Windows":
         print(
             f"{Fore.RED}This utility is for Windows only!\n"
             + "To start multiple workers on Linux or WSL, setup a systemd service."

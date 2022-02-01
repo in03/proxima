@@ -38,6 +38,8 @@ celery_settings:
   result_expires: 60 # 10 mins
 
   worker_loglevel: WARNING
+  disable_worker_compatability_check: false # Thar be dragons!
+
   worker_concurrency: 1
   worker_prefetch_multiplier: 1
   worker_max_tasks_per_child: 1
