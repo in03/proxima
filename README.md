@@ -10,7 +10,7 @@
 ## What's it for? ##
 DaVinci Resolve Studio has a fantastic remote-rendering system built-in that allows queuing renders on other networked Resolve computers.
 Unfortunately Resolve doesn't have a remote-rendering, or even background-rendering solution for proxies. 
-Resolve Proxy Encoder is a Python application that can be used in a similar way to Resolve's remote-rendering system, but for proxies.
+*Resolve Proxy Encoder* is a Python application that can be used in a similar way to Resolve's remote-rendering system, but for proxies.
  
 ## How does it work? ##
 **Resolve Proxy Encoder works using three major parts:**
@@ -24,7 +24,7 @@ Resolve Proxy Encoder is a Python application that can be used in a similar way 
 - DaVinci Resolve Studio, with scripting set up (read Resolve's scripting README)
 - Redis or RabbitMQ broker (preferably running on a NAS or server)
 - Worker computers (decent resources, connected to LAN, can access source media and proxies output folder)
-- Resolve Proxy Encoder installed on every 'queuer' and 'worker'. Not necessary to run broker.
+- *Resolve Proxy Encoder* installed on every 'queuer' and 'worker'. Not necessary to run broker.
 
 **It also makes a few assumptions about the way you have your environment set up:**
 - Running Windows (Mac OS, Linux and BSD untested - though should be easy to make work)
@@ -34,10 +34,27 @@ Resolve Proxy Encoder is a Python application that can be used in a similar way 
 
 ## How do I install it?
 
+### A Warning about Python 3.6
+
+Because DaVinci Resolve requires Python 3.6 to communicate with it's API, no versions over Python 3.6 will work with *Resolve Proxy Encoder*.
+Unfortunately this means that *Resolve Proxy Encoder* may get stuck using older versions of certain packages as they begin to drop support for 3.6.
+It also means that security patches for some dependencies won't make it into *Resolve Proxy Encoder* 
+This kind of setup almost guarantees dependency conflicts if you have multiple Python CLI tools you keep installed.
+To mitigate this you can:
+
+- Use Python 3.6 for *Resolve Proxy Encoder* **ONLY** and install a newer Python alongside for your other needs.
+
+- Install a tool like *pipx* that isolates Python CLI tools with their own virtual environments but keeps them on path.
+
+
 ### CLI / Worker
 The CLI app is bundled with everything necessary to queue from Resolve and start workers that run the encoding.
 ```
 py -3.6 -m pip install git+https://github.com/in03/Resolve-Proxy-Encoder
+```
+Or with *pipx*
+``` 
+pipx install git+https://github.com/in03/Resolve-Proxy-Encoder
 ```
 ### Broker
 The broker needs to be accessible by each computer over LAN.
@@ -60,13 +77,17 @@ Make sure you set the environment variables for `CELERY_BROKER_URL` or Flower wo
 If you opt not to run Flower, keep in mind some non-essential CLI commands may not work.
 
 ## Configuration
-On first run, you'll be prompted to alter your settings. The app will copy the default settings to `$XDG_HOME_CONFIG/resolve_proxy_encoder/user_settings.yml` (A hidden config folder in the local user's home folder). 
+On first run, you'll be prompted to alter your settings. The app will copy the default settings to the OS user configuration folder. 
+- **Linux/Mac:** `$XDG_HOME_CONFIG/resolve_proxy_encoder/user_settings.yml`
+- **Windows:** `%homepath%/resolve_proxy_encoder/user_settings.yml`
+
+
 
 ### Some Key Settings
 
 The default global log-level:
 ```
-loglevel: INFO 
+loglevel: WARNING 
 ```
 
 All proxies will be encoded to this directory. They'll retain the source media's directory structure:
@@ -90,7 +111,7 @@ If you need persistent results, consider configuring your broker for persistent 
 celery_settings:
   result_expires: 60
 ```
-Windows doesn't support preforking for concurrency. Actually, Celery doesn't officially support Windows anymore at all. Running workers on Mac Os, Linux or in Linux containers gets around this limitation. By default we encourage starting multiple workers as 'solo' instead. Change this as necessary to reduce overhead:
+Windows doesn't support preforking for concurrency. Actually, Celery doesn't officially support Windows anymore at all. Running workers on Mac, Linux or containerised gets around this limitation. By default the configuration encourages starting multiple workers processes as 'solo' to work with Windows. Change this as necessary to reduce overhead:
 ```
 celery_settings:
   worker_concurrency: 1

@@ -16,7 +16,8 @@ win10toast = "^0.9"
 PyYAML = "^6.0"
 redis = "^3.5.3"
 icecream = "^2.1.1"
-notify-py = "^0.3.3"
+semver = "^2.13.0"
+requests = "^2.26.0"
 pydantic = "^1.8.2"
 "ruamel.yaml" = "^0.17.17"
 confuse = "^1.7.0"
@@ -25,12 +26,25 @@ attrdict = "^2.0.1"
 deepdiff = "^5.7.0"
 better-ffmpeg-progress = "^2.0.3"
 pymediainfo = "^5.1.0"
+notifypy = "^1.0.3"
+commonregex = "^1.5.3"
+notify-py = "^0.3.3"
 
 [tool.poetry.dev-dependencies]
 mkdocs-material = "^7.3.6"
 black = "^21.12b0"
 isort = "^5.10.1"
 pre-commit = "^2.16.0"
+
+[tool.semantic_release]
+version_variable = [
+    "resolve_proxy_encoder/__init__.py:__version__",
+    "pyproject.toml:version"
+]
+branch = "main"
+upload_to_pypi = false
+upload_to_release = true
+build_command = "pip install poetry && poetry build"
 
 
 [build-system]

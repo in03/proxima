@@ -1,6 +1,11 @@
 ---  # Resolve Proxy Encoder User configuration file
 loglevel: WARNING
 
+updates:
+  # If you fork the repo, change this to your fork
+  github_url: "https://github.com/in03/resolve-proxy-encoder" 
+  warn_updates: true
+
 paths:
   # Path to directory containing all proxy media
   proxy_path_root: R:/ProxyMedia
@@ -33,6 +38,8 @@ celery_settings:
   result_expires: 60 # 10 mins
 
   worker_loglevel: WARNING
+  disable_worker_compatability_check: false # Thar be dragons!
+
   worker_concurrency: 1
   worker_prefetch_multiplier: 1
   worker_max_tasks_per_child: 1

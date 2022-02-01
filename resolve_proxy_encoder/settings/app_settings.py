@@ -4,17 +4,18 @@ import operator
 import os
 import re
 import shutil
-import sys
-import time
 import webbrowser
-from functools import reduce
 from pathlib import Path
 
+import typer
 from deepdiff import DeepDiff
-from resolve_proxy_encoder.helpers import (app_exit, get_rich_logger,
-                                           install_rich_tracebacks)
+from resolve_proxy_encoder.helpers import (
+    get_rich_logger,
+    install_rich_tracebacks,
+    app_exit,
+)
 from rich import print
-from rich.prompt import Confirm
+from rich.console import Console
 from ruamel.yaml import YAML
 
 from schema import SchemaError
@@ -47,20 +48,28 @@ class Settings(metaclass=Singleton):
         user_settings_file=USER_SETTINGS_FILE,
     ):
 
+        self.console = Console()
         self.yaml = YAML()
         self.default_file = default_settings_file
         self.user_file = user_settings_file
-        self._ensure_user_file()
 
+        # TODO:
+        # Originally had default settings validated against schema too
+        # but realised testing a path exists is not a good idea for defaults.
+        # Instead let's write a build time test for this.
+
+        # Validate default settings
         self.default_settings = self._get_default_settings()
-        self.user_settings = self._get_user_settings()
-        self._ensure_user_keys()
 
+        # Validate user settings
+        with self.console.status("[cyan]Checking settings...[/]\n"):
 
-        self._validate_schema(self.default_settings)
-        self._validate_schema(self.user_settings)
+            self._ensure_user_file()
+            self.user_settings = self._get_user_settings()
+            self._ensure_user_keys()
+            self._validate_schema(self.user_settings)
 
-        print("[green]User settings are valid :white_check_mark:[/]")
+        print("\n[green]User settings are valid :white_check_mark:[/]\n")
 
     def _get_default_settings(self):
         """Load default settings from yaml"""
@@ -78,7 +87,6 @@ class Settings(metaclass=Singleton):
         with open(self.user_file, "r") as file:
             return self.yaml.load(file)
 
-
     def _ensure_user_file(self):
         """Copy default settings to user settings if it doesn't exist
 
@@ -89,47 +97,34 @@ class Settings(metaclass=Singleton):
 
         if not os.path.exists(self.user_file):
 
-            try:
-
-                if not Confirm.ask(
-                    
-                    f"[yellow]No user settings file found: [/]\'{self.user_file}\'\n"
-                    +"[cyan]Create using default settings[/]?"
-                ):
-                    print("[green]Exiting...\n[/]")
-                    app_exit(0)
+            if typer.confirm(
+                f"No user settings found at path {self.user_file}\n"
+                + "Load defaults now for adjustment?"
+            ):
 
                 # Create dir, copy file, open
                 try:
                     os.makedirs(os.path.dirname(self.user_file))
-                    print("\n[yellow]Creating user settings folder[/] :white_check_mark:")
                 except FileExistsError:
-                    print("\n[green]User settings folder exists[/] :white_check_mark:")
-                except OSError as e:
-                    logger.error(f"\n[red]Couldn't create user settings folder![/]\n{e}")
-                    app_exit(1, -1)
+                    typer.echo("Directory exists, skipping...")
+                except OSError:
+                    typer.echo("Error creating directory!")
+                    app_exit(1)
 
                 shutil.copy(self.default_file, self.user_file)
-                print(f"[green]Copied default settings[/] :white_check_mark:")
+                typer.echo(f"Copied default settings to {self.user_file}")
+                typer.echo("Please customize as necessary.")
+                webbrowser.open(self.user_file)  # Technically unsupported method
 
-                if Confirm.ask("[cyan]Customise user settings now?[/]"):
-
-                    webbrowser.open(self.user_file)  # Technically unsupported method
-                    print("\n[yellow]Run again to validate settings.[/]")
-                    app_exit(0, -1)
-
-                else:
-
-                    print("[green]Exiting...\n[/]")
-                    app_exit(0)
-
-            except KeyboardInterrupt:
-                print("[yellow]User aborted...\n[/]")
-                app_exit(1, -1)
-                    
+            app_exit(0)
 
     def _ensure_user_keys(self):
         """Ensure user settings have all keys in default settings"""
+
+        # TODO: Can't seem to properly catch exceptions as SchemaWrongKeyError, etc.
+        # Just generic SchemaError for now. If we can catch them, we don't need this func.
+        # We can also use the default option in Schema to add default keys.
+        # Then we can get rid of the default_settings.yml file.
 
         diffs = DeepDiff(self.default_settings, self.user_settings)
 
@@ -147,39 +142,9 @@ class Settings(metaclass=Singleton):
                 for x in diffs["dictionary_item_removed"]
             ]
             logger.critical(
-                "Can't continue. Please define missing settings! Exiting...\n"
+                "Can't continue. Please define missing settings! Exiting..."
             )
-
-            # # TODO: Figure out how to copy defaults...
-            # Prompt user to add missing settings
-            # if not typer.confirm("Can't continue without all settings defined! Copy defaults?"):
-            #     app_exit(1)
-            # # Copy defaults to user settings
-            # with open(self.user_file, "r+") as file_:
-            #     user_settings = self.yaml.load(file_)
-
-            #     for diff in diffs["dictionary_item_removed"]:
-            #         bracketed_strings = re.findall(r"[^[]*\[\'([^]]*)'\]", diff)
-
-            #         if bracketed_strings: # Minus value
-            #             dict_path = bracketed_strings[::-1]
-
-            #             # Get key path
-            #             def_val = reduce(operator.getitem, dict_path, self.default_settings)
-            #             print(def_val)
-
-            #     if key not in user_settings:
-
-            #         logger.warning(
-            #             f"Adding missing key '{key}' to user settings with value '{value}'"
-            #         )
-            #         user_settings[key] = value
-            #         print(self.yaml.dump(user_settings))
-
-            #         # file_.seek(0)
-            #         # file_.truncate()
-            #         # self.yaml.dump(user_settings, file_)
-
+            app_exit(1, -1)
 
     def _validate_schema(self, settings):
         """Validate user settings against schema"""
@@ -192,5 +157,8 @@ class Settings(metaclass=Singleton):
 
         except SchemaError as e:
 
-            logger.error(f"Error validating settings: {e}")
-            app_exit(1)
+            logger.error(
+                f"[red]Couldn't validate application settings![/]\n{e}\n"
+                + f"[red]Exiting...[/]\n"
+            )
+            app_exit(1, -1)

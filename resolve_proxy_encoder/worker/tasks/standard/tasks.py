@@ -6,7 +6,12 @@ import os
 
 from better_ffmpeg_progress import FfmpegProcess
 from pymediainfo import MediaInfo
-from resolve_proxy_encoder.helpers import get_rich_logger, install_rich_tracebacks
+from resolve_proxy_encoder import helpers
+from resolve_proxy_encoder.helpers import (
+    get_rich_logger,
+    install_rich_tracebacks,
+    app_exit,
+)
 from resolve_proxy_encoder.settings.app_settings import Settings
 from resolve_proxy_encoder.worker.celery import app
 from resolve_proxy_encoder.worker.helpers import check_wsl, get_wsl_path
@@ -14,7 +19,17 @@ from resolve_proxy_encoder.worker.helpers import check_wsl, get_wsl_path
 settings = Settings()
 config = settings.user_settings
 logger = get_rich_logger(config["celery_settings"]["worker_loglevel"])
-# install_rich_tracebacks()
+install_rich_tracebacks()
+
+git_full_sha = helpers.get_package_current_commit("resolve_proxy_encoder")
+if not git_full_sha:
+    logger.error(
+        "[red]Couldn't get local package commit SHA!\n"
+        + "Necessary to prevent version mismatches between queuer and worker.[/]"
+    )
+    app_exit(1, -1)
+
+git_short_sha = git_full_sha[::8]
 
 
 @app.task(
@@ -22,6 +37,7 @@ logger = get_rich_logger(config["celery_settings"]["worker_loglevel"])
     track_started=True,
     prefetch_limit=1,
     soft_time_limit=60,
+    queue=git_short_sha,
 )
 def encode_proxy(job):
     """

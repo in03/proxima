@@ -1,35 +1,42 @@
 #!/usr/bin/env python3.6
 
+from pyfiglet import Figlet
+from rich import print
+
+# Print CLI title
+fig = Figlet()
+text = fig.renderText("Resolve Proxy Encoder")
+print(f"[green]{text}[/]\n")
 
 import subprocess
 import webbrowser
 
 import typer
-from pyfiglet import Figlet
-from rich import print
+from rich.console import Console
 from rich.prompt import Confirm
 
+from resolve_proxy_encoder import checks
 from resolve_proxy_encoder.helpers import get_rich_logger
 from resolve_proxy_encoder.settings.app_settings import Settings
 
-# Print CLI title
-fig = Figlet()
-text = fig.renderText("Resolve Proxy Encoder")
-print(f"[green]{text}[/]")
-
+# Init classes
+cli_app = typer.Typer()
+console = Console()
 settings = Settings()
+
 config = settings.user_settings
-
 logger = get_rich_logger(config["loglevel"])
-app = typer.Typer()
 
 
-@app.command()
+@cli_app.command()
 def queue():
     """
     Queue proxies from the currently open
     DaVinci Resolve timeline
     """
+
+    checks.check_worker_compatability()
+
     print("[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
 
     from resolve_proxy_encoder import resolve_queue_proxies
@@ -37,7 +44,7 @@ def queue():
     resolve_queue_proxies.main()
 
 
-@app.command()
+@cli_app.command()
 def link():
     """
     Manually link proxies from directory to
@@ -49,7 +56,7 @@ def link():
     link_proxies.main()
 
 
-@app.command()
+@cli_app.command()
 def work(number: int = 0):
     """Prompt to start Celery workers on local machine"""
     if number > 0:
@@ -61,7 +68,7 @@ def work(number: int = 0):
     start_workers.main(number)
 
 
-@app.command()
+@cli_app.command()
 def purge():
     """Purge all tasks from Celery.
 
@@ -84,7 +91,7 @@ def purge():
         subprocess.run(["celery", "-A", "resolve_proxy_encoder.worker", "purge", "-f"])
 
 
-@app.command()
+@cli_app.command()
 def mon():
     """
     Launch Flower Celery monitor in default browser new window
@@ -94,8 +101,18 @@ def mon():
     webbrowser.open_new(config["celery_settings"]["flower_url"])
 
 
+def init():
+    """Run before CLI App load."""
+
+    checks.check_for_updates(
+        github_url=config["updates"]["github_url"],
+        package_name="resolve_proxy_encoder",
+    )
+
+
 def main():
-    app()
+    init()
+    cli_app()
 
 
 if __name__ == "__main__":
