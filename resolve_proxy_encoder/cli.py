@@ -19,13 +19,13 @@ from resolve_proxy_encoder import checks
 from resolve_proxy_encoder.helpers import get_rich_logger
 from resolve_proxy_encoder.settings.app_settings import Settings
 
+# Init classes
+cli_app = typer.Typer()
 console = Console()
 settings = Settings()
+
 config = settings.user_settings
-
 logger = get_rich_logger(config["loglevel"])
-
-cli_app = typer.Typer()
 
 
 @cli_app.command()
@@ -34,6 +34,9 @@ def queue():
     Queue proxies from the currently open
     DaVinci Resolve timeline
     """
+
+    checks.check_worker_compatability()
+
     print("[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
 
     from resolve_proxy_encoder import resolve_queue_proxies
@@ -105,8 +108,6 @@ def init():
         github_url=config["updates"]["github_url"],
         package_name="resolve_proxy_encoder",
     )
-
-    checks.check_worker_compatability()
 
 
 def main():

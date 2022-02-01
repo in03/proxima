@@ -63,7 +63,8 @@ def app_exit(level: int = 0, timeout: int = -1, cleanup_funcs: list = None):
                 x()
 
     if timeout < 0:
-        Prompt("Press [yellow]ENTER[/] to exit")
+        answer = Prompt.ask("Press [yellow]ENTER[/] to exit")
+        sys.exit(level)
 
     else:
 

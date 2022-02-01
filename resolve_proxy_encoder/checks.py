@@ -97,10 +97,9 @@ def check_worker_compatability():
     logger.debug(f"Online workers: {online_workers}")
 
     # Get incompatible workers
-    incompatible_workers = {}
-    for worker in online_workers:
+    incompatible_workers = []
+    for worker, attributes in online_workers.items():
 
-        attributes = online_workers[worker]
         routing_key = attributes[0]["routing_key"]
 
         # Strip whitespace
@@ -110,24 +109,45 @@ def check_worker_compatability():
         # Compare git sha
         if not routing_key == git_short_sha:
 
-            incompatible_workers.update(
+            incompatible_workers.append(
                 {
-                    "worker_name": worker,
-                    "git_short_sha": routing_key,
+                    "name": worker,
+                    "host": str(worker).split("@")[1],
+                    "routing_key": routing_key,
                 }
             )
 
+    incompatible_hosts = set()
+    for x in incompatible_workers:
+        incompatible_hosts.add(x["host"])
+
     # Prompt incompatible workers
     if incompatible_workers:
-        logger.error(
-            "[yellow]Incompatible workers detected![/]\n" + f"{incompatible_workers}\n"
-            "[yellow]To receive jobs from this queuer, updated all workers to commit:[/] "
-            f"{git_short_sha}\n"
+        logger.warning(
+            f"[yellow]Incompatible workers detected!\n"
+            + f"{len(incompatible_workers)}/{len(online_workers)} workers across "
+            + f"{len(incompatible_hosts)} host(s) will NOT be able to process jobs queued here.\n"
+            + f"[green]To fix, update Resolve Proxy Encoder on below hosts to match git commit SHA, [/]'{git_short_sha}':\n"
+            + "', '".join(incompatible_hosts)
+            + "\n"
         )
 
-        Confirm.ask("[cyan]Do you wish to continue?[/]")
-        print("\n")
-        return
+        # If no compatible workers are available
+        if len(online_workers) == len(incompatible_workers):
+
+            logger.error(
+                "[red]All online workers are incompatible!\n" + "Cannot continue[/]"
+            )
+            app_exit(1, -1)
+
+        else:
+
+            if Confirm.ask("[cyan]Do you wish to continue?[/]"):
+                print("\n")
+                return
+
+            print("[yellow]Exiting...[/]")
+            app_exit(1, -1)
 
     print("\n[green]All workers compatible :white_check_mark:[/]\n")
     return
