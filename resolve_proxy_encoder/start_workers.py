@@ -10,6 +10,8 @@ import sys
 import time
 
 from colorama import Fore, init
+from resolve_proxy_encoder.helpers import get_rich_logger, install_rich_tracebacks
+from resolve_proxy_encoder.settings.app_settings import Settings
 
 from resolve_proxy_encoder.helpers import (
     get_package_current_commit,
