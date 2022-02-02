@@ -174,7 +174,7 @@ def encode_proxy(job):
 
     logger.info(f"FFmpeg command:\n{' '.join(ffmpeg_command)}")
 
-    # TODO: Fix terminal progress output on newline
+    # NOT-TODO: Fix terminal progress output on newline
     # Currently BetterFFMpegProgress is logging progress increments to newlines.
     # It's better than nothing, but it looks awful. There are other issues with BFP too.
     # Logging to files is messy, etc. Maybe steal the FFMpeg progress parsing func and
