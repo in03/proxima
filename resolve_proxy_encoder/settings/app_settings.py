@@ -118,6 +118,11 @@ class Settings(metaclass=Singleton):
     def _ensure_user_keys(self):
         """Ensure user settings have all keys in default settings"""
 
+        # TODO: Properly catch Schema exceptions as SchemaWrongKeyError, etc.
+        # It's just generic SchemaError for now. If we can catch them, we don't need this func.
+        # We can also use the default option in Schema to add default keys.
+        # Then we can get rid of the default_settings.yml file.
+
         diffs = DeepDiff(self.default_settings, self.user_settings)
 
         # Check for unknown settings

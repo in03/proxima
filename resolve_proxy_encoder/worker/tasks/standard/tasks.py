@@ -174,6 +174,13 @@ def encode_proxy(job):
 
     logger.info(f"FFmpeg command:\n{' '.join(ffmpeg_command)}")
 
+    # TODO: Fix terminal progress output on newline
+    # Currently BetterFFMpegProgress is logging progress increments to newlines.
+    # It's better than nothing, but it looks awful. There are other issues with BFP too.
+    # Logging to files is messy, etc. Maybe steal the FFMpeg progress parsing func and
+    # use rich.progress instead.
+    # labels: bug
+
     process = FfmpegProcess(
         command=[*ffmpeg_command], ffmpeg_loglevel=proxy_settings["ffmpeg_loglevel"]
     )

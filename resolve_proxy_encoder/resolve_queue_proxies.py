@@ -420,6 +420,8 @@ def get_source_metadata(media_pool_items):
                 )
                 continue
 
+        # TODO: Add the Resolve API media pool item object so we can call it directly to link
+        # source_metadata.update({'media_pool_item_object':media_pool_item})
         filtered_metadata.append(source_metadata)
 
     print(f"[green]Total queuable clips on timeline: {len(filtered_metadata)}[/]")
@@ -821,6 +823,8 @@ def search_and_link():
     linked = []
     # failed = []
 
+    # TODO: Get this working. R
+
     timelines = get_resolve_timelines()
     if not timelines:
         raise Exception("No timelines exist in current project.")
@@ -916,6 +920,8 @@ def main():
     track_items = get_video_track_items(timeline)
     media_pool_items = get_media_pool_items(track_items)
     source_metadata = get_source_metadata(media_pool_items)
+    # TODO: Remove. Not necessary anymore
+    # source_metadata = remove_duplicate_elements(source_metadata)
 
     print("\n")
 
@@ -936,6 +942,12 @@ def main():
 
     job = queue_job(tasks)
     wait_encode(job)
+
+    # TODO: Fix weird double app_exit issue on failed link
+    # Currently a failed link brings up two app_exit 'Press ENTER to exit'
+    # prompts. Probably an app_exit prompt inside legacy_link func exiting with status 1
+    # being caught by next app_exit. Perhaps app_exits should only run if __name__ == "__main__"?
+    # labels: bug
 
     # ATTEMPT POST ENCODE LINK
     try:
