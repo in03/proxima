@@ -943,6 +943,12 @@ def main():
     job = queue_job(tasks)
     wait_encode(job)
 
+    # TODO: Fix weird double app_exit issue on failed link
+    # Currently a failed link brings up two app_exit 'Press ENTER to exit'
+    # prompts. Probably an app_exit prompt inside legacy_link func exiting with status 1
+    # being caught by next app_exit. Perhaps app_exits should only run if __name__ == "__main__"?
+    # labels: bug
+
     # ATTEMPT POST ENCODE LINK
     try:
 

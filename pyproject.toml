@@ -26,7 +26,6 @@ attrdict = "^2.0.1"
 deepdiff = "^5.7.0"
 better-ffmpeg-progress = "^2.0.3"
 pymediainfo = "^5.1.0"
-notifypy = "^1.0.3"
 commonregex = "^1.5.3"
 notify-py = "^0.3.3"
 

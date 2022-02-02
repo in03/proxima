@@ -1,4 +1,13 @@
 ---  # Resolve Proxy Encoder User configuration file
+
+# TODO: Add more app level settings.
+# Some more app or CLI level settings is probably a good idea, e.g:
+# - control app_exit prompt before exit
+# - no coloured output
+# - warn updates (move)
+# - loglevel (move)
+# labels: enhancement
+
 loglevel: WARNING
 
 updates:
