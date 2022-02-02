@@ -53,7 +53,6 @@ class Settings(metaclass=Singleton):
         self.default_file = default_settings_file
         self.user_file = user_settings_file
 
-        # TODO:
         # Originally had default settings validated against schema too
         # but realised testing a path exists is not a good idea for defaults.
         # Instead let's write a build time test for this.
@@ -120,11 +119,6 @@ class Settings(metaclass=Singleton):
 
     def _ensure_user_keys(self):
         """Ensure user settings have all keys in default settings"""
-
-        # TODO: Can't seem to properly catch exceptions as SchemaWrongKeyError, etc.
-        # Just generic SchemaError for now. If we can catch them, we don't need this func.
-        # We can also use the default option in Schema to add default keys.
-        # Then we can get rid of the default_settings.yml file.
 
         diffs = DeepDiff(self.default_settings, self.user_settings)
 

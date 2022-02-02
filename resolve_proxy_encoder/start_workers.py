@@ -26,12 +26,6 @@ settings = Settings()
 config = settings.user_settings
 logger = get_rich_logger(loglevel=config["celery_settings"]["worker_loglevel"])
 
-# TODO: 'rprox work' command is incompatible with pipx!
-# Because we call our worker from celery as a subprocess we need to either call it
-# programmatically somehow or create a "rprox start worker" command that takes celery args,
-# but wraps the first part of the cmd.
-# labels: bug, critical
-
 # Make sure the module path in the command below is up to date!
 START_WIN_WORKER = """celery -A resolve_proxy_encoder.worker worker -l INFO -P solo"""
 
@@ -102,11 +96,6 @@ def launch_workers(workers_to_launch: int):
         queue_from_sha = " -Q " + git_full_sha[::8]
         launch_cmd = START_WIN_WORKER + multi_worker_fmt + queue_from_sha
 
-        # TODO: Swap win term and start min cmd for custom start args
-        # This is silly and messy. Win term doesn't support min anyway.
-        # Like so is better: `run_with: ["start /min" , "bash", "wt"]`
-        # labels: bug
-
         # Use windows terminal?
         if config["celery_settings"]["worker_use_win_terminal"]:
             start = "wt "
@@ -126,12 +115,6 @@ def launch_workers(workers_to_launch: int):
             launch_cmd,
             shell=True,
         )
-
-        # TODO: Fix progress dots still showing at more verbose loglevels
-        # The dots shouldn't show when we're outputting each worker start cmd.
-        # Probs get logger loglevel programmatically instead of from config.
-        # Probs just swap dots for rich.progress.
-        # labels: bug, enhancement
 
         if config["celery_settings"]["worker_loglevel"] == "WARNING":
 
