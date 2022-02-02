@@ -420,7 +420,7 @@ def get_source_metadata(media_pool_items):
                 )
                 continue
 
-        # NOT-TODO: Add the Resolve API media pool item object so we can call it directly to link
+        # TODO: Add the Resolve API media pool item object so we can call it directly to link
         # source_metadata.update({'media_pool_item_object':media_pool_item})
         filtered_metadata.append(source_metadata)
 
@@ -823,7 +823,7 @@ def search_and_link():
     linked = []
     # failed = []
 
-    # NOT-TODO: Get this working. R
+    # TODO: Get this working. R
 
     timelines = get_resolve_timelines()
     if not timelines:
@@ -920,7 +920,7 @@ def main():
     track_items = get_video_track_items(timeline)
     media_pool_items = get_media_pool_items(track_items)
     source_metadata = get_source_metadata(media_pool_items)
-    # NOT-TODO: Remove. Not necessary anymore
+    # TODO: Remove. Not necessary anymore
     # source_metadata = remove_duplicate_elements(source_metadata)
 
     print("\n")
@@ -943,7 +943,7 @@ def main():
     job = queue_job(tasks)
     wait_encode(job)
 
-    # NOT-TODO: Fix weird double app_exit issue on failed link
+    # TODO: Fix weird double app_exit issue on failed link
     # Currently a failed link brings up two app_exit 'Press ENTER to exit'
     # prompts. Probably an app_exit prompt inside legacy_link func exiting with status 1
     # being caught by next app_exit. Perhaps app_exits should only run if __name__ == "__main__"?

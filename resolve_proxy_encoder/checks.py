@@ -60,7 +60,7 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
         logger.info(f"Current: {package_latest_commit}")
 
     else:
-        # NOT-TODO: Fix too much newline padding when all checks pass
+        # TODO: Fix too much newline padding when all checks pass
         # Move the newline padding from these 'success prints' to
         # the warning and error logs. Make sure newline padding is consistent.
         # labels: bug
@@ -78,7 +78,7 @@ def check_worker_compatability():
         time.sleep(2)
         return
 
-    # NOT-TODO: Stop console status spinner from breaking prompts and console logging
+    # TODO: Stop console status spinner from breaking prompts and console logging
     # Maybe the spinner doesn't expect console output until we've exited the 'with'?
     # labels: bug
     console = Console()
