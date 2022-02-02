@@ -1,8 +1,6 @@
 #!/usr/bin/env python3.6
 
-import operator
 import os
-import re
 import shutil
 import webbrowser
 from pathlib import Path
