@@ -12,6 +12,7 @@ import subprocess
 import webbrowser
 
 import typer
+from typing import Optional, List
 from rich.console import Console
 from rich.prompt import Confirm
 
@@ -57,15 +58,22 @@ def link():
 
 
 @cli_app.command()
-def work(number: int = 0):
+
+# TODO: Figure out how to pass optional celery args to Typer
+def work(
+    workers_to_launch: Optional[int] = typer.Argument(
+        0, help="How many workers to start"
+    )
+):
     """Prompt to start Celery workers on local machine"""
-    if number > 0:
+
+    if workers_to_launch > 0:
         print(f"[green]Starting workers! :construction_worker:[/]")
     print(f"[cyan]Starting worker launcher prompt :construction_worker:[/]")
 
     from resolve_proxy_encoder import start_workers
 
-    start_workers.main(number)
+    start_workers.main(workers_to_launch)
 
 
 @cli_app.command()

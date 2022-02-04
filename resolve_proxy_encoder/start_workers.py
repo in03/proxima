@@ -5,21 +5,26 @@
 import multiprocessing
 import os
 import platform
+import re
 import subprocess
 import sys
 import time
+from distutils.sysconfig import get_python_lib
+from pathlib import Path
+from shutil import which
 
-from colorama import Fore, init
-from resolve_proxy_encoder.helpers import get_rich_logger, install_rich_tracebacks
-from resolve_proxy_encoder.settings.app_settings import Settings
+from rich import print
+from rich.progress import Progress
 
 from resolve_proxy_encoder.helpers import (
+    app_exit,
     get_package_current_commit,
     get_rich_logger,
+    get_script_from_package,
     install_rich_tracebacks,
-    app_exit,
 )
 from resolve_proxy_encoder.settings.app_settings import Settings
+from resolve_proxy_encoder.worker.celery import app
 
 install_rich_tracebacks()
 settings = Settings()
@@ -32,17 +37,6 @@ logger = get_rich_logger(loglevel=config["celery_settings"]["worker_loglevel"])
 # but wraps the first part of the cmd.
 # labels: bug, critical
 
-# Make sure the module path in the command below is up to date!
-START_WIN_WORKER = """celery -A resolve_proxy_encoder.worker worker -l INFO -P solo"""
-
-
-def exit_in_seconds(timeout):
-    """Allow time to read console before exit"""
-    for i in range(timeout, -1, -1):
-        time.sleep(1)
-        sys.stdout.write(Fore.RED + f"\rExiting in {str(i)}")
-    return
-
 
 def prompt_worker_amount(cpu_cores: int):
     """Prompt the user for the amount of Celery workers they want to run.
@@ -53,14 +47,14 @@ def prompt_worker_amount(cpu_cores: int):
 
     def invalid_answer():
         """Restart prompt if answer invalid"""
-        print(f"{Fore.RED}Invalid number! Please enter a whole number.")
+        print(f"[red]Invalid number! Please enter a whole number.[/]")
         prompt_worker_amount(cpu_cores)
 
     try:
 
         # Input doesn't like parsing colours
         print(
-            f"{Fore.YELLOW}How many workers would you like to start?\n"
+            f"[yellow]How many workers would you like to start?[/]\n"
             + f"Press ENTER for default: {safe_cores_suggestion}\n"
         )
 
@@ -70,94 +64,135 @@ def prompt_worker_amount(cpu_cores: int):
         invalid_answer()
 
     if answer == 0:
-        print(f"{Fore.YELLOW}Using suggested amount: {safe_cores_suggestion}")
+        print(f"[yellow]Using suggested amount: {safe_cores_suggestion}[/]")
         answer = safe_cores_suggestion
 
     return answer
 
 
+def get_routing_key_from_version():
+
+    # Add git SHA Celery queue to prevent queuer/worker incompatibilities
+    git_full_sha = get_package_current_commit("resolve_proxy_encoder")
+
+    if not git_full_sha:
+
+        logger.error(
+            "[red]Couldn't get local package commit SHA!\n"
+            + "Necessary to prevent version mismatches between queuer and worker.[/]"
+        )
+        app_exit(1, -1)
+
+    # Use git standard 7 character short SHA
+    return git_full_sha[::8]
+
+
+def new_worker(id=None):
+    """Start a new celery worker in a new process
+
+    Used to start workers even when the script binaries are buried
+    in a virtual env like in pipx.
+
+    Args:
+        - id: Used to differentiate multiple workers on the same host
+
+    Returns:
+        - none
+
+    Raises:
+        - none
+    """
+
+    # Get worker name
+    worker_name = []
+
+    if id:
+        worker_name = [
+            "-n",
+            f"worker{id}",
+            "@h",  # hostname
+        ]
+
+    # Get worker queue
+    routing_key = get_routing_key_from_version()
+    queue = [" -Q " + routing_key]
+
+    # TODO: Test that celery binary can be started from pipx install
+
+    # Get celery binary
+    if which("celery"):
+
+        celery_bin = "celery"
+
+    else:
+
+        # Celery bin not on path. Maybe virtual env. Find.
+        site_packages_dir = Path(get_python_lib()).resolve()
+        celery_bin = get_script_from_package("Celery")
+        print(celery_bin)
+        package_root = os.path.join(site_packages_dir, "resolve_proxy_encoder")
+
+        # Change dir to package root
+        os.chdir(package_root)
+
+    launch_cmd = [
+        *config["celery_settings"]["worker_terminal_args"],
+        celery_bin,
+        "-A",
+        "resolve_proxy_encoder.worker",
+        "worker",
+        *worker_name,
+        *queue,
+        *config["celery_settings"]["worker_celery_args"],
+    ]
+
+    # TODO: Figure out why celery worker is failing to start
+    # "Error: Unable to parse extra configuration from command line."
+    # Not sure why, copying the cmd and pasting runs the worker fine...
+    # labels: bug
+
+    logger.info(launch_cmd)
+    print(launch_cmd)
+    process = subprocess.Popen(launch_cmd)
+
+
 def launch_workers(workers_to_launch: int):
 
     # Start launching
-    print(Fore.GREEN + "LAUNCHING")
-    for i in range(0, workers_to_launch):
 
-        dots = "."
-        for x in range(0, i):
-            dots = dots + "."
+    worker_id = 0
+    with Progress() as progress:
 
-        # Add worker number to differentiate
-        multi_worker_fmt = f" -n worker{i+1}@%h"
-
-        # Add git SHA Celery queue to prevent queuer/worker incompatibilities
-        git_full_sha = get_package_current_commit("resolve_proxy_encoder")
-        if not git_full_sha:
-            logger.error(
-                "[red]Couldn't get local package commit SHA!\n"
-                + "Necessary to prevent version mismatches between queuer and worker.[/]"
-            )
-            app_exit(1, -1)
-
-        # Use git standard 7 character short SHA
-        queue_from_sha = " -Q " + git_full_sha[::8]
-        launch_cmd = START_WIN_WORKER + multi_worker_fmt + queue_from_sha
-
-        # TODO: Swap win term and start min cmd for custom start args
-        # This is silly and messy. Win term doesn't support min anyway.
-        # Like so is better: `run_with: ["start /min" , "bash", "wt"]`
-        # labels: bug
-
-        # Use windows terminal?
-        if config["celery_settings"]["worker_use_win_terminal"]:
-            start = "wt "
-        else:
-            start = "start "
-
-        # Start min or norm?
-        if config["celery_settings"]["worker_start_minimized"]:
-            launch_cmd = start + "/min " + launch_cmd
-        else:
-            launch_cmd = start + launch_cmd
-
-        logger.info(launch_cmd)
-        print(launch_cmd)
-
-        process = subprocess.Popen(
-            launch_cmd,
-            shell=True,
+        launch = progress.add_task(
+            "[green]Starting workers[/]", total=workers_to_launch
         )
 
-        # TODO: Fix progress dots still showing at more verbose loglevels
-        # The dots shouldn't show when we're outputting each worker start cmd.
-        # Probs get logger loglevel programmatically instead of from config.
-        # Probs just swap dots for rich.progress.
-        # labels: bug, enhancement
+        while not progress.finished:
 
-        if config["celery_settings"]["worker_loglevel"] == "WARNING":
+            worker_id += 1
+            progress.update(launch, advance=1)
 
-            sys.stdout.write(dots)
+            # logger.info(launch_cmd)
 
-        sys.stdout.flush()
+            new_worker(id=worker_id)
+            time.sleep(0.05)
 
-    print()
-    return
+        print()
+        return
 
 
 def main(workers: int = 0):
     """Main function"""
 
-    # Coloured term output
-    init(autoreset=True)
-
     os_ = platform.system()
     cpu_cores = multiprocessing.cpu_count()
 
-    print(f"{Fore.GREEN}Running on {os_} with {cpu_cores} cores.\n")
+    print(f"[green]Running on {os_} with {cpu_cores} cores.[/]\n")
 
     # Check OS isn't Linux
     if not platform.system() == "Windows":
         print(
-            f"{Fore.RED}This utility is for Windows only!\n"
+            f"[red]This utility is for Windows only!\n"
             + "To start multiple workers on Linux or WSL, setup a systemd service."
         )
         sys.exit(1)
@@ -170,8 +205,8 @@ def main(workers: int = 0):
     else:
         launch_workers(prompt_worker_amount(cpu_cores))
 
-    print(f"\n{Fore.GREEN}Done!")
-    exit_in_seconds(5)
+    print(f"[green]Done![/]")
+    app_exit(0, 5)
 
 
 if __name__ == "__main__":
