@@ -1,9 +1,12 @@
 """ Helper functions for main module """
 import json
 import logging
+import os
 import subprocess
 import sys
 import time
+from distutils.sysconfig import get_python_lib
+from pathlib import Path
 from typing import Union
 
 import pkg_resources
@@ -205,7 +208,7 @@ def get_package_current_commit(package_name: str) -> Union[str, None]:
         if package_latest_commit is None:
             raise TypeError("Couldn't get package last commit id")
 
-        return package_latest_commit
+        return package_latest_commit.strip()
 
     except:
         logger.info(
@@ -223,7 +226,7 @@ def get_package_current_commit(package_name: str) -> Union[str, None]:
         if latest_commit_id is None:
             raise TypeError("Couldn't get git last commit id")
 
-        return latest_commit_id
+        return latest_commit_id.strip()
 
     except:
 
@@ -273,3 +276,23 @@ def get_remote_latest_commit(github_url: str) -> Union[str, None]:
     results = r.json()
     remote_latest_commit = results["sha"]
     return remote_latest_commit
+
+
+def get_script_from_package(script_name: str) -> Union[Path, None]:
+    """Get path to a named script in the current package
+
+    Allows us to call scripts buried in a virtual env like pipx.
+    Case insensitive.
+    """
+
+    package_dir = Path(get_python_lib()).resolve().parents[1]
+    scripts_dir = os.path.join(package_dir, "Scripts")
+
+    for x in os.listdir(scripts_dir):
+
+        file_ = x.lower()
+        if script_name.lower() in file_.lower():
+
+            return os.path.abspath(os.path.join(scripts_dir, file_))
+
+    return None
