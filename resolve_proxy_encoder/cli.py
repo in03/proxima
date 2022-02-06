@@ -12,7 +12,7 @@ import subprocess
 import webbrowser
 
 import typer
-from typing import Optional, List
+from typing import Optional
 from rich.console import Console
 from rich.prompt import Confirm
 

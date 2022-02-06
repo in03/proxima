@@ -1,5 +1,5 @@
 import re
-from commonregex import ip, link
+from commonregex import link
 import os
 from schema import Schema, And, Optional
 

@@ -7,7 +7,6 @@ import os
 import platform
 import subprocess
 import time
-from distutils.sysconfig import get_python_lib
 from shutil import which
 
 from rich import print
@@ -21,7 +20,6 @@ from resolve_proxy_encoder.helpers import (
     install_rich_tracebacks,
 )
 from resolve_proxy_encoder.settings.app_settings import Settings
-from resolve_proxy_encoder.worker.celery import app
 
 install_rich_tracebacks()
 settings = Settings()
