@@ -69,7 +69,8 @@ def work(
 
     if workers_to_launch > 0:
         print(f"[green]Starting workers! :construction_worker:[/]")
-    print(f"[cyan]Starting worker launcher prompt :construction_worker:[/]")
+    else:
+        print(f"[cyan]Starting worker launcher prompt :construction_worker:[/]")
 
     from resolve_proxy_encoder import start_workers
 

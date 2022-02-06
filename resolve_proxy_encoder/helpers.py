@@ -293,6 +293,6 @@ def get_script_from_package(script_name: str) -> Union[Path, None]:
         file_ = x.lower()
         if script_name.lower() in file_.lower():
 
-            return os.path.join(scripts_dir, file_)
+            return os.path.abspath(os.path.join(scripts_dir, file_))
 
     return None

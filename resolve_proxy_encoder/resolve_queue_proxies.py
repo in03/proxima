@@ -811,6 +811,13 @@ def postencode_link(media_list):
     return media_list
 
 
+# TODO: Need to get new search and link working
+# Legacy link is the original code and it's soooo bad.
+# I haven't looked at it in ages. But then I bit off more than I could
+# chew working on this. Find a middle ground!
+# labels: bug
+
+
 def search_and_link():
     """Search through all existing media in active project and
     attempt to find linkable proxies in expected directory
@@ -822,8 +829,6 @@ def search_and_link():
 
     linked = []
     # failed = []
-
-    # TODO: Get this working. R
 
     timelines = get_resolve_timelines()
     if not timelines:
@@ -920,8 +925,6 @@ def main():
     track_items = get_video_track_items(timeline)
     media_pool_items = get_media_pool_items(track_items)
     source_metadata = get_source_metadata(media_pool_items)
-    # TODO: Remove. Not necessary anymore
-    # source_metadata = remove_duplicate_elements(source_metadata)
 
     print("\n")
 
@@ -942,12 +945,6 @@ def main():
 
     job = queue_job(tasks)
     wait_encode(job)
-
-    # TODO: Fix weird double app_exit issue on failed link
-    # Currently a failed link brings up two app_exit 'Press ENTER to exit'
-    # prompts. Probably an app_exit prompt inside legacy_link func exiting with status 1
-    # being caught by next app_exit. Perhaps app_exits should only run if __name__ == "__main__"?
-    # labels: bug
 
     # ATTEMPT POST ENCODE LINK
     try:

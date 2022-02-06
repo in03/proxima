@@ -5,12 +5,9 @@
 import multiprocessing
 import os
 import platform
-import re
 import subprocess
-import sys
 import time
 from distutils.sysconfig import get_python_lib
-from pathlib import Path
 from shutil import which
 
 from rich import print
@@ -103,57 +100,104 @@ def new_worker(id=None):
         - none
     """
 
-    # Get worker name
-    worker_name = []
+    def get_worker_name(id):
 
-    if id:
-        worker_name = [
-            "-n",
-            f"worker{id}",
-            "@h",  # hostname
-        ]
+        # @h for 'hostname'
+        return f"-n worker{id}@h"
 
-    # Get worker queue
-    routing_key = get_routing_key_from_version()
-    queue = [" -Q " + routing_key]
+    def get_worker_queue():
 
-    # TODO: Test that celery binary can be started from pipx install
+        return " -Q " + get_routing_key_from_version()
 
-    # Get celery binary
-    if which("celery"):
+    def get_celery_binary_path():
 
-        celery_bin = "celery"
-
-    else:
-
-        # Celery bin not on path. Maybe virtual env. Find.
-        site_packages_dir = Path(get_python_lib()).resolve()
+        # Check if in virtual env. Find.
         celery_bin = get_script_from_package("Celery")
-        print(celery_bin)
-        package_root = os.path.join(site_packages_dir, "resolve_proxy_encoder")
+        if celery_bin:
+            return celery_bin
+
+        logger.warning("[yellow]Can't get Celery from package.[/]")
+
+        # Assume global
+        celery_bin = which("celery")
+        if celery_bin:
+            return celery_bin
+        logger.warning(
+            "[yellow]Using Celery on path." + "Please ensure version compatability![/]"
+        )
+
+        logger.error("[red]Couldn't find celery binary! Is it installed?[/]")
+        app_exit(1, -1)
+
+    def get_module_path():
+        """Get absolute module path to pass to Celery worker"""
 
         # Change dir to package root
-        os.chdir(package_root)
+        module_path = os.path.dirname(os.path.abspath(__file__))
+
+        logger.debug(f"Worker path: {module_path}")
+        assert os.path.exists(module_path)
+        return os.path.abspath(module_path)
+
+    def get_new_console():
+        """Get os command to spawn process in a new console window"""
+
+        # Get new terminal
+        worker_terminal_args = config["celery_settings"]["worker_terminal_args"]
+
+        # Check if any args are on path. Probably terminal executable.
+        executable_args = [which(x) for x in worker_terminal_args]
+        if executable_args:
+            return ""
+
+        # TODO: Ensure partial matches work here too
+        # Make sure no starting args exist
+        start_commands = ["open", "start"]
+        if any(x in start_commands for x in worker_terminal_args):
+            return ""
+
+        # TODO: Need to test starting workers on other platforms
+        # Get new terminal cmd
+        os_ = platform.system()
+
+        if os_ is "Windows":
+            return 'start "RPROX Worker"'  # First double quotes as title
+
+        elif os_ is "Mac":
+            return "open"
+
+        elif os_ is "Linux":
+            logger.error(
+                "Cannot guess installed Linux terminal. Too many distros."
+                + "Please provide a terminal executable in 'worker_terminal_args' settings."
+            )
+            app_exit(1, -1)
+        else:
+            logger.error(
+                f"Could not determine terminal executable for OS: {os_}."
+                + "Please provide a terminal executable in 'worker_terminal_args' settings."
+            )
+            app_exit(1, -1)
 
     launch_cmd = [
+        get_new_console(),
         *config["celery_settings"]["worker_terminal_args"],
-        celery_bin,
-        "-A",
-        "resolve_proxy_encoder.worker",
+        f'"{get_celery_binary_path()}"',
+        "-A resolve_proxy_encoder.worker",
         "worker",
-        *worker_name,
-        *queue,
+        get_worker_name(id),
+        get_worker_queue(),
         *config["celery_settings"]["worker_celery_args"],
     ]
 
-    # TODO: Figure out why celery worker is failing to start
-    # "Error: Unable to parse extra configuration from command line."
-    # Not sure why, copying the cmd and pasting runs the worker fine...
-    # labels: bug
+    logger.info(" ".join(launch_cmd))
+    # print(" ".join(launch_cmd))
 
-    logger.info(launch_cmd)
-    print(launch_cmd)
-    process = subprocess.Popen(launch_cmd)
+    subprocess.Popen(
+        cwd=get_module_path(),
+        args=" ".join(launch_cmd),
+        shell=True,
+    )
 
 
 def launch_workers(workers_to_launch: int):
@@ -187,22 +231,16 @@ def main(workers: int = 0):
     os_ = platform.system()
     cpu_cores = multiprocessing.cpu_count()
 
-    print(f"[green]Running on {os_} with {cpu_cores} cores.[/]\n")
-
-    # Check OS isn't Linux
-    if not platform.system() == "Windows":
-        print(
-            f"[red]This utility is for Windows only!\n"
-            + "To start multiple workers on Linux or WSL, setup a systemd service."
-        )
-        sys.exit(1)
-
-    print("For maximum performance, start as many workers as CPU cores.")
-    print("Default recommendation is 2 cores spare for Resolve and other tasks.\n")
-
+    # Don't bother with tips if not prompting
     if workers:
+
         launch_workers(workers)
+
     else:
+
+        print(f"[green]Running on {os_} with {cpu_cores} cores.[/]\n")
+        print("For maximum performance, start as many workers as CPU cores.")
+        print("Default recommendation is 2 cores spare for Resolve and other tasks.\n")
         launch_workers(prompt_worker_amount(cpu_cores))
 
     print(f"[green]Done![/]")
@@ -214,5 +252,6 @@ if __name__ == "__main__":
     # Change to the expected directory of START_WIN_WORKER
     module_path = os.path.dirname(os.path.abspath(__file__))
     package_path = os.path.dirname(module_path)
+
     os.chdir(package_path)
     main(0)
