@@ -28,12 +28,6 @@ settings = Settings()
 config = settings.user_settings
 logger = get_rich_logger(loglevel=config["celery_settings"]["worker_loglevel"])
 
-# TODO: 'rprox work' command is incompatible with pipx!
-# Because we call our worker from celery as a subprocess we need to either call it
-# programmatically somehow or create a "rprox start worker" command that takes celery args,
-# but wraps the first part of the cmd.
-# labels: bug, critical
-
 
 def prompt_worker_amount(cpu_cores: int):
     """Prompt the user for the amount of Celery workers they want to run.
