@@ -950,12 +950,13 @@ def main():
     try:
 
         clips = legacy_link(clips)
-        helpers.app_exit(0)
 
     except:
 
         print("[red]Couldn't link clips. Link manually...[/]")
         helpers.app_exit(1, -1)
+
+    helpers.app_exit(0)
 
 
 if __name__ == "__main__":

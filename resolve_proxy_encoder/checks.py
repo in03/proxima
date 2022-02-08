@@ -4,6 +4,7 @@ from typing import Union
 from rich import print
 from rich.console import Console
 from rich.prompt import Confirm
+from yaspin import yaspin
 
 from resolve_proxy_encoder.helpers import (
     app_exit,
@@ -36,19 +37,26 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
         - none
     """
 
-    console = Console()
+    spinner = yaspin(
+        text="Checking for updates...",
+        color="cyan",
+    )
 
-    with console.status("[cyan]Checking for updates...[/]\n"):
-        remote_latest_commit = get_remote_latest_commit(github_url)
+    spinner.start()
+    remote_latest_commit = get_remote_latest_commit(github_url)
+    if remote_latest_commit:
 
-    package_latest_commit = get_package_current_commit(package_name)
+        package_latest_commit = get_package_current_commit(package_name)
 
     if not remote_latest_commit or not package_latest_commit:
+
+        spinner.fail("❌ ")
         logger.warning("[red]Failed to check for updates[/]")
         return
 
     if remote_latest_commit != package_latest_commit:
 
+        spinner.fail("❌ ")
         logger.warning(
             "[yellow]Update available.\n"
             + "Fully uninstall and reinstall when possible:[/]\n"
@@ -58,14 +66,13 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
 
         logger.info(f"Remote: {remote_latest_commit}")
         logger.info(f"Current: {package_latest_commit}")
+        return None
 
-    else:
-        # TODO: Fix too much newline padding when all checks pass
-        # Move the newline padding from these 'success prints' to
-        # the warning and error logs. Make sure newline padding is consistent.
-        # labels: bug
-        print("\n[green]Installation up-to-date :white_check_mark:[/]\n")
-
+    # TODO: Fix too much newline padding when all checks pass
+    # Move the newline padding from these 'success prints' to
+    # the warning and error logs. Make sure newline padding is consistent.
+    # labels: bug
+    spinner.ok("✨ ")
     return
 
 
@@ -81,16 +88,19 @@ def check_worker_compatability():
     # TODO: Stop console status spinner from breaking prompts and console logging
     # Maybe the spinner doesn't expect console output until we've exited the 'with'?
     # labels: bug
-    console = Console()
-    with console.status(
-        "\n[cyan]Fetching online workers for compatability check...[/]\n"
-    ):
 
-        # Get online workers and package current commit
-        online_workers = celery_app.control.inspect().active_queues()
-        git_full_sha = get_package_current_commit("resolve_proxy_encoder")
+    spinner = yaspin(
+        text="Checking worker compatability...",
+        color="cyan",
+    )
+
+    # Get online workers and package current commit
+    spinner.start()
+    online_workers = celery_app.control.inspect().active_queues()
+    git_full_sha = get_package_current_commit("resolve_proxy_encoder")
 
     if git_full_sha is None:
+        spinner.fail("❌ ")
         logger.warning(
             "[yellow]Couldn't get local package git commit SHA\n"
             + "Any incompatible workers will not be reported.\n"
@@ -101,11 +111,17 @@ def check_worker_compatability():
     git_short_sha = git_full_sha[::8]
 
     if online_workers is None:
+
+        spinner.fail("❌ ")
         logger.warning(
             "[yellow]No workers found. Can't check compatability.\n"
             + "Jobs may not be received if no compatible workers are available!\n[/]"
-            + "[red]CONTINUE AT OWN RISK![/]\n\n"
+            + "[red]CONTINUE AT OWN RISK![/]\n"
         )
+
+        if not Confirm.ask("[cyan]Do you wish to continue?[/]"):
+            app_exit(1, -1)
+
         return None
 
     logger.debug(f"Online workers: {online_workers}")
@@ -137,6 +153,7 @@ def check_worker_compatability():
 
     # Prompt incompatible workers
     if incompatible_workers:
+        spinner.fail("❌ ")
         logger.warning(
             f"[yellow]Incompatible workers detected!\n"
             + f"{len(incompatible_workers)}/{len(online_workers)} workers across "
@@ -149,6 +166,7 @@ def check_worker_compatability():
         # If no compatible workers are available
         if len(online_workers) == len(incompatible_workers):
 
+            spinner.fail("❌ ")
             logger.error(
                 "[red]All online workers are incompatible!\n" + "Cannot continue[/]"
             )
@@ -156,12 +174,8 @@ def check_worker_compatability():
 
         else:
 
-            if Confirm.ask("[cyan]Do you wish to continue?[/]"):
-                print("\n")
-                return
+            if not Confirm.ask("[cyan]Do you wish to continue?[/]"):
+                app_exit(1, -1)
 
-            print("[yellow]Exiting...[/]")
-            app_exit(1, -1)
-
-    print("\n[green]All workers compatible :white_check_mark:[/]\n")
+    spinner.ok("👍 ")
     return

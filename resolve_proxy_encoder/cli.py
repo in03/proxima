@@ -21,8 +21,8 @@ from resolve_proxy_encoder.helpers import get_rich_logger
 from resolve_proxy_encoder.settings.app_settings import Settings
 
 # Init classes
-cli_app = typer.Typer()
 console = Console()
+cli_app = typer.Typer()
 settings = Settings()
 
 config = settings.user_settings
@@ -38,7 +38,7 @@ def queue():
 
     checks.check_worker_compatability()
 
-    print("[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
+    print("\n\n[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
 
     from resolve_proxy_encoder import resolve_queue_proxies
 
@@ -66,6 +66,9 @@ def work(
     )
 ):
     """Prompt to start Celery workers on local machine"""
+
+    # Seperate from checks with newline
+    print("\n")
 
     if workers_to_launch > 0:
         print(f"[green]Starting workers! :construction_worker:[/]")

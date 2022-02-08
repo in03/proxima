@@ -12,10 +12,28 @@ from typing import Union
 import pkg_resources
 import requests
 from notifypy import Notify
+from rich import print
 from rich.logging import RichHandler
 from rich.prompt import Prompt
 
 from resolve_proxy_encoder import python_get_resolve
+
+
+class fragile(object):
+    class Break(Exception):
+        """Break out of a with statement"""
+
+    def __init__(self, value):
+        self.value = value
+
+    def __enter__(self):
+        return self.value.__enter__()
+
+    def __exit__(self, etype, value, traceback):
+        error = self.value.__exit__(etype, value, traceback)
+        if etype == self.Break:
+            return True
+        return error
 
 
 def get_rich_logger(loglevel: Union[int, str]):
@@ -49,7 +67,7 @@ def install_rich_tracebacks(show_locals=False):
     install(show_locals=show_locals)
 
 
-def app_exit(level: int = 0, timeout: int = -1, cleanup_funcs: list = None):
+def app_exit(level: int = 0, timeout: int = 0, cleanup_funcs: list = None):
 
     """
     Exit function to allow time to
@@ -65,20 +83,27 @@ def app_exit(level: int = 0, timeout: int = -1, cleanup_funcs: list = None):
             if x is not None:
                 x()
 
+    # Exit statement
+    colour = "green" if level is 0 else "yellow"
+
+    # Newline
+    print()
+
     if timeout < 0:
-        answer = Prompt.ask("Press [yellow]ENTER[/] to exit")
+
+        Prompt.ask(f"[{colour}]Press ENTER to exit[/]")
         sys.exit(level)
 
-    else:
+    if timeout == 0:
+        sys.exit(level)
 
-        for i in range(timeout, -1, -1):
+    for i in range(timeout, -1, -1):
 
-            time.sleep(1)
-            sys.stdout.write(f"\rExiting in " + str(i))
+        time.sleep(1)
+        print(f"[{colour}]Exiting in {str(i)}[/]", end="\r")
 
-        # Erase last line
-        sys.stdout.write("\x1b[1A")
-        sys.stdout.write("\x1b[2K")
+    # Erase last line
+    sys.stdout.write("\x1b[2K")
 
     sys.exit(level)
 
@@ -253,16 +278,23 @@ def get_remote_latest_commit(github_url: str) -> Union[str, None]:
     Raises:
         - TypeError: Caught by try/except; used to jump between blocks, readability.
     """
+    try:
 
-    url_list = github_url.split(".com")[1].split("/")
-    api_endpoint = (
-        f"https://api.github.com/repos/{url_list[1]}/{url_list[2]}/commits/main"
-    )
+        url_list = github_url.split(".com")[1].split("/")
+        api_endpoint = (
+            f"https://api.github.com/repos/{url_list[1]}/{url_list[2]}/commits/main"
+        )
+
+    except IndexError:
+
+        logger.error(f"[red]Invalid url passed! '{github_url}'[/]")
+        return None
 
     try:
 
         r = requests.get(api_endpoint, timeout=8)
         if not str(r.status_code).startswith("2"):
+
             logger.warning(
                 f"[red]Couldn't connect to GitHub API\n[/]"
                 + f"[yellow]HTTP status code:[/] {r.status_code}\n\n"
@@ -270,6 +302,7 @@ def get_remote_latest_commit(github_url: str) -> Union[str, None]:
             return None
 
     except Exception as e:
+
         logger.error(f"[red]Couldn't connect to GitHub API:[/]\n{e}")
         return None
 

@@ -183,7 +183,6 @@ def new_worker(id=None):
     ]
 
     logger.info(" ".join(launch_cmd))
-    # print(" ".join(launch_cmd))
 
     subprocess.Popen(
         cwd=get_module_path(),
@@ -199,19 +198,15 @@ def launch_workers(workers_to_launch: int):
     worker_id = 0
     with Progress() as progress:
 
-        launch = progress.add_task(
-            "[green]Starting workers[/]", total=workers_to_launch
-        )
+        launch = progress.add_task("", total=workers_to_launch)
 
         while not progress.finished:
 
             worker_id += 1
             progress.update(launch, advance=1)
 
-            # logger.info(launch_cmd)
-
             new_worker(id=worker_id)
-            time.sleep(0.05)
+            time.sleep(0.1)
 
         print()
         return
