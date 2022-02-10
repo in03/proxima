@@ -26,7 +26,7 @@ from resolve_proxy_encoder.worker.tasks.standard.tasks import encode_proxy
 settings = Settings()
 config = settings.user_settings
 
-logger = helpers.get_rich_logger(config["loglevel"])
+logger = helpers.get_rich_logger(config["app"]["loglevel"])
 
 # Get global variables
 resolve_obj = helpers.get_resolve_objects()

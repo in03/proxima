@@ -1,35 +1,31 @@
 #!/usr/bin/env python3.6
 
 from __future__ import absolute_import
+from genericpath import exists
 
 import os
 
-from better_ffmpeg_progress import FfmpegProcess
 from pymediainfo import MediaInfo
-from resolve_proxy_encoder import helpers
 from resolve_proxy_encoder.helpers import (
+    app_exit,
     get_rich_logger,
     install_rich_tracebacks,
-    app_exit,
 )
 from resolve_proxy_encoder.settings.app_settings import Settings
 from resolve_proxy_encoder.worker.celery import app
-from resolve_proxy_encoder.worker.helpers import check_wsl, get_wsl_path
+from resolve_proxy_encoder.worker.ffmpeg import FfmpegProcess
+from resolve_proxy_encoder.worker.helpers import check_wsl, get_queue, get_wsl_path
+from rich import print
+from rich.console import Console
+
+console = Console()
 
 settings = Settings()
 config = settings.user_settings
+
+
 logger = get_rich_logger(config["celery_settings"]["worker_loglevel"])
 install_rich_tracebacks()
-
-git_full_sha = helpers.get_package_current_commit("resolve_proxy_encoder")
-if not git_full_sha:
-    logger.error(
-        "[red]Couldn't get local package commit SHA!\n"
-        + "Necessary to prevent version mismatches between queuer and worker.[/]"
-    )
-    app_exit(1, -1)
-
-git_short_sha = git_full_sha[::8]
 
 
 @app.task(
@@ -37,13 +33,18 @@ git_short_sha = git_full_sha[::8]
     track_started=True,
     prefetch_limit=1,
     soft_time_limit=60,
-    queue=git_short_sha,
+    queue=get_queue(),
 )
 def encode_proxy(job):
+
     """
     Celery task to encode proxy media using parameters in job argument
     and user-defined settings
     """
+
+    print("\n")
+    console.rule("[green]Received proxy encode job :clapper:[/]", align="left")
+    print("\n")
 
     # Variables
     try:
@@ -122,6 +123,7 @@ def encode_proxy(job):
             logger.error("Couldn't get video orientation from job metadata!")
             raise e
 
+        logger.info("[magenta]Using clip attribute's modified orientation.[/]")
         return flip
 
     def get_timecode(job):
@@ -138,14 +140,14 @@ def encode_proxy(job):
                 data_track_exists = True
                 if track.time_code_of_first_frame:
 
-                    logger.info("Using embedded timecode.")
+                    logger.info("[magenta]Using embedded timecode.[/]")
                     return str(track.time_code_of_first_frame)
 
         if data_track_exists:
-            logger.warning("Couldn't get timecode from media's data track.")
+            logger.warning("[yellow]Couldn't get timecode from media's data track.[/]")
         else:
             logger.info(
-                "No embedded timecode found in media file. Using default timecode."
+                "[magenta]No embedded timecode found in media file. Using default timecode.[/]"
             )
         return "00:00:00:00"
 
@@ -172,34 +174,26 @@ def encode_proxy(job):
         output_file,
     ]
 
-    logger.info(f"FFmpeg command:\n{' '.join(ffmpeg_command)}")
-
-    # TODO: Fix terminal progress output on newline
-    # Currently BetterFFMpegProgress is logging progress increments to newlines.
-    # It's better than nothing, but it looks awful. There are other issues with BFP too.
-    # Logging to files is messy, etc. Maybe steal the FFMpeg progress parsing func and
-    # use rich.progress instead.
-    # labels: bug
+    print()  # Newline
+    logger.debug(f"[magenta]Running! FFmpeg command:[/]\n{' '.join(ffmpeg_command)}\n")
 
     process = FfmpegProcess(
         command=[*ffmpeg_command], ffmpeg_loglevel=proxy_settings["ffmpeg_loglevel"]
     )
 
-    # Per-file encode log location
-    encode_log_dir = os.path.join(
-        os.path.dirname(output_file),
-        "encoding_logs",
-    )
-
     # Make logs subfolder
+    encode_log_dir = config["app"]["loglevel"]
     os.makedirs(encode_log_dir, exist_ok=True)
+
     encode_log_file = os.path.join(
         encode_log_dir, os.path.splitext(os.path.basename(output_file))[0] + ".txt"
     )
 
     # Run encode job
+    logger.info("[yellow]Starting encode...[/]")
+
     try:
-        process.run(ffmpeg_output_file=encode_log_file)
+        process.run(logfile_dir=encode_log_file)
 
     except Exception as e:
         logger.exception(f"[red] :warning: Couldn't encode proxy.[/]\n{e}")

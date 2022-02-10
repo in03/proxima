@@ -163,6 +163,7 @@ class Settings(metaclass=Singleton):
                 logger.warning(f"Unknown setting -> {x} will be ignored!")
                 for x in diffs["dictionary_item_added"]
             ]
+            print()  # Newline
             self.spinner.start()
 
         # Check for missing settings

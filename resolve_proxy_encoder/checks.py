@@ -2,7 +2,6 @@ import time
 from typing import Union
 
 from rich import print
-from rich.console import Console
 from rich.prompt import Confirm
 from yaspin import yaspin
 
@@ -24,6 +23,7 @@ config = settings.user_settings
 
 
 def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
+
     """Compare git origin to local git or package dist for updates
 
     Args:
@@ -37,16 +37,20 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
         - none
     """
 
+    if not config["app"]["check_for_updates"]:
+        return
+
+    latest = False
+
     spinner = yaspin(
         text="Checking for updates...",
         color="cyan",
     )
 
     spinner.start()
-    remote_latest_commit = get_remote_latest_commit(github_url)
-    if remote_latest_commit:
 
-        package_latest_commit = get_package_current_commit(package_name)
+    package_latest_commit = get_package_current_commit(package_name)
+    remote_latest_commit = get_remote_latest_commit(github_url)
 
     if not remote_latest_commit or not package_latest_commit:
 
@@ -54,9 +58,9 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
         logger.warning("[red]Failed to check for updates[/]")
         return
 
-    if remote_latest_commit != package_latest_commit:
+    elif remote_latest_commit != package_latest_commit:
 
-        spinner.fail("❌ ")
+        spinner.ok("☝️ ")
         logger.warning(
             "[yellow]Update available.\n"
             + "Fully uninstall and reinstall when possible:[/]\n"
@@ -66,15 +70,21 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
 
         logger.info(f"Remote: {remote_latest_commit}")
         logger.info(f"Current: {package_latest_commit}")
-        return None
 
-    spinner.ok("✨ ")
+    else:
+
+        latest = True
+        spinner.ok("✨ ")
+
+    ver_colour = "green" if latest else "yellow"
+    print(f"[{ver_colour}]Route: {package_latest_commit[::8]}[/]")
+
     return
 
 
 def check_worker_compatability():
 
-    if config["celery_settings"]["disable_worker_compatability_check"]:
+    if config["app"]["disable_version_constrain"]:
         logger.warning(
             "[yellow]Worker compatability check disabled in user settings![/]\n"
         )
@@ -114,7 +124,7 @@ def check_worker_compatability():
         if not Confirm.ask("[cyan]Do you wish to continue?[/]"):
             app_exit(1, -1)
 
-        return None
+        return
 
     logger.debug(f"Online workers: {online_workers}")
 

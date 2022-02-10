@@ -6,13 +6,16 @@ from schema import Schema, And, Optional
 
 settings_schema = Schema(
     {
-        "loglevel": lambda s: s in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        "updates": {
-            "github_url": lambda s: re.match(link, s),
-            "warn_updates": bool,
+        "app": {
+            "loglevel": lambda s: s
+            in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+            "check_for_updates": bool,
+            "update_check_url": lambda s: re.match(link, s),
+            "disable_version_constrain": bool,
         },
         "paths": {
             "proxy_path_root": lambda p: os.path.exists(p),
+            "ffmpeg_logfile_path": lambda p: os.path.exists(os.path.dirname(p)),
         },
         "proxy_settings": {
             "ffmpeg_loglevel": lambda l: l
@@ -52,7 +55,6 @@ settings_schema = Schema(
             "result_expires": int,
             "worker_loglevel": lambda s: s
             in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-            "disable_worker_compatability_check": bool,
             "worker_concurrency": int,
             "worker_prefetch_multiplier": int,
             "worker_max_tasks_per_child": int,

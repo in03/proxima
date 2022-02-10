@@ -278,6 +278,14 @@ def get_remote_latest_commit(github_url: str) -> Union[str, None]:
     Raises:
         - TypeError: Caught by try/except; used to jump between blocks, readability.
     """
+
+    if not "github.com" in github_url:
+        logger.error(
+            "[red]Currently only github URLs supported for update checking!"
+            + "Please disable update checking in user settings.[/]"
+        )
+        app_exit(1, -1)
+
     try:
 
         url_list = github_url.split(".com")[1].split("/")

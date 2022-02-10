@@ -26,7 +26,7 @@ cli_app = typer.Typer()
 settings = Settings()
 
 config = settings.user_settings
-logger = get_rich_logger(config["loglevel"])
+logger = get_rich_logger(config["app"]["loglevel"])
 
 
 @cli_app.command()
@@ -117,7 +117,7 @@ def init():
     """Run before CLI App load."""
 
     checks.check_for_updates(
-        github_url=config["updates"]["github_url"],
+        github_url=config["app"]["update_check_url"],
         package_name="resolve_proxy_encoder",
     )
 
