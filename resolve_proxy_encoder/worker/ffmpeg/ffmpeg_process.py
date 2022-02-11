@@ -59,14 +59,9 @@ class FfmpegProcess:
             # pipe:1 sends the progress to stdout. See https://stackoverflow.com/a/54386052/13231825
             self._ffmpeg_args += ["-progress", "pipe:1", "-nostats"]
 
-    def run(self, logfile_dir=None):
-        if logfile_dir is None:
-            os.makedirs("ffmpeg_output", exist_ok=True)
-            logfile_dir = os.path.join(
-                "ffmpeg_output", f"[{Path(self._filepath).name}].txt"
-            )
+    def run(self, logfile):
 
-        with open(logfile_dir, "w") as f:
+        with open(logfile, "w") as f:
             pass
 
         if "-y" not in self._ffmpeg_args and self._output_filepath in self._dir_files:
@@ -78,7 +73,7 @@ class FfmpegProcess:
         self._ffmpeg_args += ["-y"]
 
         if self._can_get_duration:
-            with open(logfile_dir, "a") as f:
+            with open(logfile, "a") as f:
                 process = subprocess.Popen(
                     self._ffmpeg_args, stdout=subprocess.PIPE, stderr=f
                 )
@@ -86,6 +81,7 @@ class FfmpegProcess:
             console = Console(record=True)
 
             progress_bar = Progress(
+                TextColumn("                   "),  # Spacer to match logging
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
                 BarColumn(),

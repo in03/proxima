@@ -10,7 +10,6 @@ import time
 from shutil import which
 
 from rich import print
-from rich.progress import Progress
 from yaspin import yaspin
 
 from resolve_proxy_encoder.helpers import (
@@ -166,7 +165,8 @@ def new_worker(id=None):
         *config["celery_settings"]["worker_celery_args"],
     ]
 
-    logger.debug(f"[magenta]New worker - {id}:[/]\n{' '.join(launch_cmd)}\n")
+    logger.info(f"[cyan]New worker - {id}[/]")
+    logger.debug(f"[magenta]{' '.join(launch_cmd)}[/]\n")
 
     subprocess.Popen(
         cwd=get_module_path(),
@@ -181,8 +181,6 @@ def launch_workers(workers_to_launch: int):
 
     for i in range(0, workers_to_launch):
         new_worker(id=i + 1)
-
-    print()
     return
 
 

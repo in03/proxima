@@ -16,13 +16,14 @@ from resolve_proxy_encoder.settings.app_settings import Settings
 from resolve_proxy_encoder.worker.celery import app as celery_app
 
 install_rich_tracebacks()
-logger = get_rich_logger("WARNING")
 
 settings = Settings()
 config = settings.user_settings
 
+logger = get_rich_logger(config["app"]["loglevel"])
 
-def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
+
+def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
 
     """Compare git origin to local git or package dist for updates
 
@@ -31,14 +32,16 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
         - package_name(str): offical package name
 
     Returns:
-        - none
+        - dict:
+            - 'is_latest': bool,
+            - 'current_version': git_short_sha
 
     Raises:
         - none
     """
 
     if not config["app"]["check_for_updates"]:
-        return
+        return None
 
     latest = False
 
@@ -56,11 +59,11 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
 
         spinner.fail("❌ ")
         logger.warning("[red]Failed to check for updates[/]")
-        return
+        return None
 
     elif remote_latest_commit != package_latest_commit:
 
-        spinner.ok("☝️ ")
+        spinner.ok("🔼 ")
         logger.warning(
             "[yellow]Update available.\n"
             + "Fully uninstall and reinstall when possible:[/]\n"
@@ -76,10 +79,10 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
         latest = True
         spinner.ok("✨ ")
 
-    ver_colour = "green" if latest else "yellow"
-    print(f"[{ver_colour}]Route: {package_latest_commit[::8]}[/]")
-
-    return
+    return {
+        "is_latest": latest,
+        "current_version": package_latest_commit[::8],
+    }
 
 
 def check_worker_compatability():
@@ -126,10 +129,13 @@ def check_worker_compatability():
 
         return
 
+    spinner.stop()
     logger.debug(f"Online workers: {online_workers}")
+    spinner.start()
 
     # Get incompatible workers
     incompatible_workers = []
+    compatible_workers = []
     for worker, attributes in online_workers.items():
 
         routing_key = attributes[0]["routing_key"]
@@ -138,30 +144,45 @@ def check_worker_compatability():
         routing_key = "".join(routing_key.split())
         git_short_sha = "".join(git_short_sha.split())
 
+        worker_dict = {
+            "name": worker,
+            "host": str(worker).split("@")[1],
+            "routing_key": routing_key,
+        }
+
         # Compare git sha
         if not routing_key == git_short_sha:
-
-            incompatible_workers.append(
-                {
-                    "name": worker,
-                    "host": str(worker).split("@")[1],
-                    "routing_key": routing_key,
-                }
-            )
+            incompatible_workers.append(worker_dict)
+        else:
+            compatible_workers.append(worker_dict)
 
     incompatible_hosts = set()
     for x in incompatible_workers:
         incompatible_hosts.add(x["host"])
 
+    compatible_hosts = set()
+    for x in compatible_workers:
+        compatible_hosts.add(x["host"])
+
     # Prompt incompatible workers
     if incompatible_workers:
         spinner.fail("❌ ")
+
+        # Get singular or plural based on list lengths
+        worker_plural = "workers" if len(online_workers) > 1 else "worker"
+        incompatible_hosts_count = len(incompatible_hosts)
+        multi_incompatible_hosts_warning = (
+            f"across {len(incompatible_hosts)} hosts "
+            if incompatible_hosts_count > 1
+            else ""
+        )
+
         logger.warning(
-            f"[yellow]Incompatible workers detected!\n"
-            + f"{len(incompatible_workers)}/{len(online_workers)} workers across "
-            + f"{len(incompatible_hosts)} host(s) will NOT be able to process jobs queued here.\n"
-            + f"[green]To fix, update Resolve Proxy Encoder on below hosts to match git commit SHA, [/]'{git_short_sha}':\n"
-            + "', '".join(incompatible_hosts)
+            f"[yellow]Incompatible {worker_plural} detected!\n"
+            + f"{len(incompatible_workers)}/{len(online_workers)} workers {multi_incompatible_hosts_warning}are incompatible.\n"
+            + f"Only compatible workers can consume jobs from this queuer.\n"
+            + f"\n[green]To fix, update any incompatible hosts to this git commit:[/]\n'{git_full_sha}':\n"
+            + f"\n[magenta]Incompatible hosts:\n{incompatible_hosts}[/]"
             + "\n"
         )
 

@@ -35,11 +35,16 @@ def queue():
     Queue proxies from the currently open
     DaVinci Resolve timeline
     """
-
     checks.check_worker_compatability()
 
-    print("\n\n[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
+    print("\n")
 
+    ver_colour = "green" if VERSION_INFO["is_latest"] else "yellow"
+    print(
+        f"[cyan]Routing to queue:[/] [{ver_colour}]'{VERSION_INFO['current_version']}'[/]"
+    )
+
+    print("\n\n[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
     from resolve_proxy_encoder import resolve_queue_proxies
 
     resolve_queue_proxies.main()
@@ -67,8 +72,13 @@ def work(
 ):
     """Prompt to start Celery workers on local machine"""
 
-    # Seperate from checks with newline
     print("\n")
+
+    # Print worker queue
+    ver_colour = "green" if VERSION_INFO["is_latest"] else "yellow"
+    print(
+        f"[cyan]Consuming from queue: [/][{ver_colour}]'{VERSION_INFO['current_version']}'[/]"
+    )
 
     if workers_to_launch > 0:
         print(f"[green]Starting workers! :construction_worker:[/]")
@@ -116,10 +126,16 @@ def mon():
 def init():
     """Run before CLI App load."""
 
-    checks.check_for_updates(
+    global VERSION_INFO
+
+    VERSION_INFO = checks.check_for_updates(
         github_url=config["app"]["update_check_url"],
         package_name="resolve_proxy_encoder",
     )
+    # TODO: Add update method to settings class
+    # There are a few dynamic variables that would be nice to have globally
+    # E.g. `settings.add_setting(current_version)`
+    # labels: enhancement
 
 
 def main():

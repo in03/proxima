@@ -1,8 +1,6 @@
 #!/usr/bin/env python3.6
 
 from __future__ import absolute_import
-from genericpath import exists
-
 import os
 
 from pymediainfo import MediaInfo
@@ -182,18 +180,19 @@ def encode_proxy(job):
     )
 
     # Make logs subfolder
-    encode_log_dir = config["app"]["loglevel"]
+    encode_log_dir = config["paths"]["ffmpeg_logfile_path"]
     os.makedirs(encode_log_dir, exist_ok=True)
 
     encode_log_file = os.path.join(
         encode_log_dir, os.path.splitext(os.path.basename(output_file))[0] + ".txt"
     )
+    logger.debug(f"[magenta]Encoder logfile path: {encode_log_file}[/]")
 
     # Run encode job
     logger.info("[yellow]Starting encode...[/]")
 
     try:
-        process.run(logfile_dir=encode_log_file)
+        process.run(logfile=encode_log_file)
 
     except Exception as e:
         logger.exception(f"[red] :warning: Couldn't encode proxy.[/]\n{e}")
