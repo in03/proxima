@@ -10,16 +10,16 @@ import time
 from shutil import which
 
 from rich import print
-from rich.progress import Progress
+from yaspin import yaspin
 
 from resolve_proxy_encoder.helpers import (
     app_exit,
-    get_package_current_commit,
     get_rich_logger,
     get_script_from_package,
     install_rich_tracebacks,
 )
 from resolve_proxy_encoder.settings.app_settings import Settings
+from resolve_proxy_encoder.worker.helpers import get_queue
 
 install_rich_tracebacks()
 settings = Settings()
@@ -59,23 +59,6 @@ def prompt_worker_amount(cpu_cores: int):
     return answer
 
 
-def get_routing_key_from_version():
-
-    # Add git SHA Celery queue to prevent queuer/worker incompatibilities
-    git_full_sha = get_package_current_commit("resolve_proxy_encoder")
-
-    if not git_full_sha:
-
-        logger.error(
-            "[red]Couldn't get local package commit SHA!\n"
-            + "Necessary to prevent version mismatches between queuer and worker.[/]"
-        )
-        app_exit(1, -1)
-
-    # Use git standard 7 character short SHA
-    return git_full_sha[::8]
-
-
 def new_worker(id=None):
     """Start a new celery worker in a new process
 
@@ -95,11 +78,11 @@ def new_worker(id=None):
     def get_worker_name(id):
 
         # @h for 'hostname'
-        return f"-n worker{id}@h"
+        return f"-n worker{id}@{platform.node()}"
 
     def get_worker_queue():
 
-        return " -Q " + get_routing_key_from_version()
+        return " -Q " + get_queue()
 
     def get_celery_binary_path():
 
@@ -182,8 +165,8 @@ def new_worker(id=None):
         *config["celery_settings"]["worker_celery_args"],
     ]
 
-    logger.info(" ".join(launch_cmd))
-    # print(" ".join(launch_cmd))
+    logger.info(f"[cyan]New worker - {id}[/]")
+    logger.debug(f"[magenta]{' '.join(launch_cmd)}[/]\n")
 
     subprocess.Popen(
         cwd=get_module_path(),
@@ -196,25 +179,9 @@ def launch_workers(workers_to_launch: int):
 
     # Start launching
 
-    worker_id = 0
-    with Progress() as progress:
-
-        launch = progress.add_task(
-            "[green]Starting workers[/]", total=workers_to_launch
-        )
-
-        while not progress.finished:
-
-            worker_id += 1
-            progress.update(launch, advance=1)
-
-            # logger.info(launch_cmd)
-
-            new_worker(id=worker_id)
-            time.sleep(0.05)
-
-        print()
-        return
+    for i in range(0, workers_to_launch):
+        new_worker(id=i + 1)
+    return
 
 
 def main(workers: int = 0):

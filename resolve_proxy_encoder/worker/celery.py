@@ -8,11 +8,17 @@ from __future__ import absolute_import
 import os
 import sys
 
-from celery import Celery
+from resolve_proxy_encoder.helpers import get_rich_logger, install_rich_tracebacks
 from resolve_proxy_encoder.settings.app_settings import Settings
+
+from celery import Celery
+
+install_rich_tracebacks()
 
 settings = Settings()
 config = settings.user_settings
+
+logger = get_rich_logger(config["app"]["loglevel"])
 
 # Windows can't fork processes. It'll choke if you make it try.
 if sys.platform == "win32":
@@ -25,7 +31,7 @@ app.autodiscover_tasks(["resolve_proxy_encoder.worker.tasks.standard"])
 try:
     app.config_from_object(config["celery_settings"])
 except Exception as e:
-    raise Exception("Couldn't load settings from YAML!")
+    logger.error("Couldn't load settings from YAML!")
 
 # Fragile! Moved from user settings to here.
 app.conf.update(
@@ -38,4 +44,6 @@ app.conf.update(
     worker_pool_restarts=True,
     worker_send_task_events=True,
     worker_cancel_long_running_tasks_on_connection_loss=True,
+    worker_hijack_root_logger=False,
+    worker_redirect_stdouts=False,
 )

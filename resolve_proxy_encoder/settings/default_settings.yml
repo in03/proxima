@@ -1,30 +1,21 @@
 ---  # Resolve Proxy Encoder User configuration file
 
-# TODO: Add more app level settings.
-# Some more app or CLI level settings is probably a good idea, e.g:
-# - control app_exit prompt before exit
-# - no coloured output
-# - warn updates (move)
-# - loglevel (move)
-# labels: enhancement
-
-loglevel: WARNING
-
-updates:
-  # If you fork the repo, change this to your fork
-  github_url: "https://github.com/in03/resolve-proxy-encoder" 
-  warn_updates: true
+app:
+  loglevel: WARNING
+  check_for_updates: true
+  update_check_url: "https://github.com/in03/resolve-proxy-encoder"  # Change this url if you fork
+  disable_version_constrain: false # DANGEROUS! To work, both queuer and worker must disable constrain.
 
 paths:
-  # Path to directory containing all proxy media
-  proxy_path_root: R:/ProxyMedia
+  proxy_path_root: R:/ProxyMedia # Proxy media retains source folder structure
+  ffmpeg_logfile_path: R:/ProxyMedia/logs
 
 proxy_settings:
   ffmpeg_loglevel: error # "quiet", "panic", "fatal", "error", "warning", "info", "verbose", "debug"
   vid_codec: dnxhd
-  h_res: "1280" 
+  h_res: "1280"
   v_res: "720"
-  vid_profile: dnxhr_sq 
+  vid_profile: dnxhr_sq
   pix_fmt: yuv422p
   audio_codec: pcm_s16le
   audio_samplerate: "48000"
@@ -43,15 +34,11 @@ celery_settings:
   broker_url:  redis://192.168.1.19:6379/0
   flower_url: http://192.168.1.19:5555
   result_backend: redis://192.168.1.19:6379/0
-
   result_expires: 60 # 10 mins
 
   worker_loglevel: WARNING
-  disable_worker_compatability_check: false # Thar be dragons!
-
   worker_concurrency: 1
   worker_prefetch_multiplier: 1
   worker_max_tasks_per_child: 1
   worker_terminal_args: [] # Force a terminal; win-term, zsh, etc.
-  worker_celery_args: [-l, INFO, -P, solo] # Celery worker arg defaults. CLI args will override.
-  
+  worker_celery_args: [-l, INFO, -P, solo, --without-mingle, --without-gossip]
