@@ -1,30 +1,22 @@
 ---  # Resolve Proxy Encoder User configuration file
 
-# TODO: Add more app level settings.
-# Some more app or CLI level settings is probably a good idea, e.g:
-# - control app_exit prompt before exit
-# - no coloured output
-# - warn updates (move)
-# - loglevel (move)
-# labels: enhancement
-
-loglevel: WARNING
-
-updates:
-  # If you fork the repo, change this to your fork
-  github_url: "https://github.com/in03/resolve-proxy-encoder" 
-  warn_updates: true
+app:
+  loglevel: WARNING
+  check_for_updates: true
+  update_check_url: "https://github.com/in03/resolve-proxy-encoder" # If you fork the repo, change this to your fork
+  disable_version_constrain: false # DANGEROUS!!! Allows any version of worker to take jobs. Must be set on queuer and worker. 
 
 paths:
   # Path to directory containing all proxy media
-  proxy_path_root: R:/ProxyMedia
+  proxy_path_root: R:/ProxyMedia  # Proxy media retains source folder structure
+  ffmpeg_logfile_path: R:/ProxyMedia/@logs
 
-proxy_settings:
+proxy:
   ffmpeg_loglevel: error # "quiet", "panic", "fatal", "error", "warning", "info", "verbose", "debug"
   vid_codec: dnxhd
-  h_res: "1280" 
+  h_res: "1280"
   v_res: "720"
-  vid_profile: dnxhr_sq 
+  vid_profile: dnxhr_sq
   pix_fmt: yuv422p
   audio_codec: pcm_s16le
   audio_samplerate: "48000"
@@ -38,20 +30,24 @@ filters:
   use_framerate_whitelist: false
   framerate_whitelist : [24, 25, 30, 50, 60]
 
-celery_settings:
+celery:
   host_address: 192.168.1.19
   broker_url:  redis://192.168.1.19:6379/0
   flower_url: http://192.168.1.19:5555
   result_backend: redis://192.168.1.19:6379/0
-
   result_expires: 60 # 10 mins
 
-  worker_loglevel: WARNING
-  disable_worker_compatability_check: false # Thar be dragons!
+worker:
+  loglevel: INFO
+  concurrency: 1
+  prefetch_multiplier: 1
+  max_tasks_per_child: 1
+  terminal_args: [] # Start in bash, win term, minimised, etc.
+  celery_args: [-l, INFO, -P, solo, --without-mingle, --without-gossip]
 
-  worker_concurrency: 1
-  worker_prefetch_multiplier: 1
-  worker_max_tasks_per_child: 1
-  worker_terminal_args: [] # Force a terminal; win-term, zsh, etc.
-  worker_celery_args: [-l, INFO, -P, solo] # Celery worker arg defaults. CLI args will override.
-  
+chunking:
+  enable_chunking: true
+  chunk_secs: 30
+  increment_regex: r"-(\d+)"
+  segment_suffix: "_STITCHED" 
+  cleanup_temp_files: False # Delete segments before join?

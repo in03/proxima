@@ -59,6 +59,13 @@ settings_schema = Schema(
             "worker_terminal_args": list,
             "worker_celery_args": list,
         },
+        "chunking": {
+            "enable_chunking": bool,
+            "chunk_secs": int,
+            "increment_regex": str,
+            "segment_suffix": str,
+            "cleanup_temp_files": bool,
+        },
     },
     ignore_extra_keys=True,
 )

@@ -20,7 +20,12 @@ if sys.platform == "win32":
 
 app = Celery("worker")
 
-app.autodiscover_tasks(["resolve_proxy_encoder.worker.tasks.standard"])
+app.autodiscover_tasks(
+    [
+        "resolve_proxy_encoder.worker.tasks.standard_encode",
+        "resolve_proxy_encoder.worker.tasks.chunked_encode",
+    ]
+)
 
 try:
     app.config_from_object(config["celery_settings"])
