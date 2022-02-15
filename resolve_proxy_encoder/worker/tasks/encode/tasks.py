@@ -6,22 +6,21 @@ import os
 
 from better_ffmpeg_progress import FfmpegProcess
 from pymediainfo import MediaInfo
-from resolve_proxy_encoder import helpers
-from resolve_proxy_encoder.helpers import (
+from resolve_proxy_encoder.utils import general
+from resolve_proxy_encoder.utils.general import (
     get_rich_logger,
     install_rich_tracebacks,
     app_exit,
 )
-from resolve_proxy_encoder.settings.app_settings import Settings
+from resolve_proxy_encoder.settings.manager import SettingsManager
 from resolve_proxy_encoder.worker.celery import app
 from resolve_proxy_encoder.worker.helpers import check_wsl, get_wsl_path
 
-settings = Settings()
-config = settings.user_settings
+config = SettingsManager()
 logger = get_rich_logger(config["celery_settings"]["worker_loglevel"])
 install_rich_tracebacks()
 
-git_full_sha = helpers.get_package_current_commit("resolve_proxy_encoder")
+git_full_sha = general.get_package_current_commit("resolve_proxy_encoder")
 if not git_full_sha:
     logger.error(
         "[red]Couldn't get local package commit SHA!\n"

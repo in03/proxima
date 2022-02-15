@@ -1,21 +1,14 @@
-import json
-import os
 import platform
-import shlex
 import subprocess
-import sys
-import time
-from fractions import Fraction
 
-from resolve_proxy_encoder.helpers import (
+from resolve_proxy_encoder.utils.general import (
     app_exit,
     get_package_current_commit,
     get_rich_logger,
 )
-from resolve_proxy_encoder.settings.app_settings import Settings
+from resolve_proxy_encoder.settings.manager import SettingsManager
 
-settings = Settings()
-config = settings.user_settings
+config = SettingsManager()
 
 logger = get_rich_logger(config["app"]["loglevel"])
 
@@ -57,84 +50,3 @@ def get_wsl_path(windows_path: str):
         return windows_path
 
     return wsl_path
-
-
-def cleanup_working_dir(dir):
-    """Cleanup temporary working directory"""
-
-    if os.path.exists(dir):
-        try:
-            os.rmdir(dir)
-        except:
-            print(f"Couldn't remove {dir}. In use?")
-            return False
-    else:
-        print(f"File: '{dir}' already deleted. No action taken.")
-
-    return True
-
-
-def frames_to_timecode(frames, fps):
-    """Convert frames to FFMPEG compatible timecode, with microseconds instead of frames"""
-    return "{0:02d}:{1:02d}:{2:02d}.{3:01d}".format(
-        int(frames / (3600 * fps)),
-        int(frames / (60 * fps) % 60),
-        int(frames / fps % 60),
-        int(frames % fps),
-    )
-
-
-def intersperse(lst, item: str) -> list:
-    """Intersperse every item in list with 'item'"""
-    result = [item] * (len(lst) * 2 - 1)
-    result[0::2] = lst
-    return result
-
-
-def fraction_to_decimal(fraction: str):
-    """Convert a fraction to a decimal"""
-    f = Fraction(fraction)
-    return float(f)
-
-
-def get_media_info(file):
-    """Get media info from file using ffprobe"""
-
-    cmd = f'ffprobe -v quiet -print_format json -show_format -show_streams "{file}"'
-    logger.debug(f"FFprobe command: {cmd}")
-
-    ps = subprocess.Popen(
-        shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-    )
-
-    result = ps.communicate()[0]
-    clean_result = result.decode().strip()
-    json_result = json.loads(clean_result)
-
-    if not json_result:
-        print(f"Couldn't get data!")
-        sys.exit(1)
-
-    return json_result
-
-    """ 
-    Get a single attribute from a file with ffprobe.
-    Ffprobe must be on path.
-    """
-
-    cmd = f'ffprobe -hide_banner -v error -show_entries format=nb_frames -of default=noprint_wrappers=1:nokey=1 "{file}"'
-    ps = subprocess.Popen(
-        shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-    )
-
-    output = ps.communicate()[0]
-    nb_frames = output.decode().strip()
-
-    if not nb_frames:
-        print(f"Couldn't get number of frames!")
-        sys.exit(1)
-
-    print(nb_frames)
-
-    nb_frames = str_to_num(nb_frames)
-    return nb_frames

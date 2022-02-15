@@ -9,10 +9,9 @@ import os
 import sys
 
 from celery import Celery
-from resolve_proxy_encoder.settings.app_settings import Settings
+from resolve_proxy_encoder.settings.manager import SettingsManager
 
-settings = Settings()
-config = settings.user_settings
+config = SettingsManager()
 
 # Windows can't fork processes. It'll choke if you make it try.
 if sys.platform == "win32":

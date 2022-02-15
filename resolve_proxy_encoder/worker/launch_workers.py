@@ -12,18 +12,17 @@ from shutil import which
 from rich import print
 from rich.progress import Progress
 
-from resolve_proxy_encoder.helpers import (
+from resolve_proxy_encoder.utils.general import (
     app_exit,
     get_package_current_commit,
     get_rich_logger,
     get_script_from_package,
     install_rich_tracebacks,
 )
-from resolve_proxy_encoder.settings.app_settings import Settings
+from resolve_proxy_encoder.settings.manager import SettingsManager
 
 install_rich_tracebacks()
-settings = Settings()
-config = settings.user_settings
+config = SettingsManager()
 logger = get_rich_logger(loglevel=config["celery_settings"]["worker_loglevel"])
 
 

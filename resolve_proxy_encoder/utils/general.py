@@ -1,21 +1,14 @@
 """ Helper functions for main module """
-import json
+import imp
 import logging
-import os
-import subprocess
 import sys
 import time
-from distutils.sysconfig import get_python_lib
-from pathlib import Path
 from typing import Union
 
-import pkg_resources
-import requests
 from notifypy import Notify
+from resolve_proxy_encoder import python_get_resolve
 from rich.logging import RichHandler
 from rich.prompt import Prompt
-
-from resolve_proxy_encoder import python_get_resolve
 
 
 def get_rich_logger(loglevel: Union[int, str]):
@@ -117,7 +110,30 @@ def notify(message: str, title: str = "Resolve Proxy Encoder"):
 def get_resolve_objects():
     """Return necessary Resolve objects with error handling"""
 
-    logger = get_rich_logger("WARNING")
+    def get_resolve():
+        ext = ".so"
+        if sys.platform.startswith("darwin"):
+            path = "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/"
+        elif sys.platform.startswith("win") or sys.platform.startswith("cygwin"):
+            path = "C:\\Program Files\\Blackmagic Design\\DaVinci Resolve\\"
+            ext = ".dll"
+        elif sys.platform.startswith("linux"):
+            path = "/opt/resolve/libs/Fusion/"
+        else:
+            raise Exception("Unsupported system! " + sys.platform)
+
+        bmd = imp.load_dynamic("fusionscript", path + "fusionscript" + ext)
+        resolve = bmd.scriptapp("Resolve")
+
+        if not resolve:
+            return None
+
+        try:
+            sys.modules[__name__] = resolve
+        except ImportError:
+            return None
+
+        return resolve
 
     try:
 
@@ -180,119 +196,3 @@ def get_resolve_objects():
         timeline=timeline,
         media_pool=media_pool,
     )
-
-
-def get_package_current_commit(package_name: str) -> Union[str, None]:
-    """Attempt to find the current commit SHA from the locally installed package or the local GitHub repo.
-
-    Args:
-        - package_name (str): The name of the package to get last commit from.
-
-    Returns:
-        - latest_commit_id (str): The commit ID.
-        - None: on fail
-
-    Raises:
-        - TypeError: Caught by try/except; used to jump between blocks, readability.
-    """
-
-    try:
-
-        logger.info("Getting commit ID from package dist info.")
-
-        dist = pkg_resources.get_distribution(package_name)
-        vcs_metadata_file = dist.get_metadata("direct_url.json")
-        vcs_metadata = json.loads(vcs_metadata_file)
-        package_latest_commit = vcs_metadata["vcs_info"]["commit_id"]
-
-        if package_latest_commit is None:
-            raise TypeError("Couldn't get package last commit id")
-
-        return package_latest_commit.strip()
-
-    except:
-        logger.info(
-            "[yellow]Couldn't get package dist info, assuming git repo.[/]",
-            extra={"markup": True},
-        )
-
-    try:
-        logger.info("[cyan]Getting commit ID from git[/]")
-
-        latest_commit_id = subprocess.check_output(
-            'git --no-pager log -1 --format="%H"', stderr=subprocess.STDOUT, shell=True
-        ).decode()
-
-        if latest_commit_id is None:
-            raise TypeError("Couldn't get git last commit id")
-
-        return latest_commit_id.strip()
-
-    except:
-
-        logger.warning(
-            f"[yellow]Couldn't get git info or package dist info!\n"
-            + "Check properly cloned or installed[/]",
-            extra={"markup": True},
-        )
-        return None
-
-
-def get_remote_latest_commit(github_url: str) -> Union[str, None]:
-    """Attempt to find the the origin GitHub repo's latest commit SHA for the main branch.
-
-    This currently only works with GitHub!
-
-    Args:
-        - github_url (str): The URL of the origin repo.
-
-    Returns:
-        - remote_latest_commit (str): The latest commit's SHA.
-        - None: on fail
-
-    Raises:
-        - TypeError: Caught by try/except; used to jump between blocks, readability.
-    """
-
-    url_list = github_url.split(".com")[1].split("/")
-    api_endpoint = (
-        f"https://api.github.com/repos/{url_list[1]}/{url_list[2]}/commits/main"
-    )
-
-    try:
-
-        r = requests.get(api_endpoint, timeout=8)
-        if not str(r.status_code).startswith("2"):
-            logger.warning(
-                f"[red]Couldn't connect to GitHub API\n[/]"
-                + f"[yellow]HTTP status code:[/] {r.status_code}\n\n"
-            )
-            return None
-
-    except Exception as e:
-        logger.error(f"[red]Couldn't connect to GitHub API:[/]\n{e}")
-        return None
-
-    results = r.json()
-    remote_latest_commit = results["sha"]
-    return remote_latest_commit
-
-
-def get_script_from_package(script_name: str) -> Union[Path, None]:
-    """Get path to a named script in the current package
-
-    Allows us to call scripts buried in a virtual env like pipx.
-    Case insensitive.
-    """
-
-    package_dir = Path(get_python_lib()).resolve().parents[1]
-    scripts_dir = os.path.join(package_dir, "Scripts")
-
-    for x in os.listdir(scripts_dir):
-
-        file_ = x.lower()
-        if script_name.lower() in file_.lower():
-
-            return os.path.abspath(os.path.join(scripts_dir, file_))
-
-    return None

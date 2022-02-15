@@ -16,14 +16,14 @@ from typing import Optional
 from rich.console import Console
 from rich.prompt import Confirm
 
-from resolve_proxy_encoder import checks
-from resolve_proxy_encoder.helpers import get_rich_logger
-from resolve_proxy_encoder.settings.app_settings import Settings
+from resolve_proxy_encoder.app import checks
+from resolve_proxy_encoder.utils.general import get_rich_logger
+from resolve_proxy_encoder.settings.manager import SettingsManager
 
 # Init classes
 cli_app = typer.Typer()
 console = Console()
-settings = Settings()
+settings = SettingsManager()
 
 config = settings.user_settings
 logger = get_rich_logger(config["loglevel"])
@@ -40,9 +40,9 @@ def queue():
 
     print("[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
 
-    from resolve_proxy_encoder import resolve_queue_proxies
+    from resolve_proxy_encoder.queuer import queue
 
-    resolve_queue_proxies.main()
+    queue.main()
 
 
 @cli_app.command()
@@ -52,9 +52,9 @@ def link():
     source media in open DaVinci Resolve project
     """
 
-    from resolve_proxy_encoder import link_proxies
+    from resolve_proxy_encoder.queuer import link
 
-    link_proxies.main()
+    link.main()
 
 
 @cli_app.command()

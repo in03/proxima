@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import json
 import os
 import re
 import shlex
@@ -9,17 +10,18 @@ import sys
 import tempfile
 import time
 from collections import Counter
+from fractions import Fraction
 
 import shortuuid
 from better_ffmpeg_progress import FfmpegProcess
 from celery import Task
 from pymediainfo import MediaInfo
-from resolve_proxy_encoder.helpers import (
+from resolve_proxy_encoder.helpers.general import (
     app_exit,
     get_rich_logger,
     install_rich_tracebacks,
 )
-from resolve_proxy_encoder.settings.app_settings import Settings
+from resolve_proxy_encoder.settings.manager import SettingsManager
 from resolve_proxy_encoder.worker.celery import app
 from resolve_proxy_encoder.worker.helpers import (
     check_wsl,
@@ -30,10 +32,68 @@ from resolve_proxy_encoder.worker.helpers import (
     get_wsl_path,
 )
 
-settings = Settings()
-config = settings.user_settings
+config = SettingsManager()
 logger = get_rich_logger(config["celery_settings"]["worker_loglevel"])
 install_rich_tracebacks()
+
+# Helper functions
+def cleanup_working_dir(dir):
+    """Cleanup temporary working directory"""
+
+    if os.path.exists(dir):
+        try:
+            os.rmdir(dir)
+        except:
+            print(f"Couldn't remove {dir}. In use?")
+            return False
+    else:
+        print(f"File: '{dir}' already deleted. No action taken.")
+
+    return True
+
+
+def frames_to_timecode(frames, fps):
+    """Convert frames to FFMPEG compatible timecode, with microseconds instead of frames"""
+    return "{0:02d}:{1:02d}:{2:02d}.{3:01d}".format(
+        int(frames / (3600 * fps)),
+        int(frames / (60 * fps) % 60),
+        int(frames / fps % 60),
+        int(frames % fps),
+    )
+
+
+def intersperse(lst, item: str) -> list:
+    """Intersperse every item in list with 'item'"""
+    result = [item] * (len(lst) * 2 - 1)
+    result[0::2] = lst
+    return result
+
+
+def fraction_to_decimal(fraction: str):
+    """Convert a fraction to a decimal"""
+    f = Fraction(fraction)
+    return float(f)
+
+
+def get_media_info(file):
+    """Get media info from file using ffprobe"""
+
+    cmd = f'ffprobe -v quiet -print_format json -show_format -show_streams "{file}"'
+    logger.debug(f"FFprobe command: {cmd}")
+
+    ps = subprocess.Popen(
+        shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    )
+
+    result = ps.communicate()[0]
+    clean_result = result.decode().strip()
+    json_result = json.loads(clean_result)
+
+    if not json_result:
+        print(f"Couldn't get data!")
+        sys.exit(1)
+
+    return json_result
 
 
 class SplitAndStitch:
@@ -326,7 +386,7 @@ class SplitAndStitch:
             source_name,
         )
 
-        stitched_file = output_name + settings.OUTPUT_SUFFIX + source_ext
+        stitched_file = output_name + config["chunking"]["output_suffix"] + source_ext
 
         # TODO: Use custom ffmpeg class instead of this subprocess call
         # Concat with FFmpeg

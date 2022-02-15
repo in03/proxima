@@ -15,21 +15,20 @@ from rich import print
 
 # from rich.traceback import install as install_rich_tracebacks
 
-from resolve_proxy_encoder import helpers
-from resolve_proxy_encoder.link_proxies import link_proxies
-from resolve_proxy_encoder.settings.app_settings import Settings
+from resolve_proxy_encoder.utils import general
+from resolve_proxy_encoder.queuer.link import link_proxies
+from resolve_proxy_encoder.settings.manager import SettingsManager
 from resolve_proxy_encoder.worker.celery import app
 from resolve_proxy_encoder.worker.tasks.encode.tasks import encode_proxy
 
 
 # install_rich_tracebacks(show_locals=True)
-settings = Settings()
-config = settings.user_settings
+config = SettingsManager()
 
-logger = helpers.get_rich_logger(config["loglevel"])
+logger = general.get_rich_logger(config["loglevel"])
 
 # Get global variables
-resolve_obj = helpers.get_resolve_objects()
+resolve_obj = general.get_resolve_objects()
 resolve = resolve_obj["resolve"]
 project = resolve_obj["project"]
 timeline = resolve_obj["timeline"]
@@ -100,7 +99,7 @@ def handle_workers():
 
         else:
             print("Exiting...")
-            helpers.app_exit(0)
+            general.app_exit(0)
 
 
 def get_resolve_timelines(active_timeline_first=True):
@@ -266,13 +265,13 @@ def handle_final_queuable(media_list: list):
             sys.exit(1)
         else:
             print(f"[green]All clips linked now. No encoding necessary.[/]")
-            helpers.app_exit(0)
+            general.app_exit(0)
 
     # Final Prompt confirm
     if not confirm(
         "Go time!", f"{len(media_list)} clip(s) are ready to queue!\n" + "Continue?"
     ):
-        helpers.app_exit(0)
+        general.app_exit(0)
     return
 
 
@@ -557,7 +556,7 @@ def handle_orphaned_proxies(media_list: list) -> list:
             print("\n")
 
         elif answer == None:
-            helpers.app_exit()
+            general.app_exit()
 
     return media_list
 
@@ -628,7 +627,7 @@ def handle_offline_proxies(media_list: list) -> list:
             print("\n")
 
         if answer == None:
-            helpers.app_exit(0)
+            general.app_exit(0)
 
     return media_list
 
@@ -694,7 +693,7 @@ def handle_existing_unlinked(media_list: list) -> list:
             print("\n")
 
         else:
-            helpers.app_exit(0)
+            general.app_exit(0)
 
     return media_list
 
@@ -727,7 +726,7 @@ def queue_job(tasks):
 def wait_encode(job):
     """Block until all queued jobs finish, notify results."""
 
-    helpers.notify(f"Started encoding job '{resolve_job_name}'")
+    general.notify(f"Started encoding job '{resolve_job_name}'")
     print(f"[yellow]Waiting for job to finish. Feel free to minimize.[/]")
 
     result = job.join()
@@ -739,14 +738,14 @@ def wait_encode(job):
             + f"Check flower dashboard at address: {config['celery_settings']['flower_url']}."
         )
         print("[red]fail_message[/]")
-        helpers.notify(fail_message)
+        general.notify(fail_message)
 
     # Notify complete
     complete_message = f"Completed encoding {job.completed_count()} proxies."
     print(f"[green]{complete_message}[/]")
     print("\n")
 
-    helpers.notify(complete_message)
+    general.notify(complete_message)
 
     return result
 
@@ -950,12 +949,12 @@ def main():
     try:
 
         clips = legacy_link(clips)
-        helpers.app_exit(0)
+        general.app_exit(0)
 
     except:
 
         print("[red]Couldn't link clips. Link manually...[/]")
-        helpers.app_exit(1, -1)
+        general.app_exit(1, -1)
 
 
 if __name__ == "__main__":

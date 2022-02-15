@@ -7,7 +7,7 @@ from pathlib import Path
 
 import typer
 from deepdiff import DeepDiff
-from resolve_proxy_encoder.helpers import (
+from resolve_proxy_encoder.utils.general import (
     get_rich_logger,
     install_rich_tracebacks,
     app_exit,
@@ -39,7 +39,7 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-class Settings(metaclass=Singleton):
+class SettingsManager(metaclass=Singleton):
     def __init__(
         self,
         default_settings_file=DEFAULT_SETTINGS_FILE,
@@ -56,19 +56,20 @@ class Settings(metaclass=Singleton):
         # Instead let's write a build time test for this.
 
         # Validate default settings
-        self.default_settings = self._get_default_settings()
+        self.default_settings = self._load_default_settings_from_file()
 
         # Validate user settings
         with self.console.status("[cyan]Checking settings...[/]\n"):
 
             self._ensure_user_file()
-            self.user_settings = self._get_user_settings()
+            self.user_settings = self._load_user_settings_from_file()
             self._ensure_user_keys()
             self._validate_schema(self.user_settings)
 
         print("\n[green]User settings are valid :white_check_mark:[/]\n")
+        return self.user_settings
 
-    def _get_default_settings(self):
+    def _load_default_settings_from_file(self):
         """Load default settings from yaml"""
 
         logger.debug(f"Loading default settings from {self.default_file}")
@@ -76,7 +77,7 @@ class Settings(metaclass=Singleton):
         with open(os.path.join(self.default_file)) as file:
             return self.yaml.load(file)
 
-    def _get_user_settings(self):
+    def _load_user_settings_from_file(self):
         """Load user settings from yaml"""
 
         logger.debug(f"Loading user settings from {self.user_file}")

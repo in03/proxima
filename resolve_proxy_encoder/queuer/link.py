@@ -8,15 +8,14 @@ import traceback
 from tkinter import filedialog
 
 from colorama import Fore, init
-from resolve_proxy_encoder import helpers
-from resolve_proxy_encoder.settings.app_settings import Settings
+from resolve_proxy_encoder.helpers import general
+from resolve_proxy_encoder.settings.manager import SettingsManager
 
-settings = Settings()
-config = settings.user_settings
+config = SettingsManager()
 
 
 # Get global variables
-resolve_obj = helpers.get_resolve_objects()
+resolve_obj = general.get_resolve_objects()
 resolve = resolve_obj["resolve"]
 project = resolve_obj["project"]
 timeline = resolve_obj["timeline"]
