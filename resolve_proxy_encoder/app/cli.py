@@ -72,7 +72,7 @@ def work(
     else:
         print(f"[cyan]Starting worker launcher prompt :construction_worker:[/]")
 
-    from resolve_proxy_encoder import start_workers
+    from resolve_proxy_encoder.worker import start_workers
 
     start_workers.main(workers_to_launch)
 

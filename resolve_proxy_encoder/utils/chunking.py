@@ -16,7 +16,7 @@ import shortuuid
 from better_ffmpeg_progress import FfmpegProcess
 from celery import Task
 from pymediainfo import MediaInfo
-from resolve_proxy_encoder.helpers.general import (
+from resolve_proxy_encoder.utils.general import (
     app_exit,
     get_rich_logger,
     install_rich_tracebacks,

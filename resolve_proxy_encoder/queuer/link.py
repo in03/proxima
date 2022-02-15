@@ -8,7 +8,7 @@ import traceback
 from tkinter import filedialog
 
 from colorama import Fore, init
-from resolve_proxy_encoder.helpers import general
+from resolve_proxy_encoder.utils import general
 from resolve_proxy_encoder.settings.manager import SettingsManager
 
 config = SettingsManager()
