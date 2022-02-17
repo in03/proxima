@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import subprocess
 from distutils.sysconfig import get_python_lib
@@ -7,12 +8,12 @@ from typing import Union
 
 import pkg_resources
 import requests
-from resolve_proxy_encoder.utils.general import get_rich_logger
-from resolve_proxy_encoder.settings.manager import SettingsManager
+from settings.manager import SettingsManager
 
-config = SettingsManager()
+settings = SettingsManager()
+config = settings.user_settings
 
-logger = get_rich_logger(config["app"]["loglevel"])
+logger = logging.getLogger(__name__)
 
 
 def get_package_current_commit(package_name: str) -> Union[str, None]:

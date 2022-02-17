@@ -12,7 +12,7 @@ from shutil import which
 from rich import print
 from rich.progress import Progress
 
-from resolve_proxy_encoder.utils.general import (
+from app.utils import (
     app_exit,
     get_package_current_commit,
     get_rich_logger,

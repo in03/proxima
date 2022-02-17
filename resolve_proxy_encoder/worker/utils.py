@@ -1,12 +1,12 @@
 import platform
 import subprocess
 
-from resolve_proxy_encoder.utils.general import (
+from app.utils import (
     app_exit,
     get_package_current_commit,
     get_rich_logger,
 )
-from resolve_proxy_encoder.settings.manager import SettingsManager
+from settings.manager import SettingsManager
 
 config = SettingsManager()
 

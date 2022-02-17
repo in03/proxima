@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.6
 
+import logging
 import os
 import shutil
 import webbrowser
@@ -7,26 +8,28 @@ from pathlib import Path
 
 import typer
 from deepdiff import DeepDiff
-from resolve_proxy_encoder.utils.general import (
-    get_rich_logger,
-    install_rich_tracebacks,
-    app_exit,
-)
 from rich import print
 from rich.console import Console
 from ruamel.yaml import YAML
 
 from schema import SchemaError
 
+from ..app.utils import core
 from .schema import settings_schema
 
-# # Hardcoded because we haven't loaded user settings yet
-logger = get_rich_logger("WARNING")
-install_rich_tracebacks()
+core.install_rich_tracebacks()
+logger = logging.getLogger(__name__)
 
-DEFAULT_SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "default_settings.yml")
+DEFAULT_SETTINGS_FILE = os.path.join(
+    os.path.dirname(__file__),
+    "default_settings.yml",
+)
+
 USER_SETTINGS_FILE = os.path.join(
-    Path.home(), ".config", "resolve_proxy_encoder", "user_settings.yml"
+    Path.home(),
+    ".config",
+    "resolve_proxy_encoder",
+    "user_settings.yml",
 )
 
 
@@ -107,14 +110,14 @@ class SettingsManager(metaclass=Singleton):
                     typer.echo("Directory exists, skipping...")
                 except OSError:
                     typer.echo("Error creating directory!")
-                    app_exit(1)
+                    core.app_exit(1)
 
                 shutil.copy(self.default_file, self.user_file)
                 typer.echo(f"Copied default settings to {self.user_file}")
                 typer.echo("Please customize as necessary.")
                 webbrowser.open(self.user_file)  # Technically unsupported method
 
-            app_exit(0)
+            core.app_exit(0)
 
     def _ensure_user_keys(self):
         """Ensure user settings have all keys in default settings"""
@@ -142,7 +145,7 @@ class SettingsManager(metaclass=Singleton):
             logger.critical(
                 "Can't continue. Please define missing settings! Exiting..."
             )
-            app_exit(1, -1)
+            core.app_exit(1, -1)
 
     def _validate_schema(self, settings):
         """Validate user settings against schema"""
@@ -159,4 +162,7 @@ class SettingsManager(metaclass=Singleton):
                 f"[red]Couldn't validate application settings![/]\n{e}\n"
                 + f"[red]Exiting...[/]\n"
             )
-            app_exit(1, -1)
+            core.app_exit(1, -1)
+
+    def update(self, dict_: dict):
+        self.user_settings.update(dict_)

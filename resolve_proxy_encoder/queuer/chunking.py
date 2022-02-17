@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-import json
+import logging
 import os
 import re
 import shlex
@@ -10,90 +10,21 @@ import sys
 import tempfile
 import time
 from collections import Counter
-from fractions import Fraction
 
 import shortuuid
-from better_ffmpeg_progress import FfmpegProcess
-from celery import Task
 from pymediainfo import MediaInfo
-from resolve_proxy_encoder.utils.general import (
-    app_exit,
-    get_rich_logger,
-    install_rich_tracebacks,
-)
-from resolve_proxy_encoder.settings.manager import SettingsManager
-from resolve_proxy_encoder.worker.celery import app
-from resolve_proxy_encoder.worker.helpers import (
-    check_wsl,
-    fraction_to_decimal,
-    frames_to_timecode,
-    get_media_info,
-    get_queue,
-    get_wsl_path,
-)
+
+from ..app.utils import core
+from ..settings.manager import SettingsManager
+from ..worker.celery import app
+from ..worker.ffmpeg.ffmpeg_process import FfmpegProcess
+from ..worker.ffmpeg.utils import frac_to_dec, frac_to_tc, get_media_info
+from ..worker.utils import check_wsl, get_queue, get_wsl_path
 
 config = SettingsManager()
-logger = get_rich_logger(config["celery_settings"]["worker_loglevel"])
-install_rich_tracebacks()
 
-# Helper functions
-def cleanup_working_dir(dir):
-    """Cleanup temporary working directory"""
-
-    if os.path.exists(dir):
-        try:
-            os.rmdir(dir)
-        except:
-            print(f"Couldn't remove {dir}. In use?")
-            return False
-    else:
-        print(f"File: '{dir}' already deleted. No action taken.")
-
-    return True
-
-
-def frames_to_timecode(frames, fps):
-    """Convert frames to FFMPEG compatible timecode, with microseconds instead of frames"""
-    return "{0:02d}:{1:02d}:{2:02d}.{3:01d}".format(
-        int(frames / (3600 * fps)),
-        int(frames / (60 * fps) % 60),
-        int(frames / fps % 60),
-        int(frames % fps),
-    )
-
-
-def intersperse(lst, item: str) -> list:
-    """Intersperse every item in list with 'item'"""
-    result = [item] * (len(lst) * 2 - 1)
-    result[0::2] = lst
-    return result
-
-
-def fraction_to_decimal(fraction: str):
-    """Convert a fraction to a decimal"""
-    f = Fraction(fraction)
-    return float(f)
-
-
-def get_media_info(file):
-    """Get media info from file using ffprobe"""
-
-    cmd = f'ffprobe -v quiet -print_format json -show_format -show_streams "{file}"'
-    logger.debug(f"FFprobe command: {cmd}")
-
-    ps = subprocess.Popen(
-        shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-    )
-
-    result = ps.communicate()[0]
-    clean_result = result.decode().strip()
-    json_result = json.loads(clean_result)
-
-    if not json_result:
-        print(f"Couldn't get data!")
-        sys.exit(1)
-
-    return json_result
+core.install_rich_tracebacks()
+logger = logging.getLogger(__name__)
 
 
 class SplitAndStitch:
@@ -172,7 +103,7 @@ class SplitAndStitch:
 
         # Get media info
         info = get_media_info(file)
-        fps = fraction_to_decimal(info["streams"][0]["r_frame_rate"])
+        fps = frac_to_dec(info["streams"][0]["r_frame_rate"])
         nb_frames = int(info["streams"][0]["nb_frames"])
 
         # Print file metadata
@@ -217,8 +148,8 @@ class SplitAndStitch:
             out_point = in_point + chunk_frames
             seg_num = i
 
-            in_point_tc = frames_to_timecode(in_point, fps)
-            out_point_tc = frames_to_timecode(out_point, fps)
+            in_point_tc = frac_to_tc(in_point, fps)
+            out_point_tc = frac_to_tc(out_point, fps)
 
             logger.debug(
                 f"Whole {seg_num} in point: {in_point_tc}, out_point: {out_point_tc}"
@@ -239,8 +170,8 @@ class SplitAndStitch:
             out_point = in_point + (chunk_frames * partial_chunk_length)
             seg_num = seg_num + 1
 
-            in_point_tc = frames_to_timecode(in_point, fps)
-            out_point_tc = frames_to_timecode(out_point, fps)
+            in_point_tc = frac_to_tc(in_point, fps)
+            out_point_tc = frac_to_tc(out_point, fps)
 
             logger.debug(
                 f"Partial {seg_num}, in point: {in_point_tc}, out_point: {out_point_tc}"
@@ -346,7 +277,7 @@ class SplitAndStitch:
                     "File missing incremental! Ensure suffix matches regex set in user settings.\n"
                     + "e.g. '-1.mp4', '-2.mp4', etc."
                 )
-                app_exit(1)
+                core.app_exit(1)
 
             # incrementals.append(match.group(1))
 

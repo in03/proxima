@@ -1,18 +1,19 @@
+import logging
 import time
 from typing import Union
 
+from ..settings.manager import SettingsManager
+from resolve_proxy_encoder.worker.celery import app as celery_app
 from rich import print
 from rich.console import Console
 from rich.prompt import Confirm
 
-from resolve_proxy_encoder.utils import general, package
-from resolve_proxy_encoder.settings.manager import SettingsManager
-from resolve_proxy_encoder.worker.celery import app as celery_app
-
-general.install_rich_tracebacks()
-logger = general.get_rich_logger("WARNING")
+from app.utils import core, pkg
 
 config = SettingsManager()
+
+core.install_rich_tracebacks()
+logger = logging.getLogger(__name__)
 
 
 def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
@@ -32,9 +33,9 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
     console = Console()
 
     with console.status("[cyan]Checking for updates...[/]\n"):
-        remote_latest_commit = package.get_remote_latest_commit(github_url)
+        remote_latest_commit = pkg.get_remote_latest_commit(github_url)
 
-    package_latest_commit = package.get_package_current_commit(package_name)
+    package_latest_commit = pkg.get_package_current_commit(package_name)
 
     if not remote_latest_commit or not package_latest_commit:
         logger.warning("[red]Failed to check for updates[/]")
@@ -81,7 +82,7 @@ def check_worker_compatability():
 
         # Get online workers and package current commit
         online_workers = celery_app.control.inspect().active_queues()
-        git_full_sha = package.get_package_current_commit("resolve_proxy_encoder")
+        git_full_sha = pkg.get_package_current_commit("resolve_proxy_encoder")
 
     if git_full_sha is None:
         logger.warning(
@@ -145,7 +146,7 @@ def check_worker_compatability():
             logger.error(
                 "[red]All online workers are incompatible!\n" + "Cannot continue[/]"
             )
-            general.app_exit(1, -1)
+            core.app_exit(1, -1)
 
         else:
 
@@ -154,7 +155,7 @@ def check_worker_compatability():
                 return
 
             print("[yellow]Exiting...[/]")
-            general.app_exit(1, -1)
+            core.app_exit(1, -1)
 
     print("\n[green]All workers compatible :white_check_mark:[/]\n")
     return

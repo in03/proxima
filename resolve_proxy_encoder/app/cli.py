@@ -6,8 +6,8 @@ from rich import print
 # Print CLI title
 fig = Figlet()
 text = fig.renderText("Resolve Proxy Encoder")
-print(f"[green]{text}[/]\n")
-
+print(f"[green]{text}\n")
+import logging
 import subprocess
 import webbrowser
 
@@ -17,16 +17,18 @@ from rich.console import Console
 from rich.prompt import Confirm
 
 from resolve_proxy_encoder.app import checks
-from resolve_proxy_encoder.utils.general import get_rich_logger
+from .utils.core import setup_rich_logging
 from resolve_proxy_encoder.settings.manager import SettingsManager
 
 # Init classes
 cli_app = typer.Typer()
 console = Console()
 settings = SettingsManager()
-
 config = settings.user_settings
-logger = get_rich_logger(config["loglevel"])
+
+setup_rich_logging()
+logger = logging.getLogger(__name__)
+logger.setLevel(config["app"]["loglevel"])
 
 
 @cli_app.command()
