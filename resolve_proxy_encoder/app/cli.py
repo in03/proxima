@@ -23,13 +23,12 @@ from resolve_proxy_encoder.settings.manager import SettingsManager
 # Init classes
 console = Console()
 settings = SettingsManager()
-config = settings.user_settings
 
 cli_app = typer.Typer()
 
 setup_rich_logging()
 logger = logging.getLogger(__name__)
-logger.setLevel(config["app"]["loglevel"])
+logger.setLevel(settings["app"]["loglevel"])
 
 
 @cli_app.command()
@@ -41,11 +40,13 @@ def queue():
     checks.check_worker_compatability()
 
     print("\n")
+    if VERSION_INFO:
 
-    ver_colour = "green" if VERSION_INFO["is_latest"] else "yellow"
-    print(
-        f"[cyan]Routing to queue:[/] [{ver_colour}]'{VERSION_INFO['current_version']}'[/]"
-    )
+        ver_colour = "green" if VERSION_INFO["is_latest"] else "yellow"
+        print(
+            f"[cyan]Routing to queue:[/] [{ver_colour}]'{VERSION_INFO['current_version']}'[/]"
+        )
+
     print("\n\n[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
     from ..queuer import queue
 
@@ -77,10 +78,15 @@ def work(
     print("\n")
 
     # Print worker queue
-    ver_colour = "green" if VERSION_INFO["is_latest"] else "yellow"
-    print(
-        f"[cyan]Consuming from queue: [/][{ver_colour}]'{VERSION_INFO['current_version']}'[/]"
-    )
+    if VERSION_INFO:
+
+        ver_colour = "green" if VERSION_INFO["is_latest"] else "yellow"
+        print(
+            f"[cyan]Consuming from queue: [/][{ver_colour}]'{VERSION_INFO['current_version']}'[/]"
+        )
+
+    if not workers_to_launch:
+        workers_to_launch = 0
 
     if workers_to_launch > 0:
         print(f"[green]Starting workers! :construction_worker:[/]")
@@ -122,7 +128,17 @@ def mon():
     """
 
     print("[green]Launching Flower celery monitor[/] :sunflower:")
-    webbrowser.open_new(config["celery"]["flower_url"])
+    webbrowser.open_new(settings["celery"]["flower_url"])
+
+
+# TODO: Test and flesh out new config command
+# labels: feature
+@cli_app.command()
+def config():
+    """Open user settings configuration file for editing"""
+
+    print("[green]Opening user settings file for modification[/]")
+    webbrowser.open_new(settings.user_file)
 
 
 def init():
@@ -131,7 +147,7 @@ def init():
     global VERSION_INFO
 
     VERSION_INFO = checks.check_for_updates(
-        github_url=config["app"]["update_check_url"],
+        github_url=settings["app"]["update_check_url"],
         package_name="resolve_proxy_encoder",
     )
     # TODO: Add update method to settings class

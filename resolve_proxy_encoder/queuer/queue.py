@@ -4,15 +4,18 @@ import logging
 import os
 import tkinter
 import tkinter.messagebox
-import handlers
 
 from app.utils import core
 from celery import group
 from rich import print
 from settings.manager import SettingsManager
 from worker.tasks.encode.tasks import encode_proxy
+from yaspin import yaspin
 
+import handlers
 from queuer import link, resolve
+
+from . import chunking
 
 config = SettingsManager()
 
@@ -81,7 +84,7 @@ def wait_encode(job):
 # labels: bug
 
 
-def legacy_link(media_list):
+def legacy_link(project, media_list):
     """This is sooooo dank. But it's the only way that works atm."""
 
     print(f"[cyan]Linking {len(media_list)} proxies.[/]")
@@ -107,7 +110,7 @@ def legacy_link(media_list):
 
         media.update({"Proxy": "1280x720"})
 
-    link.link_proxies(existing_proxies)
+    link.link_proxies(project, existing_proxies)
 
     print("\n")
 
@@ -149,7 +152,18 @@ def main():
     clips = handlers.handle_offline_proxies(clips)
     clips = handlers.handle_existing_unlinked(clips)
 
+    # TODO: Add chunk data to all clips in media list
     handlers.handle_final_queuable(clips)
+
+    if config["chunking"]["enable_chunking"]:
+
+        spinner = yaspin("Calculating chunks...")
+        spinner.start()
+        try:
+            for job in clips:
+                chunking.calculate_chunks(job["File Path"])
+        except:
+            spinner.stop()
 
     tasks = create_tasks(
         clips,
@@ -166,7 +180,7 @@ def main():
     # ATTEMPT POST ENCODE LINK
     try:
 
-        clips = link._legacy_link(clips)
+        clips = legacy_link(r_.project, clips)
         core.app_exit(0)
 
     except:
