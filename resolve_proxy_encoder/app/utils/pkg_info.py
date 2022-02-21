@@ -8,7 +8,8 @@ from typing import Union
 
 import pkg_resources
 import requests
-from settings.manager import SettingsManager
+
+from ...settings.manager import SettingsManager
 
 settings = SettingsManager()
 config = settings.user_settings
@@ -32,7 +33,7 @@ def get_package_current_commit(package_name: str) -> Union[str, None]:
 
     try:
 
-        logger.info("Getting commit ID from package dist info.")
+        logger.info("[cyan]Getting commit ID from package dist info.")
 
         dist = pkg_resources.get_distribution(package_name)
         vcs_metadata_file = dist.get_metadata("direct_url.json")

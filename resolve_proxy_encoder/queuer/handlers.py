@@ -12,7 +12,7 @@ from app.utils import core
 from settings.manager import SettingsManager
 from worker.celery import app
 
-import link
+from . import link
 
 config = SettingsManager()
 core.install_rich_tracebacks()

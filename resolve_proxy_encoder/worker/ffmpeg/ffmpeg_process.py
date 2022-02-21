@@ -21,7 +21,7 @@ config = SettingsManager()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
-logger.setLevel(config["celery_settings"]["worker_loglevel"])
+logger.setLevel(config["worker"]["loglevel"])
 
 
 class FfmpegProcess:

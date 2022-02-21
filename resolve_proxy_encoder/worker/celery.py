@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 
-# Celery settings should be configured using celery setting or environment variables.
-# See the .env-sample if using Docker, or celery_settings-sample.py if running in virtual env.
-
-from __future__ import absolute_import
-
+import logging
 import os
 import sys
 
 from celery import Celery
-from resolve_proxy_encoder.settings.manager import SettingsManager
+from ..settings.manager import SettingsManager
 
 config = SettingsManager()
+
+logger = logging.getLogger(__name__)
 
 # Windows can't fork processes. It'll choke if you make it try.
 if sys.platform == "win32":
@@ -27,9 +25,9 @@ app.autodiscover_tasks(
 )
 
 try:
-    app.config_from_object(config["celery_settings"])
+    app.config_from_object(config["celery"])
 except Exception as e:
-    raise Exception("Couldn't load settings from YAML!")
+    logger.error(f"[red]Couldn't load settings from YAML![/]\n{e}")
 
 # Fragile! Moved from user settings to here.
 app.conf.update(
@@ -42,4 +40,6 @@ app.conf.update(
     worker_pool_restarts=True,
     worker_send_task_events=True,
     worker_cancel_long_running_tasks_on_connection_loss=True,
+    worker_hijack_root_logger=False,
+    worker_redirect_stdouts=False,
 )

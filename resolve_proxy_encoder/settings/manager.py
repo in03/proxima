@@ -1,16 +1,19 @@
 #!/usr/bin/env python3.6
 
 import logging
+import operator
 import os
 import shutil
 import webbrowser
 from pathlib import Path
+from functools import reduce
+from typing import Union, Any
 
-import typer
 from deepdiff import DeepDiff
 from rich import print
-from rich.console import Console
+from rich.prompt import Confirm
 from ruamel.yaml import YAML
+from yaspin import yaspin
 
 from schema import SchemaError
 
@@ -49,44 +52,59 @@ class SettingsManager(metaclass=Singleton):
         user_settings_file=USER_SETTINGS_FILE,
     ):
 
-        self.console = Console()
         self.yaml = YAML()
         self.default_file = default_settings_file
         self.user_file = user_settings_file
+        self.user_settings = dict()
 
         # Originally had default settings validated against schema too
         # but realised testing a path exists is not a good idea for defaults.
         # Instead let's write a build time test for this.
 
-        # Validate default settings
-        self.default_settings = self._load_default_settings_from_file()
+        self._load_default_file()
 
         # Validate user settings
-        with self.console.status("[cyan]Checking settings...[/]\n"):
+        if logger.getEffectiveLevel() > 2:
 
-            self._ensure_user_file()
-            self.user_settings = self._load_user_settings_from_file()
-            self._ensure_user_keys()
-            self._validate_schema(self.user_settings)
+            self.spinner = yaspin(
+                text="Checking settings...",
+                color="cyan",
+            )
+            self.spinner.start()
 
-        print("\n[green]User settings are valid :white_check_mark:[/]\n")
-        return self.user_settings
+        self._ensure_user_file()
+        self._load_user_file()
+        self._ensure_user_keys()
+        self._validate_schema()
 
-    def _load_default_settings_from_file(self):
+        self.spinner.ok("✅ ")
+
+    def __len__(self):
+
+        return len(self.user_settings)
+
+    def __getitem__(self, __items):
+
+        if type(__items) == str:
+            __items = __items.split(" ")
+
+        return reduce(operator.getitem, __items, self.user_settings)
+
+    def _load_default_file(self):
         """Load default settings from yaml"""
 
         logger.debug(f"Loading default settings from {self.default_file}")
 
         with open(os.path.join(self.default_file)) as file:
-            return self.yaml.load(file)
+            self.default_settings = self.yaml.load(file)
 
-    def _load_user_settings_from_file(self):
+    def _load_user_file(self):
         """Load user settings from yaml"""
 
         logger.debug(f"Loading user settings from {self.user_file}")
 
         with open(self.user_file, "r") as file:
-            return self.yaml.load(file)
+            self.user_settings = self.yaml.load(file)
 
     def _ensure_user_file(self):
         """Copy default settings to user settings if it doesn't exist
@@ -98,23 +116,46 @@ class SettingsManager(metaclass=Singleton):
 
         if not os.path.exists(self.user_file):
 
-            if typer.confirm(
-                f"No user settings found at path {self.user_file}\n"
-                + "Load defaults now for adjustment?"
+            self.spinner.fail("❌ ")
+            if Confirm.ask(
+                f"[yellow]No user settings found at path [/]'{self.user_file}'\n"
+                + "[cyan]Load defaults now for adjustment?[/]"
             ):
+                print()  # Newline
+                self.spinner.text = "Copying default settings..."
+                self.spinner.start()
 
                 # Create dir, copy file, open
                 try:
-                    os.makedirs(os.path.dirname(self.user_file))
-                except FileExistsError:
-                    typer.echo("Directory exists, skipping...")
-                except OSError:
-                    typer.echo("Error creating directory!")
-                    core.app_exit(1)
 
-                shutil.copy(self.default_file, self.user_file)
-                typer.echo(f"Copied default settings to {self.user_file}")
-                typer.echo("Please customize as necessary.")
+                    os.makedirs(os.path.dirname(self.user_file))
+
+                except FileExistsError:
+
+                    self.spinner.stop()
+                    logger.info("[yellow]Directory exists, skipping...[/]")
+                    self.spinner.start()
+
+                except OSError:
+
+                    self.spinner.fail("❌ ")
+                    logger.error("[red]Error creating directory![/]")
+                    core.app_exit(1, -1)
+
+                try:
+
+                    shutil.copy(self.default_file, self.user_file)
+                    self.spinner.ok("✅ ")
+
+                except:
+
+                    self.spinner.fail("❌ ")
+                    print(
+                        f"[red]Couldn't copy default settings to {self.user_file}![/]"
+                    )
+                    core.app_exit(1, -1)
+
+                self.spinner.stop()
                 webbrowser.open(self.user_file)  # Technically unsupported method
 
             core.app_exit(0)
@@ -128,36 +169,45 @@ class SettingsManager(metaclass=Singleton):
         # Then we can get rid of the default_settings.yml file.
 
         diffs = DeepDiff(self.default_settings, self.user_settings)
+        logger.debug("[magenta]Diffs:[/]\n")
 
         # Check for unknown settings
         if diffs.get("dictionary_item_added"):
+
+            self.spinner.stop()
             [
                 logger.warning(f"Unknown setting -> {x} will be ignored!")
                 for x in diffs["dictionary_item_added"]
             ]
+            print()  # Newline
+            self.spinner.start()
 
         # Check for missing settings
         if diffs.get("dictionary_item_removed"):
+
+            self.spinner.fail("❌ ")
             [
                 logger.error(f"Missing setting -> {x}")
                 for x in diffs["dictionary_item_removed"]
             ]
+
             logger.critical(
                 "Can't continue. Please define missing settings! Exiting..."
             )
             core.app_exit(1, -1)
 
-    def _validate_schema(self, settings):
+    def _validate_schema(self):
         """Validate user settings against schema"""
 
         logger.debug(f"Validating user settings against schema")
 
         try:
 
-            settings_schema.validate(settings)
+            settings_schema.validate(self.user_settings)
 
         except SchemaError as e:
 
+            self.spinner.fail("❌ ")
             logger.error(
                 f"[red]Couldn't validate application settings![/]\n{e}\n"
                 + f"[red]Exiting...[/]\n"

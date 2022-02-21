@@ -2,28 +2,23 @@
 
 # Launch multiple workers
 
+import logging
 import multiprocessing
 import os
 import platform
 import subprocess
-import time
 from shutil import which
 
 from rich import print
-from rich.progress import Progress
 
-from app.utils import (
-    app_exit,
-    get_package_current_commit,
-    get_rich_logger,
-    get_script_from_package,
-    install_rich_tracebacks,
-)
-from resolve_proxy_encoder.settings.manager import SettingsManager
+from ..app.utils import core, pkg_info
+from ..settings.manager import SettingsManager
+from ..worker.utils import get_queue
 
-install_rich_tracebacks()
+core.install_rich_tracebacks()
+
 config = SettingsManager()
-logger = get_rich_logger(loglevel=config["celery_settings"]["worker_loglevel"])
+logger = logging.getLogger(__name__)
 
 
 def prompt_worker_amount(cpu_cores: int):
@@ -58,23 +53,6 @@ def prompt_worker_amount(cpu_cores: int):
     return answer
 
 
-def get_routing_key_from_version():
-
-    # Add git SHA Celery queue to prevent queuer/worker incompatibilities
-    git_full_sha = get_package_current_commit("resolve_proxy_encoder")
-
-    if not git_full_sha:
-
-        logger.error(
-            "[red]Couldn't get local package commit SHA!\n"
-            + "Necessary to prevent version mismatches between queuer and worker.[/]"
-        )
-        app_exit(1, -1)
-
-    # Use git standard 7 character short SHA
-    return git_full_sha[::8]
-
-
 def new_worker(id=None):
     """Start a new celery worker in a new process
 
@@ -94,16 +72,16 @@ def new_worker(id=None):
     def get_worker_name(id):
 
         # @h for 'hostname'
-        return f"-n worker{id}@h"
+        return f"-n worker{id}@{platform.node()}"
 
     def get_worker_queue():
 
-        return " -Q " + get_routing_key_from_version()
+        return " -Q " + get_queue()
 
     def get_celery_binary_path():
 
         # Check if in virtual env. Find.
-        celery_bin = get_script_from_package("Celery")
+        celery_bin = pkg_info.get_script_from_package("Celery")
         if celery_bin:
             return celery_bin
 
@@ -118,7 +96,7 @@ def new_worker(id=None):
         )
 
         logger.error("[red]Couldn't find celery binary! Is it installed?[/]")
-        app_exit(1, -1)
+        core.app_exit(1, -1)
 
     def get_module_path():
         """Get absolute module path to pass to Celery worker"""
@@ -126,7 +104,7 @@ def new_worker(id=None):
         # Change dir to package root
         module_path = os.path.dirname(os.path.abspath(__file__))
 
-        logger.debug(f"Worker path: {module_path}")
+        logger.debug(f"[magenta]Path to worker module: '{module_path}'")
         assert os.path.exists(module_path)
         return os.path.abspath(module_path)
 
@@ -134,7 +112,7 @@ def new_worker(id=None):
         """Get os command to spawn process in a new console window"""
 
         # Get new terminal
-        worker_terminal_args = config["celery_settings"]["worker_terminal_args"]
+        worker_terminal_args = config["worker"]["terminal_args"]
 
         # Check if any args are on path. Probably terminal executable.
         executable_args = [which(x) for x in worker_terminal_args]
@@ -162,27 +140,27 @@ def new_worker(id=None):
                 "Cannot guess installed Linux terminal. Too many distros."
                 + "Please provide a terminal executable in 'worker_terminal_args' settings."
             )
-            app_exit(1, -1)
+            core.app_exit(1, -1)
         else:
             logger.error(
                 f"Could not determine terminal executable for OS: {os_}."
                 + "Please provide a terminal executable in 'worker_terminal_args' settings."
             )
-            app_exit(1, -1)
+            core.app_exit(1, -1)
 
     launch_cmd = [
         get_new_console(),
-        *config["celery_settings"]["worker_terminal_args"],
+        *config["worker"]["terminal_args"],
         f'"{get_celery_binary_path()}"',
         "-A resolve_proxy_encoder.worker",
         "worker",
         get_worker_name(id),
         get_worker_queue(),
-        *config["celery_settings"]["worker_celery_args"],
+        *config["worker"]["celery_args"],
     ]
 
-    logger.info(" ".join(launch_cmd))
-    # print(" ".join(launch_cmd))
+    logger.info(f"[cyan]NEW WORKER - {id}[/]")
+    logger.debug(f"[magenta]{' '.join(launch_cmd)}[/]\n")
 
     subprocess.Popen(
         cwd=get_module_path(),
@@ -195,25 +173,9 @@ def launch_workers(workers_to_launch: int):
 
     # Start launching
 
-    worker_id = 0
-    with Progress() as progress:
-
-        launch = progress.add_task(
-            "[green]Starting workers[/]", total=workers_to_launch
-        )
-
-        while not progress.finished:
-
-            worker_id += 1
-            progress.update(launch, advance=1)
-
-            # logger.info(launch_cmd)
-
-            new_worker(id=worker_id)
-            time.sleep(0.05)
-
-        print()
-        return
+    for i in range(0, workers_to_launch):
+        new_worker(id=i + 1)
+    return
 
 
 def main(workers: int = 0):
@@ -235,7 +197,7 @@ def main(workers: int = 0):
         launch_workers(prompt_worker_amount(cpu_cores))
 
     print(f"[green]Done![/]")
-    app_exit(0, 5)
+    core.app_exit(0, 5)
 
 
 if __name__ == "__main__":

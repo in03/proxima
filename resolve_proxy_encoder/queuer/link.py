@@ -146,7 +146,7 @@ def _link_proxies(proxy_files, clips):
 
             except AttributeError:
 
-                if config["loglevel"] == "DEBUG":
+                if config["app"]["loglevel"] == "DEBUG":
                     print(
                         f"[yellow]{clip.GetName()} has no 'file path' attribute,"
                         + " probably Resolve internal media."
@@ -193,7 +193,7 @@ def link_proxies(project, proxy_files):
         linked.extend(linked_)
         failed.extend(failed_)
 
-        if config["loglevel"] == "DEBUG":
+        if config["app"]["loglevel"] == "DEBUG":
             print(f"Linked: {linked}, Failed: {failed}")
 
     if len(failed) > 0:

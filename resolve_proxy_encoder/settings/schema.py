@@ -6,15 +6,18 @@ from schema import Schema, And, Optional
 
 settings_schema = Schema(
     {
-        "loglevel": lambda s: s in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        "updates": {
-            "github_url": lambda s: re.match(link, s),
-            "warn_updates": bool,
+        "app": {
+            "loglevel": lambda s: s
+            in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+            "check_for_updates": bool,
+            "update_check_url": lambda s: re.match(link, s),
+            "disable_version_constrain": bool,
         },
         "paths": {
             "proxy_path_root": lambda p: os.path.exists(p),
+            "ffmpeg_logfile_path": lambda p: os.path.exists(os.path.dirname(p)),
         },
-        "proxy_settings": {
+        "proxy": {
             "ffmpeg_loglevel": lambda l: l
             in [
                 "quiet",
@@ -44,20 +47,21 @@ settings_schema = Schema(
             "use_framerate_whitelist": bool,
             "framerate_whitelist": And(list, lambda l: all(map(lambda s: int(s), l))),
         },
-        "celery_settings": {
+        "celery": {
             "host_address": str,
             "broker_url": str,
             "flower_url": str,
             "result_backend": str,
             "result_expires": int,
-            "worker_loglevel": lambda s: s
+        },
+        "worker": {
+            "loglevel": lambda s: s
             in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-            "disable_worker_compatability_check": bool,
-            "worker_concurrency": int,
-            "worker_prefetch_multiplier": int,
-            "worker_max_tasks_per_child": int,
-            "worker_terminal_args": list,
-            "worker_celery_args": list,
+            "concurrency": int,
+            "prefetch_multiplier": int,
+            "max_tasks_per_child": int,
+            "terminal_args": list,
+            "celery_args": list,
         },
         "chunking": {
             "enable_chunking": bool,

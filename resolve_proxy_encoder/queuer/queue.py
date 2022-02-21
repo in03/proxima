@@ -1,11 +1,12 @@
 #!/usr/bin/env python3.6
 
+import logging
 import os
 import tkinter
 import tkinter.messagebox
 import handlers
 
-from app.utils import app_exit, get_rich_logger, install_rich_tracebacks, notify
+from app.utils import core
 from celery import group
 from rich import print
 from settings.manager import SettingsManager
@@ -15,8 +16,8 @@ from queuer import link, resolve
 
 config = SettingsManager()
 
-install_rich_tracebacks()
-logger = get_rich_logger(config["loglevel"])
+core.install_rich_tracebacks()
+logger = logging.getLogger(__name__)
 
 # Set global flags
 SOME_ACTION_TAKEN = False
@@ -58,17 +59,17 @@ def wait_encode(job):
     if job.failed():
         fail_message = (
             "Some videos failed to encode!"
-            + f"Check flower dashboard at address: {config['celery_settings']['flower_url']}."
+            + f"Check flower dashboard at address: {config['celery']['flower_url']}."
         )
         print("[red]fail_message[/]")
-        notify(fail_message)
+        core.notify(fail_message)
 
     # Notify complete
     complete_message = f"Completed encoding {job.completed_count()} proxies."
     print(f"[green]{complete_message}[/]")
     print("\n")
 
-    notify(complete_message)
+    core.notify(complete_message)
 
     return result
 
@@ -158,7 +159,7 @@ def main():
 
     job = queue_job(tasks)
 
-    notify(f"Started encoding job '{project_name} - {timeline_name}'")
+    core.notify(f"Started encoding job '{project_name} - {timeline_name}'")
     print(f"[yellow]Waiting for job to finish. Feel free to minimize.[/]")
     wait_encode(job)
 
@@ -166,12 +167,12 @@ def main():
     try:
 
         clips = link._legacy_link(clips)
-        app_exit(0)
+        core.app_exit(0)
 
     except:
 
         print("[red]Couldn't link clips. Link manually...[/]")
-        app_exit(1, -1)
+        core.app_exit(1, -1)
 
 
 if __name__ == "__main__":

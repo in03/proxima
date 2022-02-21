@@ -16,15 +16,16 @@ from typing import Optional
 from rich.console import Console
 from rich.prompt import Confirm
 
-from resolve_proxy_encoder.app import checks
+from ..app import checks
 from .utils.core import setup_rich_logging
 from resolve_proxy_encoder.settings.manager import SettingsManager
 
 # Init classes
-cli_app = typer.Typer()
 console = Console()
 settings = SettingsManager()
 config = settings.user_settings
+
+cli_app = typer.Typer()
 
 setup_rich_logging()
 logger = logging.getLogger(__name__)
@@ -37,12 +38,16 @@ def queue():
     Queue proxies from the currently open
     DaVinci Resolve timeline
     """
-
     checks.check_worker_compatability()
 
-    print("[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
+    print("\n")
 
-    from resolve_proxy_encoder.queuer import queue
+    ver_colour = "green" if VERSION_INFO["is_latest"] else "yellow"
+    print(
+        f"[cyan]Routing to queue:[/] [{ver_colour}]'{VERSION_INFO['current_version']}'[/]"
+    )
+    print("\n\n[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
+    from ..queuer import queue
 
     queue.main()
 
@@ -54,7 +59,7 @@ def link():
     source media in open DaVinci Resolve project
     """
 
-    from resolve_proxy_encoder.queuer import link
+    from ..queuer import link
 
     link.main()
 
@@ -69,14 +74,22 @@ def work(
 ):
     """Prompt to start Celery workers on local machine"""
 
+    print("\n")
+
+    # Print worker queue
+    ver_colour = "green" if VERSION_INFO["is_latest"] else "yellow"
+    print(
+        f"[cyan]Consuming from queue: [/][{ver_colour}]'{VERSION_INFO['current_version']}'[/]"
+    )
+
     if workers_to_launch > 0:
         print(f"[green]Starting workers! :construction_worker:[/]")
     else:
         print(f"[cyan]Starting worker launcher prompt :construction_worker:[/]")
 
-    from resolve_proxy_encoder.worker import start_workers
+    from ..worker import launch_workers
 
-    start_workers.main(workers_to_launch)
+    launch_workers.main(workers_to_launch)
 
 
 @cli_app.command()
@@ -109,16 +122,22 @@ def mon():
     """
 
     print("[green]Launching Flower celery monitor[/] :sunflower:")
-    webbrowser.open_new(config["celery_settings"]["flower_url"])
+    webbrowser.open_new(config["celery"]["flower_url"])
 
 
 def init():
     """Run before CLI App load."""
 
-    checks.check_for_updates(
-        github_url=config["updates"]["github_url"],
+    global VERSION_INFO
+
+    VERSION_INFO = checks.check_for_updates(
+        github_url=config["app"]["update_check_url"],
         package_name="resolve_proxy_encoder",
     )
+    # TODO: Add update method to settings class
+    # There are a few dynamic variables that would be nice to have globally
+    # E.g. `settings.add_setting(current_version)`
+    # labels: enhancement
 
 
 def main():

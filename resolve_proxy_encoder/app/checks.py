@@ -2,13 +2,15 @@ import logging
 import time
 from typing import Union
 
-from ..settings.manager import SettingsManager
-from resolve_proxy_encoder.worker.celery import app as celery_app
 from rich import print
-from rich.console import Console
 from rich.prompt import Confirm
+from yaspin import yaspin
 
-from app.utils import core, pkg
+from .utils import pkg_info
+
+from ..app.utils import core
+from ..settings.manager import SettingsManager
+from ..worker.celery import app as celery_app
 
 config = SettingsManager()
 
@@ -16,7 +18,8 @@ core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
 
 
-def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
+def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
+
     """Compare git origin to local git or package dist for updates
 
     Args:
@@ -24,25 +27,38 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
         - package_name(str): offical package name
 
     Returns:
-        - none
+        - dict:
+            - 'is_latest': bool,
+            - 'current_version': git_short_sha
 
     Raises:
         - none
     """
 
-    console = Console()
+    if not config["app"]["check_for_updates"]:
+        return None
 
-    with console.status("[cyan]Checking for updates...[/]\n"):
-        remote_latest_commit = pkg.get_remote_latest_commit(github_url)
+    latest = False
 
-    package_latest_commit = pkg.get_package_current_commit(package_name)
+    spinner = yaspin(
+        text="Checking for updates...",
+        color="cyan",
+    )
+
+    spinner.start()
+
+    package_latest_commit = pkg_info.get_package_current_commit(package_name)
+    remote_latest_commit = pkg_info.get_remote_latest_commit(github_url)
 
     if not remote_latest_commit or not package_latest_commit:
+
+        spinner.fail("❌ ")
         logger.warning("[red]Failed to check for updates[/]")
-        return
+        return None
 
-    if remote_latest_commit != package_latest_commit:
+    elif remote_latest_commit != package_latest_commit:
 
+        spinner.ok("🔼 ")
         logger.warning(
             "[yellow]Update available.\n"
             + "Fully uninstall and reinstall when possible:[/]\n"
@@ -54,37 +70,37 @@ def check_for_updates(github_url: str, package_name: str) -> Union[str, None]:
         logger.info(f"Current: {package_latest_commit}")
 
     else:
-        # TODO: Fix too much newline padding when all checks pass
-        # Move the newline padding from these 'success prints' to
-        # the warning and error logs. Make sure newline padding is consistent.
-        # labels: bug
-        print("\n[green]Installation up-to-date :white_check_mark:[/]\n")
 
-    return
+        latest = True
+        spinner.ok("✨ ")
+
+    return {
+        "is_latest": latest,
+        "current_version": package_latest_commit[::8],
+    }
 
 
 def check_worker_compatability():
 
-    if config["celery_settings"]["disable_worker_compatability_check"]:
+    if config["app"]["disable_version_constrain"]:
         logger.warning(
             "[yellow]Worker compatability check disabled in user settings![/]\n"
         )
         time.sleep(2)
         return
 
-    # TODO: Stop console status spinner from breaking prompts and console logging
-    # Maybe the spinner doesn't expect console output until we've exited the 'with'?
-    # labels: bug
-    console = Console()
-    with console.status(
-        "\n[cyan]Fetching online workers for compatability check...[/]\n"
-    ):
+    spinner = yaspin(
+        text="Checking worker compatability...",
+        color="cyan",
+    )
 
-        # Get online workers and package current commit
-        online_workers = celery_app.control.inspect().active_queues()
-        git_full_sha = pkg.get_package_current_commit("resolve_proxy_encoder")
+    # Get online workers and package current commit
+    spinner.start()
+    online_workers = celery_app.control.inspect().active_queues()
+    git_full_sha = pkg_info.get_package_current_commit("resolve_proxy_encoder")
 
     if git_full_sha is None:
+        spinner.fail("❌ ")
         logger.warning(
             "[yellow]Couldn't get local package git commit SHA\n"
             + "Any incompatible workers will not be reported.\n"
@@ -95,17 +111,26 @@ def check_worker_compatability():
     git_short_sha = git_full_sha[::8]
 
     if online_workers is None:
+
+        spinner.fail("❌ ")
         logger.warning(
             "[yellow]No workers found. Can't check compatability.\n"
             + "Jobs may not be received if no compatible workers are available!\n[/]"
-            + "[red]CONTINUE AT OWN RISK![/]\n\n"
+            + "[red]CONTINUE AT OWN RISK![/]\n"
         )
-        return None
 
+        if not Confirm.ask("[cyan]Do you wish to continue?[/]"):
+            core.app_exit(1, -1)
+
+        return
+
+    spinner.stop()
     logger.debug(f"Online workers: {online_workers}")
+    spinner.start()
 
     # Get incompatible workers
     incompatible_workers = []
+    compatible_workers = []
     for worker, attributes in online_workers.items():
 
         routing_key = attributes[0]["routing_key"]
@@ -114,35 +139,52 @@ def check_worker_compatability():
         routing_key = "".join(routing_key.split())
         git_short_sha = "".join(git_short_sha.split())
 
+        worker_dict = {
+            "name": worker,
+            "host": str(worker).split("@")[1],
+            "routing_key": routing_key,
+        }
+
         # Compare git sha
         if not routing_key == git_short_sha:
-
-            incompatible_workers.append(
-                {
-                    "name": worker,
-                    "host": str(worker).split("@")[1],
-                    "routing_key": routing_key,
-                }
-            )
+            incompatible_workers.append(worker_dict)
+        else:
+            compatible_workers.append(worker_dict)
 
     incompatible_hosts = set()
     for x in incompatible_workers:
         incompatible_hosts.add(x["host"])
 
+    compatible_hosts = set()
+    for x in compatible_workers:
+        compatible_hosts.add(x["host"])
+
     # Prompt incompatible workers
     if incompatible_workers:
+        spinner.fail("❌ ")
+
+        # Get singular or plural based on list lengths
+        worker_plural = "workers" if len(online_workers) > 1 else "worker"
+        incompatible_hosts_count = len(incompatible_hosts)
+        multi_incompatible_hosts_warning = (
+            f"across {len(incompatible_hosts)} hosts "
+            if incompatible_hosts_count > 1
+            else ""
+        )
+
         logger.warning(
-            f"[yellow]Incompatible workers detected!\n"
-            + f"{len(incompatible_workers)}/{len(online_workers)} workers across "
-            + f"{len(incompatible_hosts)} host(s) will NOT be able to process jobs queued here.\n"
-            + f"[green]To fix, update Resolve Proxy Encoder on below hosts to match git commit SHA, [/]'{git_short_sha}':\n"
-            + "', '".join(incompatible_hosts)
+            f"[yellow]Incompatible {worker_plural} detected!\n"
+            + f"{len(incompatible_workers)}/{len(online_workers)} workers {multi_incompatible_hosts_warning}are incompatible.\n"
+            + f"Only compatible workers can consume jobs from this queuer.\n"
+            + f"\n[green]To fix, update any incompatible hosts to this git commit:[/]\n'{git_full_sha}':\n"
+            + f"\n[magenta]Incompatible hosts:\n{incompatible_hosts}[/]"
             + "\n"
         )
 
         # If no compatible workers are available
         if len(online_workers) == len(incompatible_workers):
 
+            spinner.fail("❌ ")
             logger.error(
                 "[red]All online workers are incompatible!\n" + "Cannot continue[/]"
             )
@@ -150,12 +192,8 @@ def check_worker_compatability():
 
         else:
 
-            if Confirm.ask("[cyan]Do you wish to continue?[/]"):
-                print("\n")
-                return
+            if not Confirm.ask("[cyan]Do you wish to continue?[/]"):
+                core.app_exit(1, -1)
 
-            print("[yellow]Exiting...[/]")
-            core.app_exit(1, -1)
-
-    print("\n[green]All workers compatible :white_check_mark:[/]\n")
+    spinner.ok("👍 ")
     return
