@@ -36,7 +36,7 @@ Unfortunately Resolve doesn't have a remote-rendering, or even background-render
 
 ### A Warning about Python 3.6
 
-Because DaVinci Resolve requires Python 3.6 to communicate with it's API, no versions over Python 3.6 will work with *Resolve Proxy Encoder*.
+Because DaVinci Resolve requires Python 3.6 to communicate with its API, no versions over Python 3.6 will work with *Resolve Proxy Encoder*.
 Unfortunately this means that *Resolve Proxy Encoder* may get stuck using older versions of certain packages as they begin to drop support for 3.6.
 It also means that security patches for some dependencies won't make it into *Resolve Proxy Encoder* 
 This kind of setup almost guarantees dependency conflicts if you have multiple Python CLI tools you keep installed.
