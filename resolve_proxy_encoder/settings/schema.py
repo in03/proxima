@@ -29,10 +29,9 @@ settings_schema = Schema(
                 "verbose",
                 "debug",
             ],
-            "vid_codec": str,
-            "h_res": str,
-            "v_res": str,
-            "vid_profile": str,
+            "codec": str,
+            "vertical_res": str,
+            "profile": str,
             "pix_fmt": str,
             "audio_codec": str,
             "audio_samplerate": str,
@@ -40,11 +39,9 @@ settings_schema = Schema(
             "ext": And(str, lambda s: s.startswith(".")),
         },
         "filters": {
-            "use_extension_whitelist": bool,
             "extension_whitelist": And(
                 list, lambda l: all(map(lambda s: s.startswith("."), l))
             ),
-            "use_framerate_whitelist": bool,
             "framerate_whitelist": And(list, lambda l: all(map(lambda s: int(s), l))),
         },
         "celery": {
@@ -64,11 +61,10 @@ settings_schema = Schema(
             "celery_args": list,
         },
         "chunking": {
-            "enable_chunking": bool,
-            "chunk_secs": int,
-            "increment_regex": str,
-            "segment_suffix": str,
-            "cleanup_temp_files": bool,
+            "enable": bool,
+            "chunk_duration": int,
+            "chunk_threshold": int,
+            "cleanup": bool,
         },
     },
     ignore_extra_keys=True,

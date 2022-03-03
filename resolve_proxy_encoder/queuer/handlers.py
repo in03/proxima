@@ -8,10 +8,13 @@ import tkinter
 import tkinter.messagebox
 from typing import Union
 
-from app.utils import core
-from settings.manager import SettingsManager
-from worker.celery import app
+from rich import print
 
+from resolve_proxy_encoder.queuer.resolve import ResolveObjects
+
+from ..app.utils import core
+from ..settings.manager import SettingsManager
+from ..worker.celery import app
 from . import link
 
 config = SettingsManager()
@@ -136,8 +139,8 @@ def handle_file_collisions(media_list: list) -> list:
     if multiple_versions_count:
 
         logger.warning(
-            f"[yellow]{multiple_versions_count} files have outdated proxies! Recommend manually deleting when possible.",
-            extra={"markup": True},
+            f"[yellow]{multiple_versions_count} files have outdated proxies!\n"
+            + "Recommend manually deleting when possible.",
         )
 
     return media_list_
@@ -160,11 +163,11 @@ def handle_orphaned_proxies(media_list: list) -> list:
     orphaned_proxies = []
 
     for clip in media_list:
-        if clip["Proxy"] != "None" or clip["Proxy"] == "Offline":
-            linked_proxy_path = os.path.splitext(clip["Proxy Media Path"])
+        if clip["proxy"] != "None" or clip["proxy"] == "Offline":
+            linked_proxy_path = os.path.splitext(clip["proxy_media_path"])
             linked_proxy_path[1].lower()
 
-            file_path = clip["File Path"]
+            file_path = clip["file_path"]
             p = pathlib.Path(file_path)
 
             # Append the source media relative path onto the proxy media path
@@ -242,7 +245,7 @@ def handle_already_linked(
     """
 
     print(f"[cyan]Checking for source media with linked proxies.[/]")
-    already_linked = [x for x in media_list if str(x["Proxy"]) not in offline_types]
+    already_linked = [x for x in media_list if str(x["proxy"]) not in offline_types]
 
     if len(already_linked) > 0:
 
@@ -267,7 +270,7 @@ def handle_offline_proxies(media_list: list) -> list:
     """
 
     print(f"[cyan]Checking for offline proxies[/]")
-    offline_proxies = [x for x in media_list if x["Proxy"] == "Offline"]
+    offline_proxies = [x for x in media_list if x["proxy"] == "Offline"]
 
     if len(offline_proxies) > 0:
 
@@ -284,8 +287,8 @@ def handle_offline_proxies(media_list: list) -> list:
             print(f"[yellow]Rerendering offline: {len(offline_proxies)}[/]")
             # Set all offline clips to None, so they'll rerender
             for media in media_list:
-                if media["Proxy"] == "Offline":
-                    media["Proxy"] = "None"
+                if media["proxy"] == "Offline":
+                    media["proxy"] = "None"
             print("\n")
 
         if answer == None:
@@ -307,43 +310,7 @@ def handle_existing_unlinked(media_list: list) -> list:
         media_list: refined list of dictionaries with media items that do not have linked proxies.
     """
 
-    print(f"[cyan]Checking for existing, unlinked media.[/]")
-
-    def add_expected_proxy_path(media_list: list) -> list:
-        """Adds the current Expected Proxy Dir to each media item in the media list.
-
-        Having `Expected Proxy Dir` allows us to check if unlinked proxies exist
-        and prompt the user to link them.
-
-        Args:
-            media_list: list of dictionary media items to add `Expected Proxy Dir` to.
-
-        Returns:
-            media_list: modified list of dictionary media items with added `Expected Proxy Dir`.
-
-        Raises:
-            ValueError: If `expected_proxy_path` cannot be resolved.
-        """
-
-        media_list_ = media_list
-
-        for media in media_list_:
-
-            file_path = media["File Path"]
-            p = pathlib.Path(file_path)
-
-            # Tack the source media relative path onto the proxy media path
-            expected_proxy_path = os.path.join(
-                config["paths"]["proxy_path_root"],
-                os.path.dirname(p.relative_to(*p.parts[:1])),
-            )
-
-            if expected_proxy_path:
-                media.update({"Expected Proxy Dir": expected_proxy_path})
-            else:
-                raise ValueError(f"Could not find Expected Proxy Dir for '{file_path}'")
-
-        return media_list_
+    print(f"[cyan]Checking for existing, unlinked media.")
 
     def get_newest_proxy_file(expected_path: str) -> Union[str, None]:
         """Get the last modified proxy file if multiple variants of same filename exist.
@@ -362,44 +329,35 @@ def handle_existing_unlinked(media_list: list) -> list:
         matching_proxy_files = glob.glob(expected_path + "*.*")
 
         if not len(matching_proxy_files):
-            logger.info(
-                f"[yellow]No existing proxies found for '{expected_filename}'[/]"
-            )
-            return
+            logger.info(f"[yellow]No existing proxies found for '{expected_filename}'")
+            return None
 
         if len(matching_proxy_files) == 1:
-            return matching_proxy_files[0]
+            return os.path.normpath(matching_proxy_files[0])
 
         # Sort matching proxy files by last modified in descending order
         matching_proxy_files.sort(key=os.path.getmtime, reverse=True)
-
-        logger.info(
-            f"[yellow]Found {len(matching_proxy_files)} existing matches for '{expected_filename}'[/]",
-            extra={"Markup": True},
-        )
 
         # Assume we want newest matching file
         final_proxy_path = matching_proxy_files[0]
         final_proxy_filename = os.path.basename(final_proxy_path)
 
-        logger.info(
-            f"[yellow]Using newest: '{os.path.basename(final_proxy_filename)}'[/]",
-            extra={"Markup": True},
+        logger.warning(
+            f"[yellow]Found {len(matching_proxy_files)} existing matches for '{expected_filename}'[/]\n"
+            + f"[cyan]Using newest: '{os.path.basename(final_proxy_filename)}'[/]"
         )
 
-        return final_proxy_path
+        return os.path.normpath(final_proxy_path)
 
     existing_unlinked = []
 
-    add_expected_proxy_path(media_list)
-
     # Iterate media list
     for media in media_list:
-        if media["Proxy"] == "None":
+        if media["proxy"] == "None":
 
-            expected_proxy_dir = media["Expected Proxy Dir"]
+            expected_proxy_dir = media["expected_proxy_dir"]
             source_media_basename = os.path.splitext(
-                os.path.basename(media["File Name"])
+                os.path.basename(media["file_path"])
             )[0]
             expected_proxy_file = os.path.join(
                 expected_proxy_dir, source_media_basename
@@ -410,11 +368,16 @@ def handle_existing_unlinked(media_list: list) -> list:
 
             if existing_proxy_file:
 
-                media.update({"Unlinked Proxy": existing_proxy_file})
+                media.update({"unlinked_proxy": existing_proxy_file})
                 existing_unlinked.append(existing_proxy_file)
 
     # If any unlinked, prompt for linking
     if len(existing_unlinked) > 0:
+
+        global SOME_ACTION_TAKEN
+        SOME_ACTION_TAKEN = True
+
+        r_ = ResolveObjects()
 
         print(f"\n[yellow]Found {len(existing_unlinked)} unlinked[/]")
 
@@ -424,14 +387,13 @@ def handle_existing_unlinked(media_list: list) -> list:
             + "Would you like to link them? If you select 'No' they will be re-rendered.",
         )
 
-        global SOME_ACTION_TAKEN
-        SOME_ACTION_TAKEN = True
-
-        if answer == True:
-            media_list = link.legacy_link(media_list)
+        if answer:
+            link.link_proxies_with_mpi(media_list)
 
         elif answer == False:
-            print(f"[yellow]Existing proxies will be OVERWRITTEN![/]")
+            print(
+                f"[yellow]Existing proxies will be [bold]OVERWRITTEN![/bold][/yellow]"
+            )
             print("\n")
 
         else:
@@ -440,7 +402,7 @@ def handle_existing_unlinked(media_list: list) -> list:
     return media_list
 
 
-def handle_final_queuable(media_list: list):
+def handle_final_queuable(jobs: list):
     """Final prompt to confirm number queueable or warn if none.
 
     Args:
@@ -453,7 +415,7 @@ def handle_final_queuable(media_list: list):
         TypeError: if media_list is not a list
     """
 
-    if len(media_list) == 0:
+    if len(jobs) == 0:
         global SOME_ACTION_TAKEN
         if not SOME_ACTION_TAKEN:
             print(f"[red]No clips to queue.[/]")
@@ -470,7 +432,7 @@ def handle_final_queuable(media_list: list):
     # Final Prompt confirm
     answer = tkinter.messagebox.askyesno(
         title="Go time!",
-        message=f"{len(media_list)} clip(s) are ready to queue!\n" + "Continue?",
+        message=f"{len(jobs)} clip(s) are ready to queue!\n" + "Continue?",
     )
     if answer is True:
         return

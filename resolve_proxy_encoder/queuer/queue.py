@@ -5,19 +5,17 @@ import os
 import tkinter
 import tkinter.messagebox
 
-from app.utils import core
 from celery import group
-from rich import print
-from settings.manager import SettingsManager
-from worker.tasks.encode.tasks import encode_proxy
+from rich import print as print
+from icecream import ic
 from yaspin import yaspin
 
-import handlers
-from queuer import link, resolve
+from ..app.utils import core
+from ..settings.manager import SettingsManager
+from ..worker.tasks.encode.tasks import encode_proxy
+from . import chunking, handlers, link, resolve
 
-from . import chunking
-
-config = SettingsManager()
+settings = SettingsManager()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
@@ -28,47 +26,58 @@ tk_root = tkinter.Tk()
 tk_root.withdraw()
 
 
-def create_tasks(clips, **kwargs):
-    """Create metadata dictionaries to send as Celery tasks'"""
+def add_queuer_data(jobs, **kwargs):
+    """
+    Extend jobs with relevant queuer data
 
-    # Append project details to each clip
-    tasks = [dict(item, **kwargs) for item in clips]
-    return tasks
+    Args:
+        **kwargs - any keyword arguments to pass with the tasks to the worker\n
+         queuer-side configuration extra Resolve variables, etc can be passed
+
+    Returns:
+        jobs - the original jobs with added data
+
+    Raises:
+        nothing
+    """
+
+    jobs = [dict(item, **kwargs) for item in jobs]
+    return jobs
 
 
-def queue_job(tasks):
-    """Send tasks as a celery job 'group'"""
+def queue_jobs(jobs):
+    """Send jobs as a Celery 'group'"""
 
-    # Wrap job object in task function
-    callable_tasks = [encode_proxy.s(x) for x in tasks]
+    # Wrap job objects in Celery task function
+    callable_tasks = [encode_proxy.s(x) for x in jobs]
     logger.debug(f"callable_tasks: {callable_tasks}")
 
     # Create job group to retrieve job results as batch
-    job = group(callable_tasks)
+    task_group = group(callable_tasks)
 
     # Queue job
-    queued_job = job.apply_async()
-    logger.info(f"[cyan]Queued job {queued_job}[/]")
+    queued_group = task_group.apply_async()
+    logger.info(f"[cyan]Queued tasks {queued_group}[/]")
 
-    return queued_job
+    return queued_group
 
 
-def wait_encode(job):
+def wait_jobs(jobs):
     """Block until all queued jobs finish, notify results."""
 
-    result = job.join()
+    result = jobs.join()
 
     # Notify failed
-    if job.failed():
+    if jobs.failed():
         fail_message = (
             "Some videos failed to encode!"
-            + f"Check flower dashboard at address: {config['celery']['flower_url']}."
+            + f"Check flower dashboard at address: {settings['celery']['flower_url']}."
         )
         print("[red]fail_message[/]")
         core.notify(fail_message)
 
     # Notify complete
-    complete_message = f"Completed encoding {job.completed_count()} proxies."
+    complete_message = f"Completed encoding {jobs.completed_count()} proxies."
     print(f"[green]{complete_message}[/]")
     print("\n")
 
@@ -110,7 +119,7 @@ def legacy_link(project, media_list):
 
         media.update({"Proxy": "1280x720"})
 
-    link.link_proxies(project, existing_proxies)
+    link.find_and_link_proxies(project, existing_proxies)
 
     print("\n")
 
@@ -138,54 +147,56 @@ def main():
     # Lets make it happen!
     track_items = resolve.get_video_track_items(r_.timeline)
     media_pool_items = resolve.get_media_pool_items(track_items)
-    source_metadata = resolve.get_source_metadata(media_pool_items)
+    jobs = resolve.get_resolve_proxy_jobs(media_pool_items)
 
     print("\n")
 
-    # TODO: Neither var name `clips` nor `source_metadata` are great
-    # Decide a variable name to use consistently!
-    # labels: enhancement
-    clips = source_metadata
-
     # Prompt user for intervention if necessary
-    clips = handlers.handle_already_linked(clips, ["Offline", "None"])
-    clips = handlers.handle_offline_proxies(clips)
-    clips = handlers.handle_existing_unlinked(clips)
+    jobs = handlers.handle_already_linked(jobs, offline_types=["Offline", "None"])
+    jobs = handlers.handle_offline_proxies(jobs)
+    jobs = handlers.handle_existing_unlinked(jobs)
 
-    # TODO: Add chunk data to all clips in media list
-    handlers.handle_final_queuable(clips)
+    # TODO: Find out if there's any way to pass media_pool_item through celery
+    # This would allow us to do post-encode linking without searching timelines
+    # labels: enhancement
 
-    if config["chunking"]["enable_chunking"]:
+    # Remove unhashable PyRemoteObj
+    for job in jobs:
+        del job["media_pool_item"]
 
-        spinner = yaspin("Calculating chunks...")
-        spinner.start()
-        try:
-            for job in clips:
-                chunking.calculate_chunks(job["File Path"])
-        except:
-            spinner.stop()
+    # Alert user final queuable. Confirm.
+    handlers.handle_final_queuable(jobs)
 
-    tasks = create_tasks(
-        clips,
+    print("\n")
+
+    # Split jobs into smaller jobs
+    jobs = chunking.chunk_jobs(jobs)
+    print(jobs)
+
+    tasks = add_queuer_data(
+        jobs,
         project=project_name,
         timeline=timeline_name,
+        proxy_settings=settings["proxy"],
+        paths_settings=settings["paths"],
+        chunk_settings=settings["chunking"],
     )
 
-    job = queue_job(tasks)
+    job = queue_jobs(tasks)
 
     core.notify(f"Started encoding job '{project_name} - {timeline_name}'")
     print(f"[yellow]Waiting for job to finish. Feel free to minimize.[/]")
-    wait_encode(job)
+    wait_jobs(job)
 
-    # ATTEMPT POST ENCODE LINK
+    # Post-encode link
     try:
 
-        clips = legacy_link(r_.project, clips)
+        jobs = link.link_proxies_with_mpi(jobs)
         core.app_exit(0)
 
     except:
 
-        print("[red]Couldn't link clips. Link manually...[/]")
+        print("[red]Couldn't link jobs. Link manually...[/]")
         core.app_exit(1, -1)
 
 

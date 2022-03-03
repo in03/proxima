@@ -215,4 +215,5 @@ class SettingsManager(metaclass=Singleton):
             core.app_exit(1, -1)
 
     def update(self, dict_: dict):
+        logger.info(f"[yellow]Reconfigured settings:\n{dict_}")
         self.user_settings.update(dict_)

@@ -155,7 +155,7 @@ def new_worker(id=None):
         "-A resolve_proxy_encoder.worker",
         "worker",
         get_worker_name(id),
-        get_worker_queue(),
+        "- Q ",
         *config["worker"]["celery_args"],
     ]
 

@@ -35,8 +35,16 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
         - none
     """
 
+    pkg_commit = pkg_info.get_package_current_commit(package_name)
+
     if not config["app"]["check_for_updates"]:
-        return None
+
+        return {
+            "is_latest": None,
+            "remote_commit": None,
+            "package_commit": pkg_commit,
+            "commit_short_sha": pkg_commit[::8] if pkg_commit else None,
+        }
 
     latest = False
 
@@ -47,16 +55,15 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
 
     spinner.start()
 
-    package_latest_commit = pkg_info.get_package_current_commit(package_name)
-    remote_latest_commit = pkg_info.get_remote_latest_commit(github_url)
+    remote_commit = pkg_info.get_remote_current_commit(github_url)
 
-    if not remote_latest_commit or not package_latest_commit:
+    if not remote_commit or not pkg_commit:
 
         spinner.fail("❌ ")
         logger.warning("[red]Failed to check for updates[/]")
         return None
 
-    elif remote_latest_commit != package_latest_commit:
+    elif remote_commit != pkg_commit:
 
         spinner.ok("🔼 ")
         logger.warning(
@@ -66,8 +73,8 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
             + f'"pip install git+{github_url}"\n'
         )
 
-        logger.info(f"Remote: {remote_latest_commit}")
-        logger.info(f"Current: {package_latest_commit}")
+        logger.debug(f"Remote: {remote_commit}")
+        logger.debug(f"Current: {pkg_commit}")
 
     else:
 
@@ -76,7 +83,9 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
 
     return {
         "is_latest": latest,
-        "current_version": package_latest_commit[::8],
+        "remote_commit": remote_commit,
+        "package_commit": pkg_commit,
+        "commit_short_sha": pkg_commit[::8] if pkg_commit else None,
     }
 
 
@@ -84,9 +93,9 @@ def check_worker_compatability():
 
     if config["app"]["disable_version_constrain"]:
         logger.warning(
-            "[yellow]Worker compatability check disabled in user settings![/]\n"
+            "[yellow]Version constrain is disabled![/] [red][bold]Thar be dragons :dragon_face:\n"
         )
-        time.sleep(2)
+        # time.sleep(2)
         return
 
     spinner = yaspin(

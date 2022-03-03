@@ -38,18 +38,16 @@ def get_package_current_commit(package_name: str) -> Union[str, None]:
         dist = pkg_resources.get_distribution(package_name)
         vcs_metadata_file = dist.get_metadata("direct_url.json")
         vcs_metadata = json.loads(vcs_metadata_file)
-        package_latest_commit = vcs_metadata["vcs_info"]["commit_id"]
+        package_current_commit = vcs_metadata["vcs_info"]["commit_id"]
 
-        if package_latest_commit is None:
+        if package_current_commit is None:
             raise TypeError("Couldn't get package last commit id")
 
-        return package_latest_commit.strip()
+        return package_current_commit.strip()
 
     except:
-        logger.info(
-            "[yellow]Couldn't get package dist info, assuming git repo.[/]",
-            extra={"markup": True},
-        )
+
+        logger.info("[yellow]Couldn't get package dist info, assuming git repo.")
 
     try:
         logger.info("[cyan]Getting commit ID from git[/]")
@@ -68,12 +66,11 @@ def get_package_current_commit(package_name: str) -> Union[str, None]:
         logger.warning(
             f"[yellow]Couldn't get git info or package dist info!\n"
             + "Check properly cloned or installed[/]",
-            extra={"markup": True},
         )
         return None
 
 
-def get_remote_latest_commit(github_url: str) -> Union[str, None]:
+def get_remote_current_commit(github_url: str) -> Union[str, None]:
     """Attempt to find the the origin GitHub repo's latest commit SHA for the main branch.
 
     This currently only works with GitHub!
@@ -82,7 +79,7 @@ def get_remote_latest_commit(github_url: str) -> Union[str, None]:
         - github_url (str): The URL of the origin repo.
 
     Returns:
-        - remote_latest_commit (str): The latest commit's SHA.
+        - remote_current_commit (str): The latest commit's SHA.
         - None: on fail
 
     Raises:
@@ -109,11 +106,11 @@ def get_remote_latest_commit(github_url: str) -> Union[str, None]:
         return None
 
     results = r.json()
-    remote_latest_commit = results["sha"]
-    return remote_latest_commit
+    remote_current_commit = results["sha"]
+    return remote_current_commit
 
 
-def get_script_from_package(script_name: str) -> Union[Path, None]:
+def get_script_from_package(script_name: str) -> Union[str, None]:
     """Get path to a named script in the current package
 
     Allows us to call scripts buried in a virtual env like pipx.

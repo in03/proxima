@@ -10,15 +10,33 @@ print(f"[green]{text}\n")
 import logging
 import subprocess
 import webbrowser
+from typing import Optional
 
 import typer
-from typing import Optional
 from rich.console import Console
 from rich.prompt import Confirm
 
 from ..app import checks
+from ..settings.manager import SettingsManager
 from .utils.core import setup_rich_logging
-from resolve_proxy_encoder.settings.manager import SettingsManager
+
+
+def print_routing_key():
+
+    ver_colour = "red"
+    queue = "Unknown"
+
+    if settings["app"]["disable_version_constrain"]:
+
+        ver_colour = "yellow"
+        queue = "celery"
+
+    else:
+        ver_colour = "green" if settings["version_info"]["is_latest"] else "yellow"
+        queue = settings["version_info"]["commit_short_sha"]
+
+    print(f"[cyan]Routing to queue:[/] [{ver_colour}]'{queue}'[/]")
+
 
 # Init classes
 console = Console()
@@ -39,13 +57,7 @@ def queue():
     """
     checks.check_worker_compatability()
 
-    print("\n")
-    if VERSION_INFO:
-
-        ver_colour = "green" if VERSION_INFO["is_latest"] else "yellow"
-        print(
-            f"[cyan]Routing to queue:[/] [{ver_colour}]'{VERSION_INFO['current_version']}'[/]"
-        )
+    print_routing_key()
 
     print("\n\n[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
     from ..queuer import queue
@@ -78,12 +90,11 @@ def work(
     print("\n")
 
     # Print worker queue
-    if VERSION_INFO:
 
-        ver_colour = "green" if VERSION_INFO["is_latest"] else "yellow"
-        print(
-            f"[cyan]Consuming from queue: [/][{ver_colour}]'{VERSION_INFO['current_version']}'[/]"
-        )
+    ver_colour = "green" if settings["version_info"]["is_latest"] else "yellow"
+    print(
+        f"[cyan]Consuming from queue: [/][{ver_colour}]'{settings['version_info']}'[/]"
+    )
 
     if not workers_to_launch:
         workers_to_launch = 0
@@ -137,23 +148,19 @@ def mon():
 def config():
     """Open user settings configuration file for editing"""
 
-    print("[green]Opening user settings file for modification[/]")
+    print("[green]Opening user settings file for modification")
     webbrowser.open_new(settings.user_file)
 
 
 def init():
     """Run before CLI App load."""
 
-    global VERSION_INFO
-
-    VERSION_INFO = checks.check_for_updates(
+    version_info = checks.check_for_updates(
         github_url=settings["app"]["update_check_url"],
         package_name="resolve_proxy_encoder",
     )
-    # TODO: Add update method to settings class
-    # There are a few dynamic variables that would be nice to have globally
-    # E.g. `settings.add_setting(current_version)`
-    # labels: enhancement
+
+    settings.update({"version_info": version_info})
 
 
 def main():

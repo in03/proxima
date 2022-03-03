@@ -1,12 +1,15 @@
 import imp
+import pathlib
 import logging
 import os
 import sys
 
-from app.utils import core
-from settings.manager import SettingsManager
+from rich import print
 
-config = SettingsManager()
+from ..app.utils import core
+from ..settings.manager import SettingsManager
+
+settings = SettingsManager()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
@@ -159,7 +162,10 @@ def get_resolve_timelines(project, active_timeline_first=True):
     return timelines
 
 
-def get_source_metadata(media_pool_items):
+# TODO: Is this worth refactoring as a class?
+# Like a 'job' class with these functions as class methods?
+# labels: enhancement
+def get_resolve_proxy_jobs(media_pool_items):
     """Return source metadata for each media pool item that passes configured criteria.
 
     each media pool item must meet the following criteria:
@@ -171,19 +177,15 @@ def get_source_metadata(media_pool_items):
         - media_pool_items: list of Resolve API media pool items
 
     Returns:
-        - filtered_metadata: a list of dictionaries containing all valid media and its Resolve-given properties.
+        - filtered_metadata: a list of dictionaries containing clip attributes for proxy-encodable Resolve media.
 
     Raises:
         - none
 
     """
 
-    # Lists
-    filtered_metadata = []
-
-    # Prevent filtering same media item multiple times
-    # since multiple clips can have same source media
-    seen_item = []
+    jobs = []
+    seen = []
 
     for media_pool_item in media_pool_items:
 
@@ -191,43 +193,41 @@ def get_source_metadata(media_pool_items):
         try:
 
             mpi_uuid = str(media_pool_item).split("UUID:")[1].split("]")[0]
+            logger.debug(f"[magenta]Media Pool Item: {mpi_uuid}")
 
         except:
 
             logger.debug(
                 f"[magenta]Media Pool Item: 'None'[/]\n"
-                + f"[yellow]Invalid item: has no UUID[/]\n",
-                extra={"markup": True},
+                + f"[yellow]Invalid item: has no UUID[/]\n"
             )
             continue
 
-        if str(media_pool_item) in seen_item:
+        if str(media_pool_item) in seen:
 
             logger.debug(
                 f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
-                + "[yellow]Already seen media pool item. Skipping...[/]\n",
-                extra={"markup": True},
+                + "[yellow]Already seen media pool item. Skipping...[/]\n"
             )
             continue
 
         else:
 
             # Add first encounter to list for comparison
-            seen_item.append(str(media_pool_item))
+            seen.append(str(media_pool_item))
 
         # Check media pool item has clip properties
         if not hasattr(media_pool_item, "GetClipProperty()"):
 
             logger.debug(
                 f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
-                + "[yellow]Media pool item has no clip properties. Skipping...[/]\n",
-                extra={"markup": True},
+                + "[yellow]Media pool item has no clip properties. Skipping...[/]\n"
             )
             continue
 
         # Get source metadata, path, extension
-        source_metadata = media_pool_item.GetClipProperty()
-        source_path = source_metadata["File Path"]
+        clip_properties = media_pool_item.GetClipProperty()
+        source_path = clip_properties["File Path"]
         source_ext = os.path.splitext(source_path)[1].lower()
 
         # Might still get media that has clip properties, but empty attributes
@@ -236,39 +236,73 @@ def get_source_metadata(media_pool_items):
 
             logger.debug(
                 f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
-                + f"clip properties did not return a valid filepath. Skipping...\n",
-                extra={"markup": True},
+                + f"clip properties did not return a valid filepath. Skipping...\n"
             )
             continue
 
         # Filter extension
-        if source_ext not in config["filters"]["extension_whitelist"]:
+        if settings["filters"]["extension_whitelist"]:
 
-            logger.warning(
-                f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
-                + f"[yellow]Ignoring non-whitelisted file extension: '{source_ext}'[/]\n"
-                + f"from '{source_metadata['File Path']}'[/]\n",
-                extra={"markup": True},
-            )
-            continue
-
-        # Filter framerate
-        source_framerate = source_metadata["FPS"]
-        if config["filters"]["use_framerate_whitelist"] == True:
-            if source_framerate not in config["filters"]["framerate_whitelist"]:
+            if source_ext not in settings["filters"]["extension_whitelist"]:
 
                 logger.warning(
-                    f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
-                    + f"[yellow]Ignoring non-whitelisted framerate: '{source_framerate}'[/] "
-                    + f"from '{source_metadata['File Path']}' [/]\n",
-                    extra={"markup": True},
+                    f"[yellow]Ignoring file with extension not in whitelist: '{source_ext}'\n"
+                    + f"from '{clip_properties['File Path']}'[/]\n"
                 )
                 continue
 
-        # TODO: Add the Resolve API media pool item object so we can call it directly to link
-        # source_metadata.update({'media_pool_item_object':media_pool_item})
-        filtered_metadata.append(source_metadata)
+        # Filter framerate
+        if settings["filters"]["framerate_whitelist"]:
 
-    print(f"[green]Total queuable clips on timeline: {len(filtered_metadata)}[/]")
+            # Make int to avoid awkward extra zeros.
+            if float(clip_properties["FPS"]).is_integer():
+                clip_properties["FPS"] = int(float(clip_properties["FPS"]))
 
-    return filtered_metadata
+            if clip_properties["FPS"] not in settings["filters"]["framerate_whitelist"]:
+
+                logger.warning(
+                    f"[yellow]Ignoring file with framerate not in whitelist: '{clip_properties['FPS']}'\n"
+                    + f"from '{clip_properties['File Path']}' [/]\n"
+                )
+                continue
+
+        # Get expected proxy path
+        file_path = clip_properties["File Path"]
+        p = pathlib.Path(file_path)
+
+        expected_proxy_dir = os.path.normpath(
+            os.path.join(
+                settings["paths"]["proxy_path_root"],
+                os.path.dirname(p.relative_to(*p.parts[:1])),
+            )
+        )
+
+        # TODO: These would definitely be nicer as class attributes
+        # labels: enhancement
+        cp = clip_properties
+        job = {
+            "clip_name": cp["Clip Name"],
+            "duration": cp["Duration"],
+            "frames": int(cp["Frames"]),
+            "fps": float(cp["FPS"]),
+            "h_flip": True if cp["H-FLIP"] is "On" else False,
+            "v_flip": True if cp["H-FLIP"] is "On" else False,
+            "proxy": None if cp["Proxy"] == "None" else cp["Proxy"],
+            "resolution": str(cp["Resolution"]).split("x"),
+            "start": int(cp["Start"]),
+            "end": int(cp["End"]),
+            "start_tc": cp["Start TC"],
+            "end_tc": cp["End TC"],
+            "file_path": cp["File Path"],
+            "proxy_media_path": None
+            if not len(cp["Proxy Media Path"])
+            else cp["Proxy Media Path"],
+            "expected_proxy_dir": expected_proxy_dir,
+            "media_pool_item": media_pool_item,
+        }
+
+        jobs.append(job)
+
+    logger.info(f"[green]Total queuable clips on timeline: {len(jobs)}[/]")
+
+    return jobs

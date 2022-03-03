@@ -3,8 +3,6 @@
 import logging
 import os
 
-from pymediainfo import MediaInfo
-
 from ....app.utils import core
 from ....settings.manager import SettingsManager
 from ....worker.celery import app
@@ -13,12 +11,14 @@ from ....worker.utils import check_wsl, get_wsl_path, get_queue
 
 from rich.console import Console
 
-config = SettingsManager()
+# Worker and Celery settings pulled from local user_settings file
+# All other settings are passed from queuer
+worker_settings = SettingsManager()
 console = Console()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
-logger.setLevel(config["worker"]["loglevel"])
+logger.setLevel(worker_settings["worker"]["loglevel"])
 
 
 @app.task(
@@ -29,50 +29,28 @@ logger.setLevel(config["worker"]["loglevel"])
     queue=get_queue(),
 )
 def encode_proxy(job):
-
     """
     Celery task to encode proxy media using parameters in job argument
     and user-defined settings
     """
 
+    # Use app configuration passed in task
+    proxy_settings = job["proxy_settings"]
+    path_settings = job["paths_settings"]
+
     print("\n")
     console.rule("[green]Received proxy encode job :clapper:[/]", align="left")
     print("\n")
 
-    # Variables
-    try:
-
-        proxy_settings = config["proxy_settings"]
-
-        # Get required job metadata
-        clip_name = job["Clip Name"]
-        source_file = job["File Path"]
-        expected_proxy_dir = job["Expected Proxy Dir"]
-
-        # Get proxy settings
-        vid_codec = proxy_settings["vid_codec"]
-        vid_profile = proxy_settings["vid_profile"]
-        pix_fmt = proxy_settings["pix_fmt"]
-        h_res = proxy_settings["h_res"]
-        v_res = proxy_settings["v_res"]
-        proxy_ext = proxy_settings["ext"]
-        audio_codec = proxy_settings["audio_codec"]
-        audio_samplerate = proxy_settings["audio_samplerate"]
-        misc_args = proxy_settings["misc_args"]
-
-    except KeyError as e:
-
-        logger.error(f"Job missing required key: {e}")
-        raise e
-
+    # Convert paths for WSL
     if check_wsl():
-        expected_proxy_dir = get_wsl_path(expected_proxy_dir)
+        job["expected_proxy_dir"].update(get_wsl_path(job["expected_proxy_dir"]))
 
-    # Create path for proxy first
+    # Create proxy dir
     try:
 
         os.makedirs(
-            expected_proxy_dir,
+            job["expected_proxy_dir"],
             exist_ok=True,
         )
 
@@ -81,89 +59,46 @@ def encode_proxy(job):
         raise e
 
     output_file = os.path.join(
-        expected_proxy_dir,
-        os.path.splitext(clip_name)[0] + proxy_ext,
+        job["expected_proxy_dir"],
+        os.path.splitext(job["clip_name"])[0] + proxy_settings["ext"],
     )
 
-    def get_orientation(job):
-        """Get the video orientation from job metadata in FFmpeg syntax
+    # Get Resolution
+    source_res = str(job["resolution"]).split("x")
+    v_res = proxy_settings["resolution"]
+    res_scale = source_res[1] / v_res
+    h_res = source_res[0] / res_scale
 
-        Some footage is shot upside-down. If we flip the clip from Resolve's clip attributes,
-        we need to make sure we flip the proxy as well. Unforunately flipping proxies isn't applied
-        in realtime as needed, so proxies will need to be rerendered if orientation changes.
+    # Get Orientation
+    flip = str()
 
-        Args:
-            job (dict): Resolve job metadata
+    if job["h_flip"]:
+        flip += " hflip, "
 
-        Returns:
-            flip_logic (str): FFmpeg syntax for video orientation
+    if job["v_flip"]:
+        flip += "vflip, "
 
-        Raises:
-            KeyError: If the job metadata doesn't contain the necessary orientation keys
-
-        """
-        try:
-
-            flip = str()
-
-            if job["H-FLIP"] == "On":
-                flip += " hflip, "
-
-            if job["V-FLIP"] == "On":
-                flip += "vflip, "
-
-        except KeyError as e:
-            logger.error("Couldn't get video orientation from job metadata!")
-            raise e
-
-        logger.info("[magenta]Using clip attribute's modified orientation.[/]")
-        return flip
-
-    def get_timecode(job):
-        """Get timecode using MediaInfo"""
-
-        file_path = job["File Path"]
-        media_info = MediaInfo.parse(file_path)
-
-        data_track_exists = False
-        for track in media_info.tracks:
-
-            if track.track_type == "Other":
-
-                data_track_exists = True
-                if track.time_code_of_first_frame:
-
-                    logger.info("[magenta]Using embedded timecode.[/]")
-                    return str(track.time_code_of_first_frame)
-
-        if data_track_exists:
-            logger.warning("[yellow]Couldn't get timecode from media's data track.[/]")
-        else:
-            logger.info(
-                "[magenta]No embedded timecode found in media file. Using default timecode.[/]"
-            )
-        return "00:00:00:00"
-
+    # Get FFmpeg Command
     ffmpeg_command = [
         "ffmpeg",
         "-y",  # Never prompt!
-        *misc_args,  # User global settings
+        *proxy_settings["misc_args"],  # User global settings
         "-i",
-        source_file,
+        job["file_path"],
         "-c:v",
-        vid_codec,
+        proxy_settings["codec"],
         "-profile:v",
-        vid_profile,
+        proxy_settings["profile"],
         "-vsync",
         "-1",  # Necessary to match VFR
         "-vf",
-        f"scale={h_res}:{v_res},{get_orientation(job)}" f"format={pix_fmt}",
+        f"scale={h_res}:{v_res},{flip} format={proxy_settings['pix_fmt']}",
         "-c:a",
-        audio_codec,
+        proxy_settings["audio_codec"],
         "-ar",
-        audio_samplerate,
+        proxy_settings["audio_samplerate"],
         "-timecode",
-        get_timecode(job),
+        job["timecode"],
         output_file,
     ]
 
@@ -175,7 +110,7 @@ def encode_proxy(job):
     )
 
     # Make logs subfolder
-    encode_log_dir = config["paths"]["ffmpeg_logfile_path"]
+    encode_log_dir = path_settings["ffmpeg_logfile_path"]
     os.makedirs(encode_log_dir, exist_ok=True)
 
     encode_log_file = os.path.join(
@@ -192,4 +127,115 @@ def encode_proxy(job):
     except Exception as e:
         logger.exception(f"[red] :warning: Couldn't encode proxy.[/]\n{e}")
 
-    return f"{source_file} encoded successfully"
+    return f"{job['file_name']} encoded successfully"
+
+
+@app.task(
+    acks_late=True,
+    track_started=True,
+    prefetch_limit=1,
+    soft_time_limit=60,
+    queue=get_queue(),
+)
+def encode_chunk(job):
+    """
+    Encode proxy chunks as individual segments
+    """
+
+    # Use app configuration passed in task
+    proxy_settings = job["proxy_settings"]
+    path_settings = job["paths_settings"]
+    chunk_settings = job["chunk_settings"]
+
+    print("\n")
+    console.rule("[green]Received proxy encode job :clapper:[/]", align="left")
+    print("\n")
+
+    # Convert paths for WSL
+    if check_wsl():
+        job["expected_proxy_dir"].update(get_wsl_path(job["expected_proxy_dir"]))
+
+    # Create chunk directory
+    try:
+
+        chunk_dir = os.path.join(
+            job["expected_proxy_dir"], os.path.splitext(job["clip_name"])[0]
+        )
+        os.makedirs(chunk_dir, exist_ok=True)
+        job["chunk_settings"].update({"chunk_dir": chunk_dir})
+
+    except OSError as e:
+        logger.error(f"Error creating proxy directory: {e}")
+        raise e
+
+    # Get output file
+    output_file = os.path.join(
+        chunk_dir,
+        os.path.splitext(job["clip_name"])[0]
+        + "_"
+        + job["chunk"]["number"]
+        + proxy_settings["ext"],
+    )
+
+    # Get Resolution
+    v_res = proxy_settings["vertical_res"]
+    res_scale = job["resolution"][1] / v_res
+    h_res = job["resolution"][0] / res_scale
+
+    # Get Orientation
+    flip = str()
+
+    if job["h_flip"]:
+        flip += " hflip, "
+
+    if job["v_flip"]:
+        flip += "vflip, "
+
+    # Get FFmpeg Command
+    ffmpeg_command = [
+        "ffmpeg",
+        "-y",  # Never prompt!
+        *proxy_settings["misc_args"],  # User global settings
+        "-i",
+        job["file_path"],
+        "-c:v",
+        proxy_settings["codec"],
+        "-profile:v",
+        proxy_settings["profile"],
+        "-vsync",
+        "-1",  # Necessary to match VFR
+        "-vf",
+        f"scale={h_res}:{v_res},{flip} format={proxy_settings['pix_fmt']}",
+        "-c:a",
+        proxy_settings["audio_codec"],
+        "-ar",
+        proxy_settings["audio_samplerate"],
+        "-timecode",
+        job["timecode"],
+        output_file,
+    ]
+
+    print()  # Run FFmpeg command
+    logger.debug(f"[magenta]Running! FFmpeg command:[/]\n{' '.join(ffmpeg_command)}\n")
+    process = FfmpegProcess(
+        command=ffmpeg_command,
+        ffmpeg_loglevel=proxy_settings["ffmpeg_loglevel"],
+    )
+
+    # Make logs subfolder
+    encode_log_dir = path_settings["ffmpeg_logfile_path"]
+    os.makedirs(encode_log_dir, exist_ok=True)
+    encode_log_file = os.path.join(
+        encode_log_dir, os.path.splitext(os.path.basename(output_file))[0] + ".txt"
+    )
+    logger.debug(f"[magenta]Encoder logfile path: {encode_log_file}[/]")
+
+    # Run encode job
+    logger.info("[yellow]Starting encode...[/]")
+
+    try:
+        process.run(logfile=encode_log_file)
+    except Exception as e:
+        logger.exception(f"[red] :warning: Couldn't encode proxy.[/]\n{e}")
+
+    return job

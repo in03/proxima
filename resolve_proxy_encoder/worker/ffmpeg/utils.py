@@ -7,7 +7,7 @@ import sys
 from fractions import Fraction
 
 from ...app.utils import core
-from settings.manager import SettingsManager
+from ...settings.manager import SettingsManager
 
 config = SettingsManager()
 core.install_rich_tracebacks()

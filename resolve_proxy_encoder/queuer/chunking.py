@@ -8,15 +8,19 @@ import shutil
 import subprocess
 import sys
 from collections import Counter
+from copy import deepcopy
+from pathlib import Path
+from typing import Union
 
+from icecream import ic
 from pymediainfo import MediaInfo
+from yaspin import yaspin
 
 from ..app.utils import core
 from ..settings.manager import SettingsManager
 from ..worker.celery import app
 from ..worker.ffmpeg.ffmpeg_process import FfmpegProcess
-from ..worker.ffmpeg.utils import frac_to_dec, frac_to_tc, get_media_info
-from ..worker.utils import check_wsl, get_queue, get_wsl_path
+from ..worker.ffmpeg.utils import frac_to_tc
 
 config = SettingsManager()
 
@@ -28,56 +32,98 @@ logger = logging.getLogger(__name__)
 # since execution will be jump between queuer and worker
 
 
-def calculate_chunks(file):
+def chunk_jobs(jobs):
+    """
+    Split jobs into smaller jobs.
+
+    Adds chunking metadata to each job with in/out ranges to encode long videos across multiple computers.
+    Allows greater resource utilisation
+    User-specified chunking across
+    """
+
+    chunked_jobs = []
+    continuous_jobs = []
+
+    if config["chunking"]["enable"]:
+
+        for job in jobs:
+
+            # Get job duration
+            logger.debug(
+                f"[magenta]Media duration: {job['frames']}\n"
+                + f"Chunking threshold: {config['chunking']['chunk_threshold']}"
+            )
+
+            if job["frames"] / (job["fps"]) < config["chunking"]["chunk_threshold"]:
+
+                logger.info(
+                    f"[cyan]Leaving short job as continuous encode:[/]\n'{job['clip_name']}'\n"
+                )
+                continuous_jobs.append(job)
+                continue
+
+            logger.info(
+                f"[cyan]Processing long job as chunked encode:[/]\n'{job['clip_name']}'\n"
+            )
+            chunks = calculate_chunks(job)
+
+            # Add multiple jobs for each chunk
+            for chunk in chunks:
+
+                job_copy = deepcopy(job)
+                job_copy.update({"chunk": chunk})
+                chunked_jobs.append(job_copy)
+
+    return chunked_jobs + continuous_jobs
+
+
+def calculate_chunks(clip):
     """
     Calculate frame ranges for ffmpeg to split file
     at specified interval. Return a dictionary with a list of
     dictionaries and their chunking data.
     """
 
-    # Get media info
-    info = get_media_info(file)
-    fps = frac_to_dec(info["streams"][0]["r_frame_rate"])
-    nb_frames = int(info["streams"][0]["nb_frames"])
+    fps = clip["fps"]
+    nb_frames = clip["frames"]
 
-    # Print file metadata
+    chunk_duration = config["chunking"]["chunk_duration"]
+    chunk_frames = chunk_duration * fps
 
-    print()
-    logger.info(f"[green]Media Info:[/]")
-    logger.info(f"Framerate {fps}")
-    logger.info(f"Total frames {nb_frames}")
-
-    print()
-    logger.info("[green]chunk Info:[/]")
-
-    chunk_secs = config["chunking"]["chunk_secs"]
-    chunk_frames = chunk_secs * fps
-    logger.info(f"Interval seconds {chunk_secs}, Interval frames {chunk_frames}")
+    logger.debug(
+        f"[green][bold]{clip['clip_name']}[/green][/bold]:\n"
+        + f"FPS {fps}, Total Secs {int(nb_frames/fps)}\n"
+    )
 
     whole_chunks = int(nb_frames // chunk_frames)
-    logger.info(f"Whole chunks: {whole_chunks}")
 
     partial_chunk_length = float(str(nb_frames / chunk_frames)) % 1
-    logger.info(f"Partial chunk remaining frames: {partial_chunk_length}")
+    # TODO: This f-string isn't formatted correctly
+    # labels: bug
 
+    # Get total chunks
     total_chunks = whole_chunks
     if partial_chunk_length > 0:
         total_chunks = whole_chunks + 1
 
-    logger.info(f"Total chunks: {total_chunks}")
+    logger.debug(
+        f"[green][bold]Chunks:[/green][/bold]\n"
+        + f"Whole: {whole_chunks}\n"
+        + f"Partial: {partial_chunk_length:1.2f}\n"
+        + f"Total: {total_chunks}\n"
+    )
+
+    print()
 
     # Init chunk vars
     in_point = 0
     out_point = 0
     chunk_num = 0
-    job = {
-        "file": file,
-        "chunks": [],
-    }
+    chunks = []
 
     # Get whole chunks
     # Start at 1 to match total when iterating
-    logger.debug(f"Individual chunks:")
+    logger.debug(f"[magenta]Individual chunks:")
     for i in range(1, whole_chunks + 1):
 
         in_point = out_point
@@ -88,10 +134,13 @@ def calculate_chunks(file):
         out_point_tc = frac_to_tc(out_point, fps)
 
         logger.debug(
-            f"Whole {chunk_num} in point: {in_point_tc}, out_point: {out_point_tc}"
+            f"[magenta]Whole: {chunk_num}\n"
+            + f"in point: {in_point_tc}\n"
+            + f"out_point: {out_point_tc}[/]"
         )
 
-        job["chunks"].append(
+        # Append whole chunk
+        chunks.append(
             {
                 "number": chunk_num,
                 "in_point": in_point_tc,
@@ -113,7 +162,8 @@ def calculate_chunks(file):
             f"Partial {chunk_num}, in point: {in_point_tc}, out_point: {out_point_tc}"
         )
 
-        job["chunks"].append(
+        # Append partial
+        chunks.append(
             {
                 "number": chunk_num,
                 "in_point": in_point_tc,
@@ -121,29 +171,7 @@ def calculate_chunks(file):
             }
         )
 
-    else:
-
-        logger.info(f"[green]Clean chunk division; no partial.")
-
-    logger.info(f"[green]Calculated chunks: {job}")
-
-
-def __init__(self, file, dest, chunk_secs):
-
-    self.file = file
-    self.dest = dest
-    self.chunk_secs = chunk_secs
-
-
-def run(self):
-
-    logger.info(f"[green]Got new temporary directory\n{self.temp_working_dir}[/]")
-
-    self.get_temp_dir()
-    self.split()
-    self.stitch()
-    self.move()
-    self.del_temp_dir()
+    return chunks
 
 
 def local_encode_chunks(chunk_data, temp_working_dir):

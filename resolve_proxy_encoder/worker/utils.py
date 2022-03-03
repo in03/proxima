@@ -10,9 +10,6 @@ core.install_rich_tracebacks()
 config = SettingsManager()
 logger = logging.getLogger(__name__)
 
-config = SettingsManager()
-
-
 logger = logging.getLogger()
 logger.setLevel(config["worker"]["loglevel"])
 
@@ -51,25 +48,17 @@ def get_queue():
 
     """
 
-    # Add git SHA Celery queue to prevent queuer/worker incompatibilities
-    git_full_sha = pkg_info.get_package_current_commit("resolve_proxy_encoder")
-
     if config["app"]["disable_version_constrain"]:
+
         logger.warning(
-            "[yellow]Version constrain is disabled! Thar be dragons :dragon_face:[/]"
+            "[yellow]Version constrain is disabled!\n"
+            + "You [bold]must[/] ensure routing and version compatability yourself!"
         )
+
         return "celery"
-
-    if not git_full_sha:
-
-        logger.error(
-            "[red]Couldn't get local package commit SHA!\n"
-            + "Necessary to maintain version constrain.[/]"
-        )
-        core.app_exit(1, -1)
 
     # TODO: `git_sha` slice returns as 5 characters, not standard 7
     # labels: bug
 
     # Use git standard 7 character short SHA
-    return git_full_sha[::8]
+    return config["version_info"]["commit_short_sha"]
