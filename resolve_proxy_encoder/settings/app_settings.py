@@ -1,17 +1,18 @@
 #!/usr/bin/env python3.6
 
-from cgitb import text
 import os
+import re
 import shutil
 import webbrowser
+from functools import reduce
 from pathlib import Path
-import time
 
 from deepdiff import DeepDiff
+from flatten_dict import flatten, unflatten
 from resolve_proxy_encoder.helpers import (
+    app_exit,
     get_rich_logger,
     install_rich_tracebacks,
-    app_exit,
 )
 from rich import print
 from rich.prompt import Confirm
@@ -91,6 +92,30 @@ class Settings(metaclass=Singleton):
         with open(self.user_file, "r") as file:
             return self.yaml.load(file)
 
+    def _update_user_settings_with_key_list(self, nested_key_list, value):
+        """
+        Update nested user settings with key list.
+
+        Fully loads and rewrites the user settings file.
+        As such, invalid keys and values will be left out of the updated file.
+        """
+
+        self.yaml.preserve_quotes = True
+        with open(self.user_file, "r") as file_:
+            existing_settings = self.yaml.load(file_)
+
+        # Load yaml. Flatten/unflatten for easy update.
+        existing_settings = flatten(self.user_settings)
+        existing_settings.update({tuple(nested_key_list): value})
+        updated_settings = unflatten(existing_settings)
+
+        with open(self.user_file, "w") as file_:
+
+            logger.debug(f"[magenta]Writing updated settings to '{self.user_file}'")
+            self.yaml.dump(updated_settings, file_)
+
+        return
+
     def _ensure_user_file(self):
         """Copy default settings to user settings if it doesn't exist
 
@@ -152,6 +177,7 @@ class Settings(metaclass=Singleton):
         # It's just generic SchemaError for now. If we can catch them, we don't need this func.
         # We can also use the default option in Schema to add default keys.
         # Then we can get rid of the default_settings.yml file.
+        # Labels: enhancement
 
         diffs = DeepDiff(self.default_settings, self.user_settings)
 
@@ -159,8 +185,12 @@ class Settings(metaclass=Singleton):
         if diffs.get("dictionary_item_added"):
 
             self.spinner.stop()
+            # listcomp log warning for each unknown setting
             [
-                logger.warning(f"Unknown setting -> {x} will be ignored!")
+                logger.warning(
+                    f'[yellow]Unknown setting[/] [white]"{x}"[/]'
+                    "[yellow] will be ignored![/]"
+                )
                 for x in diffs["dictionary_item_added"]
             ]
             print()  # Newline
@@ -169,16 +199,48 @@ class Settings(metaclass=Singleton):
         # Check for missing settings
         if diffs.get("dictionary_item_removed"):
 
-            self.spinner.fail("� ")
-            [
-                logger.error(f"Missing setting -> {x}")
-                for x in diffs["dictionary_item_removed"]
-            ]
+            self.spinner.stop()
+            missing_settings_count = len(diffs.get("dictionary_item_removed"))
+            if missing_settings_count > 1:
 
-            logger.critical(
-                "Can't continue. Please define missing settings! Exiting..."
-            )
-            app_exit(1, -1)
+                logger.error(
+                    f"[yellow]{missing_settings_count} required settings are missing![/]"
+                )
+                print()
+
+            for x in diffs["dictionary_item_removed"]:
+
+                # Match all keys in diff string
+                keys = re.findall(r"\['(\w*)'\]", x)
+                default_value = reduce(dict.get, keys, self.default_settings)
+
+                if Confirm.ask(
+                    f'[red bold]Missing setting [green]"{x}"[/][/]\n'
+                    f"[cyan]Use default value?[/] '{default_value}'"
+                ):
+
+                    self._update_user_settings_with_key_list(keys, default_value)
+                    print()
+
+                else:
+
+                    print()
+                    self.spinner.fail("❌ ")
+                    # Log all missing settings so user doesn't have to know each missing.
+                    [
+                        logger.error(f'[red bold]Missing setting "{x}"')
+                        for x in diffs["dictionary_item_removed"]
+                    ]
+
+                    print()
+                    print("[red bold]Cannot continue.\nPlease define missing settings!")
+                    app_exit(1, -1)
+
+            # Reload settings
+            self.settings = self._get_user_settings()
+
+            print()
+            self.spinner.start()
 
     def _validate_schema(self, settings):
         """Validate user settings against schema"""
@@ -191,7 +253,7 @@ class Settings(metaclass=Singleton):
 
         except SchemaError as e:
 
-            self.spinner.fail("� ")
+            self.spinner.fail("❌ ")
             logger.error(
                 f"[red]Couldn't validate application settings![/]\n{e}\n"
                 + f"[red]Exiting...[/]\n"
