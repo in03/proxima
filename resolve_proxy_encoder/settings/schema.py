@@ -60,12 +60,6 @@ settings_schema = Schema(
             "terminal_args": list,
             "celery_args": list,
         },
-        "chunking": {
-            "enable": bool,
-            "chunk_duration": int,
-            "chunk_threshold": int,
-            "cleanup": bool,
-        },
     },
     ignore_extra_keys=True,
 )
