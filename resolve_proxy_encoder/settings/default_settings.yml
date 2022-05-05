@@ -1,21 +1,24 @@
 ---  # Resolve Proxy Encoder User configuration file
 
+# NOTE: 
+# Proxy paths, codecs, resolution, chunking, filters, etc are all inherited from the queuer's user configuration.
+# 'Celery' and 'Worker' settings are pulled from local user configuration.
+
 app:
   loglevel: WARNING
   check_for_updates: true
-  update_check_url: "https://github.com/in03/resolve-proxy-encoder"  # Change this url if you fork
-  disable_version_constrain: false # DANGEROUS! To work, both queuer and worker must disable constrain.
+  update_check_url: "https://github.com/in03/resolve-proxy-encoder" # If you fork the repo, change this to your fork
+  disable_version_constrain: false # DANGEROUS! Allows any version of worker to take jobs. Must be set on queuer and worker. 
 
 paths:
-  proxy_path_root: R:/ProxyMedia # Proxy media retains source folder structure
-  ffmpeg_logfile_path: R:/ProxyMedia/logs
+  proxy_path_root: R:/ProxyMedia  # Proxy media retains source folder structure
+  ffmpeg_logfile_path: R:/ProxyMedia/@logs
 
-proxy_settings:
+proxy:
   ffmpeg_loglevel: error # "quiet", "panic", "fatal", "error", "warning", "info", "verbose", "debug"
-  vid_codec: dnxhd
-  h_res: "1280"
-  v_res: "720"
-  vid_profile: dnxhr_sq
+  codec: dnxhd
+  vertical_res: "720"
+  profile: dnxhr_sq
   pix_fmt: yuv422p
   audio_codec: pcm_s16le
   audio_samplerate: "48000"
@@ -23,22 +26,27 @@ proxy_settings:
   ext: .mov
 
 filters:
-  # Necessary to prevent queueing internally generated media
-  use_extension_whitelist: true
-  extension_whitelist : [.mov, .mp4, .mxf, .avi]
-  use_framerate_whitelist: false
+  # Remove elements from lists to disable filter
+  extension_whitelist : [.mov, .mp4, .mxf, .avi] 
   framerate_whitelist : [24, 25, 30, 50, 60]
 
-celery_settings:
+celery:
   host_address: 192.168.1.19
   broker_url:  redis://192.168.1.19:6379/0
   flower_url: http://192.168.1.19:5555
   result_backend: redis://192.168.1.19:6379/0
   result_expires: 60 # 10 mins
 
-  worker_loglevel: WARNING
-  worker_concurrency: 1
-  worker_prefetch_multiplier: 1
-  worker_max_tasks_per_child: 1
-  worker_terminal_args: [] # Force a terminal; win-term, zsh, etc.
-  worker_celery_args: [-l, INFO, -P, solo, --without-mingle, --without-gossip]
+worker:
+  loglevel: INFO
+  concurrency: 1
+  prefetch_multiplier: 1
+  max_tasks_per_child: 1
+  terminal_args: [] # use alternate shell? Recommend windows terminal ("wt") on Windows.
+  celery_args: [-l, INFO, -P, solo, --without-mingle, --without-gossip]
+
+chunking: # Distributed encoding. Good for longer files.
+  enable: true
+  chunk_duration: 30
+  chunk_threshold: 200 # TODO: Chunk a job if longer than this
+  cleanup: True
