@@ -7,7 +7,6 @@ import tkinter.messagebox
 
 from celery import group
 from rich import print as print
-from icecream import ic
 from yaspin import yaspin
 
 from ..app.utils import core
