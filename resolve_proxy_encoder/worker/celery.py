@@ -19,7 +19,7 @@ app = Celery("worker")
 
 app.autodiscover_tasks(
     [
-        "resolve_proxy_encoder.worker.tasks.standard_encode",
+        "resolve_proxy_encoder.worker.tasks.encode.tasks.encode_proxy",
     ]
 )
 
