@@ -7,22 +7,26 @@ import tkinter
 import tkinter.messagebox
 import traceback
 from tkinter import filedialog
-from typing import Tuple
+from typing import Tuple, Union
 
 from rich import print
+from rich.console import Console
+from rich.prompt import Confirm
 
 from ..app.utils import core
 from ..settings.manager import SettingsManager
 
-config = SettingsManager()
+console = Console()
+settings = SettingsManager()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
+logger.setLevel(settings["app"]["loglevel"])
 
 
 def get_proxy_path():
 
-    proxy_path_root = config["paths"]["proxy_path_root"]
+    proxy_path_root = settings["paths"]["proxy_path_root"]
 
     f = input("Enter path to search for proxies: ")
     if f is None:
@@ -133,17 +137,18 @@ def _link_proxies(proxy_files, clips):
 
                 if proxy_name.lower() in filename.lower():
 
-                    logger.info("[cyan]Found match:")
-                    print(f"{proxy} &\n{path}")
+                    logger.info("[cyan]Found match:\n" f"- '{proxy}' \n- '{path}'")
 
                     if media_pool_item.LinkProxyMedia(proxy):
 
-                        logger.info(f"[green]Linked\n")
+                        logger.info(f"[green]:heavy_check_mark: Linked \n")
                         linked_proxies.append(proxy)
 
                     else:
-                        logger.error(f"[red]Failed link.\n")
+                        logger.error(f"[red bold]:x: Failed link.\n")
                         failed_proxies.append(proxy)
+
+                    break
 
             except AttributeError:
                 logger.debug(
@@ -179,7 +184,12 @@ def find_and_link_proxies(project, proxy_files) -> Tuple[list, list]:
             logger.info(f"[yellow]No more clips to link in {timeline_data['name']}")
             continue
         else:
-            logger.info(f"[cyan]Searching timeline {timeline_data['name']}")
+            print("\n")
+            console.rule(
+                f":mag_right: [cyan bold]Searching timeline '{timeline_data['name']}'",
+                align="left",
+            )
+            print("\n")
 
         unlinked_proxies = [x for x in proxy_files if x not in linked]
         logger.info(f"Unlinked source count: {len(unlinked_source)}")
@@ -189,7 +199,12 @@ def find_and_link_proxies(project, proxy_files) -> Tuple[list, list]:
             logger.info(f"[green]No more proxies to link[/]")
             break
 
+        print()
+
+        # This inter-function nested loop thing is a little dank.
         linked_, failed_ = _link_proxies(proxy_files, clips)
+        if len(linked_) + len(failed_) == len(proxy_files):
+            break
 
         # Update lists for each timeline
         linked.extend(linked_)
@@ -204,14 +219,15 @@ def find_and_link_proxies(project, proxy_files) -> Tuple[list, list]:
         logger.error(f"[red]Link fail:[/]{len(failed)}")
         failed_paths = [(os.path.basename(x)) for x in failed]
         logger.error(
-            f"[red]The following files matched, but couldn't be linked. Suggest rerendering them:[/]\n{failed_paths}"
+            f"[red]The following files matched, but couldn't be linked. Suggest re-rendering them:[/]\n{failed_paths}"
         )
 
     return linked, failed
 
 
 def link_proxies_with_mpi(media_list):
-    """Iterate through media mutated during script call, attempt to link the source media"""
+    """Iterate through media mutated during script call, attempt to link the source media.
+    Return all that are not succesfully linked."""
 
     print(f"[cyan]Linking {len(media_list)} proxies.[/]")
 
@@ -221,7 +237,7 @@ def link_proxies_with_mpi(media_list):
     # Iterate through all available proxies
     for media in media_list:
 
-        proxy = media.get("Unlinked Proxy", None)
+        proxy = media.get("unlinked_proxy", None)
 
         if not proxy:
             continue
@@ -231,7 +247,7 @@ def link_proxies_with_mpi(media_list):
 
         else:
             # Set existing to none once linked
-            media.update({"Unlinked Proxy": None})
+            media.update({"unlinked_proxy": None})
 
         # TODO: Should probably use MediaInfo here instead of hardcode
         media.update({"Proxy": "1280x720"})
@@ -240,26 +256,35 @@ def link_proxies_with_mpi(media_list):
         if media["media_pool_item"].LinkProxyMedia(proxy):
 
             # TODO get this working!
-            logger.info(f"[green]Linked [/]'{media['clip_name']}'")
-            link_success.append(proxy)
+            logger.info(f"[green bold]Linked [/]'{media['clip_name']}'")
+            link_success.append(media)
 
         else:
-            logger.error(f"[red]Failed to link [/]'{media['clip_name']}'")
-            link_fail.append(proxy)
+            logger.error(f"[red]Failed to link [/]'{media['file_path']}'")
+            link_fail.append(media)
 
     if link_success:
-        print(f"[green]Succeeeded linking: [/]{len(link_success)}")
+        print(f"[green]Succeeded linking: [/]{len(link_success)}")
 
     if link_fail:
         print(f"[red]Failed linking: [/]{len(link_fail)}")
 
     print()
 
-    pre_len = len(media_list)
-    media_list = [x for x in media_list if "Unlinked Proxy" not in x]
-    post_len = len(media_list)
+    print(f"[green]{len(link_success)} proxy(s) successfully linked.")
 
-    print(f"[green]{pre_len - post_len} proxy(s) successfully linked.")
+    if link_fail:
+
+        if Confirm.ask(
+            f"[yellow]{len(link_fail)} proxies failed to link. Would you like to re-render them?"
+        ):
+
+            media_list = [
+                x for x in media_list if x not in link_success or x not in link_fail
+            ]
+
+    media_list = [x for x in media_list if x not in link_success]
+
     return media_list
 
 
@@ -275,7 +300,9 @@ def main():
         print(f"Passed directory: '{proxy_dir}'\n")
 
         all_files = recurse_dir(proxy_dir)
-        proxy_files = filter_files(all_files, config["filters"]["extension_whitelist"])
+        proxy_files = filter_files(
+            all_files, settings["filters"]["extension_whitelist"]
+        )
         linked = find_and_link_proxies(r_.project, proxy_files)
 
     except Exception as e:

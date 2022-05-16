@@ -7,9 +7,10 @@ import sys
 from celery import Celery
 from ..settings.manager import SettingsManager
 
-config = SettingsManager()
+settings = SettingsManager()
 
 logger = logging.getLogger(__name__)
+logger.setLevel(settings["app"]["loglevel"])
 
 # Windows can't fork processes. It'll choke if you make it try.
 if sys.platform == "win32":
@@ -24,7 +25,7 @@ app.autodiscover_tasks(
 )
 
 try:
-    app.config_from_object(config["celery"])
+    app.config_from_object(settings["celery"])
 except Exception as e:
     logger.error(f"[red]Couldn't load settings from YAML![/]\n{e}")
 

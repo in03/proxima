@@ -9,7 +9,7 @@ from fractions import Fraction
 from ...app.utils import core
 from ...settings.manager import SettingsManager
 
-config = SettingsManager()
+settings = SettingsManager()
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
 

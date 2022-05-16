@@ -1,5 +1,4 @@
 import logging
-import time
 from typing import Union
 
 from rich import print
@@ -12,7 +11,7 @@ from ..app.utils import core
 from ..settings.manager import SettingsManager
 from ..worker.celery import app as celery_app
 
-config = SettingsManager()
+settings = SettingsManager()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
@@ -37,13 +36,13 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
 
     pkg_commit = pkg_info.get_package_current_commit(package_name)
 
-    if not config["app"]["check_for_updates"]:
+    if not settings["app"]["check_for_updates"]:
 
         return {
             "is_latest": None,
             "remote_commit": None,
             "package_commit": pkg_commit,
-            "commit_short_sha": pkg_commit[::8] if pkg_commit else None,
+            "commit_short_sha": pkg_commit[-4:] if pkg_commit else None,
         }
 
     latest = False
@@ -85,13 +84,13 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
         "is_latest": latest,
         "remote_commit": remote_commit,
         "package_commit": pkg_commit,
-        "commit_short_sha": pkg_commit[::8] if pkg_commit else None,
+        "commit_short_sha": pkg_commit[-4:] if pkg_commit else None,
     }
 
 
 def check_worker_compatability():
 
-    if config["app"]["disable_version_constrain"]:
+    if settings["app"]["disable_version_constrain"]:
         logger.warning(
             "[yellow]Version constrain is disabled![/] [red][bold]Thar be dragons :dragon_face:\n"
         )
@@ -117,7 +116,7 @@ def check_worker_compatability():
         )
         return
 
-    git_short_sha = git_full_sha[::8]
+    git_short_sha = git_full_sha[-4:]
 
     if online_workers is None:
 

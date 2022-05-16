@@ -8,7 +8,7 @@ import tkinter
 import tkinter.messagebox
 from typing import Union
 
-from rich import print
+from rich import print as pprint
 
 from resolve_proxy_encoder.queuer.resolve import ResolveObjects
 
@@ -17,15 +17,21 @@ from ..settings.manager import SettingsManager
 from ..worker.celery import app
 from . import link
 
-config = SettingsManager()
+settings = SettingsManager()
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
+logger.setLevel(settings["app"]["loglevel"])
 
 
 # Set global flags
 SOME_ACTION_TAKEN = False
 tk_root = tkinter.Tk()
 tk_root.withdraw()
+
+
+# TODO: Move all handlers with user prompts from Tkinter messagebox to CLI prompts
+# Reasoning: Tkinter doesn't always ship with python,
+# labels: enhancement
 
 
 def handle_workers():
@@ -52,11 +58,11 @@ def handle_workers():
         worker_count = len(i)
 
         if worker_count > 0:
-            print(f"[cyan]{worker_count} workers online[/]")
+            pprint(f"[cyan]{worker_count} workers online[/]")
             return
 
     else:
-        print(f"[yellow]No workers online![/]")
+        pprint(f"[yellow]No workers online![/]")
         answer = tkinter.messagebox.askokcancel(
             title="No workers online",
             message=f"You haven't got any workers running!\n"
@@ -67,7 +73,7 @@ def handle_workers():
             return
 
         else:
-            print("Exiting...")
+            pprint("Exiting...")
             core.app_exit(0)
 
 
@@ -159,7 +165,7 @@ def handle_orphaned_proxies(media_list: list) -> list:
         media_list: unmodified `media_list`, returns for ease of chaining.
     """
 
-    print(f"[cyan]Checking for orphaned proxies.")
+    pprint(f"[cyan]Checking for orphaned proxies.")
     orphaned_proxies = []
 
     for clip in media_list:
@@ -172,7 +178,7 @@ def handle_orphaned_proxies(media_list: list) -> list:
 
             # Append the source media relative path onto the proxy media path
             output_dir = os.path.join(
-                config["paths"]["proxy_path_root"],
+                settings["paths"]["proxy_path_root"],
                 os.path.dirname(p.relative_to(*p.parts[:1])),
             )
             new_output_path = os.path.join(output_dir, os.path.basename(file_path))
@@ -193,7 +199,7 @@ def handle_orphaned_proxies(media_list: list) -> list:
 
     if len(orphaned_proxies) > 0:
 
-        print(f"[yellow]Orphaned proxies: {len(orphaned_proxies)}[/]")
+        pprint(f"[yellow]Orphaned proxies: {len(orphaned_proxies)}[/]")
 
         answer = tkinter.messagebox.askyesnocancel(
             title="Orphaned proxies",
@@ -205,7 +211,7 @@ def handle_orphaned_proxies(media_list: list) -> list:
         SOME_ACTION_TAKEN = True
 
         if answer == True:
-            print(f"[yellow]Moving orphaned proxies.[/]")
+            pprint(f"[yellow]Moving orphaned proxies.[/]")
             for proxy in orphaned_proxies:
 
                 output_folder = os.path.dirname(proxy["New Path"])
@@ -215,10 +221,10 @@ def handle_orphaned_proxies(media_list: list) -> list:
                 if os.path.exists(proxy["Old Path"]):
                     shutil.move(proxy["Old Path"], proxy["New Path"])
                 else:
-                    print(
+                    pprint(
                         f"{proxy['Old Path']} doesn't exist. Most likely a parent directory rename created this orphan."
                     )
-            print("\n")
+            pprint("\n")
 
         elif answer == None:
             core.app_exit()
@@ -244,14 +250,14 @@ def handle_already_linked(
         media_list: refined list of dictionary media items that are not linked to a proxy.
     """
 
-    print(f"[cyan]Checking for source media with linked proxies.[/]")
+    pprint(f"[cyan]Checking for source media with linked proxies.[/]")
     already_linked = [x for x in media_list if str(x["proxy"]) not in offline_types]
 
     if len(already_linked) > 0:
 
-        print(f"[yellow]Skipping {len(already_linked)} already linked.[/]")
+        pprint(f"[yellow]Skipping {len(already_linked)} already linked.[/]")
         media_list = [x for x in media_list if x not in already_linked]
-        print("\n")
+        pprint("\n")
 
     return media_list
 
@@ -269,12 +275,16 @@ def handle_offline_proxies(media_list: list) -> list:
         media_list: Modified list of dictionary media items with `Proxy` set to `None` if re-rendering.
     """
 
-    print(f"[cyan]Checking for offline proxies[/]")
+    pprint(f"[cyan]Checking for offline proxies[/]")
     offline_proxies = [x for x in media_list if x["proxy"] == "Offline"]
 
     if len(offline_proxies) > 0:
 
-        print(f"[cyan]Offline proxies: {len(offline_proxies)}[/]")
+        # TODO: Prompt offline one by one with option for all
+        # e.g. "P123909.mp4's proxy is offline, would you like to rerender? [Y/N or A for all]
+        # labels: enhancement
+
+        pprint(f"[cyan]Offline proxies: {len(offline_proxies)}[/]")
         answer = tkinter.messagebox.askyesnocancel(
             title="Offline proxies",
             message=f"{len(offline_proxies)} clip(s) have offline proxies.\n"
@@ -284,12 +294,12 @@ def handle_offline_proxies(media_list: list) -> list:
         SOME_ACTION_TAKEN = True
 
         if answer == True:
-            print(f"[yellow]Rerendering offline: {len(offline_proxies)}[/]")
+            pprint(f"[yellow]Rerendering offline: {len(offline_proxies)}[/]")
             # Set all offline clips to None, so they'll rerender
             for media in media_list:
                 if media["proxy"] == "Offline":
                     media["proxy"] = "None"
-            print("\n")
+            pprint("\n")
 
         if answer == None:
             core.app_exit(0)
@@ -310,7 +320,7 @@ def handle_existing_unlinked(media_list: list) -> list:
         media_list: refined list of dictionaries with media items that do not have linked proxies.
     """
 
-    print(f"[cyan]Checking for existing, unlinked media.")
+    pprint(f"[cyan]Checking for existing, unlinked media.")
 
     def get_newest_proxy_file(expected_path: str) -> Union[str, None]:
         """Get the last modified proxy file if multiple variants of same filename exist.
@@ -353,6 +363,7 @@ def handle_existing_unlinked(media_list: list) -> list:
 
     # Iterate media list
     for media in media_list:
+
         if media["proxy"] == "None":
 
             expected_proxy_dir = media["expected_proxy_dir"]
@@ -363,11 +374,11 @@ def handle_existing_unlinked(media_list: list) -> list:
                 expected_proxy_dir, source_media_basename
             )
             expected_proxy_file = os.path.splitext(expected_proxy_file)[0]
-
             existing_proxy_file = get_newest_proxy_file(expected_proxy_file)
 
             if existing_proxy_file:
 
+                logger.debug(f"[magenta]Adding unlinked proxy: {existing_proxy_file}")
                 media.update({"unlinked_proxy": existing_proxy_file})
                 existing_unlinked.append(existing_proxy_file)
 
@@ -379,7 +390,7 @@ def handle_existing_unlinked(media_list: list) -> list:
 
         r_ = ResolveObjects()
 
-        print(f"\n[yellow]Found {len(existing_unlinked)} unlinked[/]")
+        pprint(f"\n[yellow]Found {len(existing_unlinked)} unlinked[/]")
 
         answer = tkinter.messagebox.askyesnocancel(
             title="Found unlinked proxy media",
@@ -388,13 +399,13 @@ def handle_existing_unlinked(media_list: list) -> list:
         )
 
         if answer:
-            link.link_proxies_with_mpi(media_list)
+            media_list = link.link_proxies_with_mpi(media_list)
 
         elif answer == False:
-            print(
+            pprint(
                 f"[yellow]Existing proxies will be [bold]OVERWRITTEN![/bold][/yellow]"
             )
-            print("\n")
+            pprint("\n")
 
         else:
             core.app_exit(0)
@@ -418,7 +429,7 @@ def handle_final_queuable(jobs: list):
     if len(jobs) == 0:
         global SOME_ACTION_TAKEN
         if not SOME_ACTION_TAKEN:
-            print(f"[red]No clips to queue.[/]")
+            pprint(f"[red]No clips to queue.[/]")
             tkinter.messagebox.showwarning(
                 "No new media to queue",
                 "Looks like all your media is already linked. \n"
@@ -426,7 +437,7 @@ def handle_final_queuable(jobs: list):
             )
             sys.exit(1)
         else:
-            print(f"[green]All clips linked now. No encoding necessary.[/]")
+            pprint(f"[green]All clips linked now. No encoding necessary.[/]")
             core.app_exit(0)
 
     # Final Prompt confirm

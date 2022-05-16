@@ -17,8 +17,10 @@ from ..worker.utils import get_queue
 
 core.install_rich_tracebacks()
 
-config = SettingsManager()
+settings = SettingsManager()
+
 logger = logging.getLogger(__name__)
+logger.setLevel(settings["app"]["loglevel"])
 
 
 def prompt_worker_amount(cpu_cores: int):
@@ -76,7 +78,7 @@ def new_worker(id=None):
 
     def get_worker_queue():
 
-        return " -Q " + get_queue()
+        return f" -Q {get_queue()}"
 
     def get_celery_binary_path():
 
@@ -112,7 +114,7 @@ def new_worker(id=None):
         """Get os command to spawn process in a new console window"""
 
         # Get new terminal
-        worker_terminal_args = config["worker"]["terminal_args"]
+        worker_terminal_args = settings["worker"]["terminal_args"]
 
         # Check if any args are on path. Probably terminal executable.
         executable_args = [which(x) for x in worker_terminal_args]
@@ -150,13 +152,13 @@ def new_worker(id=None):
 
     launch_cmd = [
         get_new_console(),
-        *config["worker"]["terminal_args"],
+        *settings["worker"]["terminal_args"],
         f'"{get_celery_binary_path()}"',
         "-A resolve_proxy_encoder.worker",
         "worker",
         get_worker_name(id),
         get_worker_queue(),
-        *config["worker"]["celery_args"],
+        *settings["worker"]["celery_args"],
     ]
 
     logger.info(f"[cyan]NEW WORKER - {id}[/]")

@@ -2,6 +2,7 @@
 
 import logging
 import os
+from webbrowser import get
 
 from ....app.utils import core
 from ....settings.manager import SettingsManager
@@ -9,6 +10,7 @@ from ....worker.celery import app
 from ....worker.ffmpeg.ffmpeg_process import FfmpegProcess
 from ....worker.utils import check_wsl, get_wsl_path, get_queue
 
+from rich import print
 from rich.console import Console
 
 # Worker and Celery settings pulled from local user_settings file
@@ -22,13 +24,15 @@ logger.setLevel(worker_settings["worker"]["loglevel"])
 
 
 @app.task(
+    bind=True,
     acks_late=True,
     track_started=True,
     prefetch_limit=1,
     soft_time_limit=60,
     queue=get_queue(),
 )
-def encode_proxy(job):
+def encode_proxy(self, job):
+
     """
     Celery task to encode proxy media using parameters in job argument
     and user-defined settings
@@ -39,14 +43,21 @@ def encode_proxy(job):
     path_settings = job["paths_settings"]
 
     print("\n")
-    console.rule("[green]Received proxy encode job :clapper:[/]", align="left")
+    console.rule(f"[green]Received proxy encode job :clapper:[/]", align="left")
     print("\n")
 
+    logger.info(
+        f"[magenta bold]Job: [/]{self.request.id}\n" f"Input File: '{job['file_path']}'"
+    )
+
+    # TODO: Integrate cross-platform path mapping. Move `check_wsl` func.
     # Convert paths for WSL
     if check_wsl():
         job["expected_proxy_dir"].update(get_wsl_path(job["expected_proxy_dir"]))
 
     # Create proxy dir
+
+    logger.debug(f"Output Dir: {job['expected_proxy_dir']}")
     try:
 
         os.makedirs(
@@ -60,23 +71,31 @@ def encode_proxy(job):
 
     output_file = os.path.join(
         job["expected_proxy_dir"],
-        os.path.splitext(job["clip_name"])[0] + proxy_settings["ext"],
+        os.path.splitext(job["file_name"])[0] + proxy_settings["ext"],
     )
+    logger.info(f"Output File: '{output_file}'\n")
 
     # Get Resolution
-    source_res = str(job["resolution"]).split("x")
-    v_res = proxy_settings["resolution"]
-    res_scale = source_res[1] / v_res
-    h_res = source_res[0] / res_scale
+    source_res = [int(x) for x in job["resolution"]]
+    logger.info(f"Source Resolution: {source_res}")
+
+    v_res = int(proxy_settings["vertical_res"])
+    res_scale = int(source_res[1] / v_res)
+    h_res = int(source_res[0] / res_scale)
+    logger.info(f"Output Resolution: {[h_res, v_res]}")
 
     # Get Orientation
     flip = str()
+    logger.info(f"Horizontal Flip: {job['h_flip']}\n" f"Vertical Flip {job['h_flip']}")
 
     if job["h_flip"]:
         flip += " hflip, "
 
     if job["v_flip"]:
         flip += "vflip, "
+
+    # Log Timecode
+    logger.info(f"Starting Timecode: {job['start_tc']}")
 
     # Get FFmpeg Command
     ffmpeg_command = [
@@ -98,7 +117,7 @@ def encode_proxy(job):
         "-ar",
         proxy_settings["audio_samplerate"],
         "-timecode",
-        job["timecode"],
+        job["start_tc"],
         output_file,
     ]
 
@@ -119,7 +138,7 @@ def encode_proxy(job):
     logger.debug(f"[magenta]Encoder logfile path: {encode_log_file}[/]")
 
     # Run encode job
-    logger.info("[yellow]Starting encode...[/]")
+    logger.info("[yellow]Encoding...[/]")
 
     try:
         process.run(logfile=encode_log_file)

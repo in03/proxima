@@ -13,6 +13,7 @@ settings = SettingsManager()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
+logger.setLevel(settings["app"]["loglevel"])
 
 
 class ResolveObjects:
@@ -282,22 +283,23 @@ def get_resolve_proxy_jobs(media_pool_items):
         cp = clip_properties
         job = {
             "clip_name": cp["Clip Name"],
+            "file_name": cp["File Name"],
+            "file_path": cp["File Path"],
             "duration": cp["Duration"],
+            "resolution": str(cp["Resolution"]).split("x"),
             "frames": int(cp["Frames"]),
             "fps": float(cp["FPS"]),
             "h_flip": True if cp["H-FLIP"] is "On" else False,
             "v_flip": True if cp["H-FLIP"] is "On" else False,
-            "proxy": None if cp["Proxy"] == "None" else cp["Proxy"],
-            "resolution": str(cp["Resolution"]).split("x"),
-            "start": int(cp["Start"]),
-            "end": int(cp["End"]),
-            "start_tc": cp["Start TC"],
-            "end_tc": cp["End TC"],
-            "file_path": cp["File Path"],
+            "proxy": cp["Proxy"],
             "proxy_media_path": None
             if not len(cp["Proxy Media Path"])
             else cp["Proxy Media Path"],
             "expected_proxy_dir": expected_proxy_dir,
+            "start": int(cp["Start"]),
+            "end": int(cp["End"]),
+            "start_tc": cp["Start TC"],
+            "end_tc": cp["End TC"],
             "media_pool_item": media_pool_item,
         }
 

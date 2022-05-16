@@ -7,11 +7,10 @@ from ..settings.manager import SettingsManager
 
 core.install_rich_tracebacks()
 
-config = SettingsManager()
-logger = logging.getLogger(__name__)
+settings = SettingsManager()
 
-logger = logging.getLogger()
-logger.setLevel(config["worker"]["loglevel"])
+logger = logging.getLogger(__name__)
+logger.setLevel(settings["worker"]["loglevel"])
 
 
 def check_wsl() -> bool:
@@ -48,7 +47,7 @@ def get_queue():
 
     """
 
-    if config["app"]["disable_version_constrain"]:
+    if settings["app"]["disable_version_constrain"]:
 
         logger.warning(
             "[yellow]Version constrain is disabled!\n"
@@ -57,8 +56,7 @@ def get_queue():
 
         return "celery"
 
-    # TODO: `git_sha` slice returns as 5 characters, not standard 7
-    # labels: bug
-
-    # Use git standard 7 character short SHA
-    return config["version_info"]["commit_short_sha"]
+    # NOTE: Can't get short-sha from version-info from settings since it's never persisted to disk
+    # and the workers are spawned as new processes! Must get package commit afresh.
+    pkg_commit = pkg_info.get_package_current_commit("resolve_proxy_encoder")
+    return pkg_commit[-4:] if pkg_commit else None

@@ -15,6 +15,7 @@ settings = SettingsManager()
 config = settings.user_settings
 
 logger = logging.getLogger(__name__)
+logger.setLevel(settings["app"]["loglevel"])
 
 
 def get_package_current_commit(package_name: str) -> Union[str, None]:
@@ -33,7 +34,7 @@ def get_package_current_commit(package_name: str) -> Union[str, None]:
 
     try:
 
-        logger.info("[cyan]Getting commit ID from package dist info.")
+        logger.debug("[magenta]Getting commit ID from package dist info.")
 
         dist = pkg_resources.get_distribution(package_name)
         vcs_metadata_file = dist.get_metadata("direct_url.json")
@@ -47,10 +48,10 @@ def get_package_current_commit(package_name: str) -> Union[str, None]:
 
     except:
 
-        logger.info("[yellow]Couldn't get package dist info, assuming git repo.")
+        logger.debug("[magenta]Couldn't get package dist info, assuming git repo.")
 
     try:
-        logger.info("[cyan]Getting commit ID from git[/]")
+        logger.debug("[magenta]Getting commit ID from git[/]")
 
         latest_commit_id = subprocess.check_output(
             'git --no-pager log -1 --format="%H"', stderr=subprocess.STDOUT, shell=True
@@ -64,7 +65,7 @@ def get_package_current_commit(package_name: str) -> Union[str, None]:
     except:
 
         logger.warning(
-            f"[yellow]Couldn't get git info or package dist info!\n"
+            f"[yellow]Couldn't get package info from git or dist!\n"
             + "Check properly cloned or installed[/]",
         )
         return None

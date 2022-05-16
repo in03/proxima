@@ -18,6 +18,7 @@ settings = SettingsManager()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
+logger.setLevel(settings["app"]["loglevel"])
 
 # Set global flags
 SOME_ACTION_TAKEN = False
@@ -85,53 +86,6 @@ def wait_jobs(jobs):
     return result
 
 
-# TODO: Need to get new search and link working
-# Legacy link is the original code and it's soooo bad.
-# I haven't looked at it in ages. But then I bit off more than I could
-# chew working on this. Find a middle ground!
-# labels: bug
-
-
-def legacy_link(project, media_list):
-    """This is sooooo dank. But it's the only way that works atm."""
-
-    print(f"[cyan]Linking {len(media_list)} proxies.[/]")
-    existing_proxies = []
-
-    for media in media_list:
-        proxy = media.get("Unlinked Proxy", None)
-        if proxy == None:
-            continue
-
-        existing_proxies.append(proxy)
-
-        if not os.path.exists(proxy):
-            tkinter.messagebox.showerror(
-                title="Error linking proxy",
-                message=f"Proxy media not found at '{proxy}'",
-            )
-            print(f"[red]Error linking proxy: Proxy media not found at '{proxy}'[/]")
-            continue
-
-        else:
-            media.update({"Unlinked Proxy": None})  # Set existing to none once linked
-
-        media.update({"Proxy": "1280x720"})
-
-    link.find_and_link_proxies(project, existing_proxies)
-
-    print("\n")
-
-    pre_len = len(media_list)
-    media_list = [x for x in media_list if "Unlinked Proxy" not in x]
-    post_len = len(media_list)
-    print(f"{pre_len - post_len} proxy(s) linked, will not be queued.")
-    print(f"[magenta]Queueing {post_len}[/]")
-    print("\n")
-
-    return media_list
-
-
 def main():
     """Main function"""
 
@@ -155,10 +109,6 @@ def main():
     jobs = handlers.handle_offline_proxies(jobs)
     jobs = handlers.handle_existing_unlinked(jobs)
 
-    # TODO: Find out if there's any way to pass media_pool_item through celery
-    # This would allow us to do post-encode linking without searching timelines
-    # labels: enhancement
-
     # Remove unhashable PyRemoteObj
     for job in jobs:
         del job["media_pool_item"]
@@ -176,21 +126,24 @@ def main():
         paths_settings=settings["paths"],
     )
 
-    job = queue_jobs(tasks)
+    job_group = queue_jobs(tasks)
 
     core.notify(f"Started encoding job '{project_name} - {timeline_name}'")
     print(f"[yellow]Waiting for job to finish. Feel free to minimize.[/]")
-    wait_jobs(job)
+    job_results = wait_jobs(job_group)
 
     # Post-encode link
-    try:
+    logger.info("[cyan]Linking proxies")
 
-        jobs = link.link_proxies_with_mpi(jobs)
+    try:
+        proxies = [x["unlinked_proxy"] for x in jobs]
+        link.find_and_link_proxies(r_.project, proxies)
         core.app_exit(0)
 
-    except:
+    except Exception as e:
 
-        print("[red]Couldn't link jobs. Link manually...[/]")
+        print("[red]Couldn't link jobs. Link manually:[/]")
+        print(e)
         core.app_exit(1, -1)
 
 
