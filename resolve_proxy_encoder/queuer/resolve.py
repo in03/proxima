@@ -105,7 +105,7 @@ def get_video_track_items(timeline):
 
     # Get count of tracks (index) in active timeline
     track_len = timeline.GetTrackCount("video")
-    print(f"[green]Video track count: {track_len}[/]")
+    logger.info(f"[green]Video track count: {track_len}[/]")
 
     # For each track in timeline (using index)
     for i in range(1, track_len + 1):
@@ -114,7 +114,7 @@ def get_video_track_items(timeline):
         track_items = timeline.GetItemListInTrack("video", i)
 
         if track_items is None:
-            print(f"[yellow]No items found in track {i}[/]")
+            logger.debug(f"[magenta]No items found in track {i}[/]")
             continue
 
         else:

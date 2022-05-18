@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Union
 
 from rich import print
@@ -15,6 +16,22 @@ settings = SettingsManager()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
+
+
+def check_worker_presence():
+    """Warn user if no celery workers are available"""
+
+    online_workers = celery_app.control.inspect().active_queues()
+
+    if not online_workers:
+
+        logger.warning(
+            "[yellow]There are no workers currently online to process jobs!\n"
+            "Make sure you start at least one."
+        )
+
+    logger.debug(f"[magenta]Online workers:[/]\n{online_workers}")
+    return online_workers
 
 
 def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
@@ -88,13 +105,13 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
     }
 
 
-def check_worker_compatability():
+def check_worker_compatability(online_workers):
 
     if settings["app"]["disable_version_constrain"]:
         logger.warning(
             "[yellow]Version constrain is disabled![/] [red][bold]Thar be dragons :dragon_face:\n"
         )
-        # time.sleep(2)
+        time.sleep(2)
         return
 
     spinner = yaspin(
@@ -102,22 +119,7 @@ def check_worker_compatability():
         color="cyan",
     )
 
-    # Get online workers and package current commit
-    spinner.start()
-    online_workers = celery_app.control.inspect().active_queues()
-    git_full_sha = pkg_info.get_package_current_commit("resolve_proxy_encoder")
-
-    if git_full_sha is None:
-        spinner.fail("❌ ")
-        logger.warning(
-            "[yellow]Couldn't get local package git commit SHA\n"
-            + "Any incompatible workers will not be reported.\n"
-            + "[red]CONTINUE AT OWN RISK![/]"
-        )
-        return
-
-    git_short_sha = git_full_sha[-4:]
-
+    # Get online workers
     if online_workers is None:
 
         spinner.fail("❌ ")
@@ -132,9 +134,20 @@ def check_worker_compatability():
 
         return
 
-    spinner.stop()
-    logger.debug(f"Online workers: {online_workers}")
+    # Get package current commit
     spinner.start()
+    git_full_sha = pkg_info.get_package_current_commit("resolve_proxy_encoder")
+
+    if git_full_sha is None:
+        spinner.fail("❌ ")
+        logger.warning(
+            "[yellow]Couldn't get local package git commit SHA\n"
+            + "Any incompatible workers will not be reported.\n"
+            + "[red]CONTINUE AT OWN RISK![/]"
+        )
+        return
+
+    git_short_sha = git_full_sha[-4:]
 
     # Get incompatible workers
     incompatible_workers = []

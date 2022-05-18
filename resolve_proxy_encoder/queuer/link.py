@@ -3,15 +3,11 @@
 
 import logging
 import os
-import tkinter
-import tkinter.messagebox
-import traceback
-from tkinter import filedialog
 from typing import Tuple, Union
 
 from rich import print
 from rich.console import Console
-from rich.prompt import Confirm
+from rich.prompt import Confirm, Prompt
 
 from ..app.utils import core
 from ..settings.manager import SettingsManager
@@ -26,9 +22,10 @@ logger.setLevel(settings["app"]["loglevel"])
 
 def get_proxy_path():
 
-    proxy_path_root = settings["paths"]["proxy_path_root"]
+    # TODO: Allow linking via custom path passed by Typer or use default proxy dir
+    # labels: enhancement
 
-    f = input("Enter path to search for proxies: ")
+    f = Prompt.ask("Enter path to search for proxies")
     if f is None:
         print("User cancelled. Exiting.")
         exit(0)
@@ -181,7 +178,7 @@ def find_and_link_proxies(project, proxy_files) -> Tuple[list, list]:
         unlinked_source = [x for x in clips if x not in linked]
 
         if not unlinked_source:
-            logger.info(f"[yellow]No more clips to link in {timeline_data['name']}")
+            logger.info(f" -> [yellow]No more clips to link in {timeline_data['name']}")
             continue
         else:
             print("\n")
