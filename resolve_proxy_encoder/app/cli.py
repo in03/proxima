@@ -21,7 +21,9 @@ from ..settings.manager import SettingsManager
 from .utils.core import setup_rich_logging
 
 
-def print_routing_key():
+def get_colorized_routing_key():
+
+    """Returns a formatted the routing key based on version info"""
 
     ver_colour = "red"
     queue = "Unknown"
@@ -35,7 +37,7 @@ def print_routing_key():
         ver_colour = "green" if settings["version_info"]["is_latest"] else "yellow"
         queue = settings["version_info"]["commit_short_sha"]
 
-    print(f"[cyan]Routing to queue:[/] [{ver_colour}]'{queue}'[/]")
+    return f"[{ver_colour}]'{queue}'[/]"
 
 
 # Init classes
@@ -55,11 +57,18 @@ def queue():
     Queue proxies from the currently open
     DaVinci Resolve timeline
     """
+
     checks.check_worker_compatability(settings["online_workers"])
 
-    print_routing_key()
+    print("\n")
+    console.rule(
+        f"[green bold]Queuing proxies from Resolve's active timeline[/] :outbox_tray:",
+        align="left",
+    )
+    print("\n")
 
-    print("\n\n[green]Queuing proxies from Resolve's active timeline[/] :outbox_tray:")
+    logger.info(f"[cyan]Routing to queue: {get_colorized_routing_key()}\n")
+
     from ..queuer import queue
 
     queue.main()
@@ -74,6 +83,10 @@ def link():
 
     from ..queuer import link
 
+    print("\n")
+    console.rule(f"[green bold]Link proxies[/] :link:", align="left")
+    print("\n")
+
     link.main()
 
 
@@ -87,6 +100,8 @@ def work(
 ):
     """Prompt to start Celery workers on local machine"""
 
+    print("\n")
+    console.rule(f"[green bold]Start workers[/] :construction_worker:", align="left")
     print("\n")
 
     # Print worker queue
@@ -124,6 +139,10 @@ def purge():
         None
     """
 
+    print("\n")
+    console.rule(f"[red bold]Purge all tasks! :fire:", align="left")
+    print("\n")
+
     if Confirm.ask(
         "[yellow]Are you sure you want to purge all tasks?\n"
         "All active tasks and task history will be lost![/]"
@@ -138,7 +157,12 @@ def mon():
     Launch Flower Celery monitor in default browser new window
     """
 
-    print("[green]Launching Flower celery monitor[/] :sunflower:")
+    print("\n")
+    console.rule(
+        f"[green bold]Start Flower Celery monitor[/] :sunflower:", align="left"
+    )
+    print("\n")
+
     webbrowser.open_new(settings["celery"]["flower_url"])
 
 
@@ -148,7 +172,12 @@ def mon():
 def config():
     """Open user settings configuration file for editing"""
 
-    print("[green]Opening user settings file for modification")
+    print("\n")
+    console.rule(
+        f"[green bold]Open 'user_settings.yaml' config[/] :gear:", align="left"
+    )
+    print("\n")
+
     webbrowser.open_new(settings.user_file)
 
 

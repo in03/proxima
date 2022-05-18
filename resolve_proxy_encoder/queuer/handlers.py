@@ -96,7 +96,7 @@ def handle_file_collisions(media_list: list) -> list:
 
         logger.warning(
             f"[yellow]{multiple_versions_count} files have outdated proxies!\n"
-            + "Recommend manually deleting when possible.",
+            "Recommend manually deleting when possible.",
         )
 
     return media_list_
@@ -115,7 +115,7 @@ def handle_orphaned_proxies(media_list: list) -> list:
         media_list: unmodified `media_list`, returns for ease of chaining.
     """
 
-    pprint(f"[cyan]Checking for orphaned proxies.")
+    logger.info(f"[cyan]Checking for orphaned proxies.")
     orphaned_proxies = []
 
     for clip in media_list:
@@ -149,7 +149,7 @@ def handle_orphaned_proxies(media_list: list) -> list:
 
     if len(orphaned_proxies) > 0:
 
-        pprint(f"[yellow]Orphaned proxies: {len(orphaned_proxies)}[/]")
+        logger.warning(f"[yellow]Orphaned proxies: {len(orphaned_proxies)}[/]")
 
         if Confirm.ask(
             f"[yellow]{len(orphaned_proxies)} clip(s) have orphaned proxy media."
@@ -157,7 +157,7 @@ def handle_orphaned_proxies(media_list: list) -> list:
             "For help, check 'Managing Proxies' in our YouTour documentation portal."
         ):
 
-            pprint(f"[cyan]Moving orphaned proxies.[/]")
+            logger.info(f"[cyan]Moving orphaned proxies.[/]")
             for proxy in orphaned_proxies:
 
                 output_folder = os.path.dirname(proxy["new_path"])
@@ -167,10 +167,9 @@ def handle_orphaned_proxies(media_list: list) -> list:
                 if os.path.exists(proxy["old_path"]):
                     shutil.move(proxy["old_path"], proxy["new_path"])
                 else:
-                    pprint(
-                        f"{proxy['old_path']} doesn't exist. Most likely a parent directory rename created this orphan."
+                    logger.error(
+                        f"'{proxy['old_path']}'[red]doesn't exist. Most likely a parent directory rename created this orphan."
                     )
-            pprint("\n")
 
         global SOME_ACTION_TAKEN
         SOME_ACTION_TAKEN = True
@@ -196,14 +195,13 @@ def handle_already_linked(
         media_list: refined list of dictionary media items that are not linked to a proxy.
     """
 
-    pprint(f"[cyan]Checking for source media with linked proxies.[/]")
+    logger.info(f"[cyan]Checking for source media with linked proxies.[/]")
     already_linked = [x for x in media_list if str(x["proxy"]) not in offline_types]
 
     if len(already_linked) > 0:
 
-        pprint(f"[yellow]Skipping {len(already_linked)} already linked.[/]")
+        logger.info(f"[yellow] -> Skipping {len(already_linked)} already linked.[/]")
         media_list = [x for x in media_list if x not in already_linked]
-        pprint("\n")
 
     return media_list
 
@@ -221,8 +219,7 @@ def handle_offline_proxies(media_list: list) -> list:
         media_list: Modified list of dictionary media items with `Proxy` set to `None` if re-rendering.
     """
 
-    pprint("\n")
-    pprint(f"[cyan]Checking for offline proxies[/]")
+    logger.info(f"[cyan]Checking for offline proxies[/]")
     offline_proxies = [x for x in media_list if x["proxy"] == "Offline"]
 
     if len(offline_proxies) > 0:
@@ -270,7 +267,7 @@ def handle_existing_unlinked(media_list: list) -> list:
         media_list: refined list of dictionaries with media items that do not have linked proxies.
     """
 
-    pprint(f"[cyan]Checking for existing, unlinked media.")
+    logger.info(f"[cyan]Checking for existing, unlinked media.")
 
     def get_newest_proxy_file(expected_path: str) -> Union[str, None]:
         """Get the last modified proxy file if multiple variants of same filename exist.
@@ -289,7 +286,9 @@ def handle_existing_unlinked(media_list: list) -> list:
         matching_proxy_files = glob.glob(expected_path + "*.*")
 
         if not len(matching_proxy_files):
-            logger.info(f"[yellow]No existing proxies found for '{expected_filename}'")
+            logger.info(
+                f"[yellow] -> No existing proxies found for '{expected_filename}'"
+            )
             return None
 
         if len(matching_proxy_files) == 1:
@@ -304,7 +303,7 @@ def handle_existing_unlinked(media_list: list) -> list:
 
         logger.warning(
             f"[yellow]Found {len(matching_proxy_files)} existing matches for '{expected_filename}'[/]\n"
-            + f"[cyan]Using newest: '{os.path.basename(final_proxy_filename)}'[/]"
+            f"[cyan]Using newest: '{os.path.basename(final_proxy_filename)}'[/]"
         )
 
         return os.path.normpath(final_proxy_path)
@@ -340,7 +339,7 @@ def handle_existing_unlinked(media_list: list) -> list:
 
         r_ = ResolveObjects()
 
-        pprint(f"\n[yellow]Found {len(existing_unlinked)} unlinked[/]")
+        logger.info(f"[yellow] -> Found {len(existing_unlinked)} unlinked[/]")
 
         if Confirm.ask(
             f"{len(existing_unlinked)} clip(s) have existing but unlinked proxy media. "
@@ -351,7 +350,7 @@ def handle_existing_unlinked(media_list: list) -> list:
 
         else:
 
-            pprint(
+            logger.warning(
                 f"[yellow]Existing proxies will be [bold]OVERWRITTEN![/bold][/yellow]"
             )
 

@@ -4,7 +4,6 @@ import logging
 
 from celery import group
 from rich import print as print
-from yaspin import yaspin
 
 from ..app.utils import core
 from ..settings.manager import SettingsManager
@@ -88,7 +87,8 @@ def main():
     project_name = r_.project.GetName()
     timeline_name = r_.timeline.GetName()
 
-    print(f"[cyan]Working on: {r_.project.GetName()}[/]")
+    print("\n")
+    print(f"[cyan]Working on: '{r_.project.GetName()}[/]'")
     print("\n")
 
     # Lets make it happen!
@@ -96,23 +96,24 @@ def main():
     media_pool_items = resolve.get_media_pool_items(track_items)
     jobs = resolve.get_resolve_proxy_jobs(media_pool_items)
 
-    print("\n")
-
     # Prompt user for intervention if necessary
+    print()
     jobs = handlers.handle_already_linked(jobs, offline_types=["Offline", "None"])
-    jobs = handlers.handle_offline_proxies(jobs)
-    jobs = handlers.handle_existing_unlinked(jobs)
 
-    print("\n")
+    print()
+    jobs = handlers.handle_offline_proxies(jobs)
+
+    print()
+    jobs = handlers.handle_existing_unlinked(jobs)
 
     # Remove unhashable PyRemoteObj
     for job in jobs:
         del job["media_pool_item"]
 
+    print("\n")
+
     # Alert user final queuable. Confirm.
     handlers.handle_final_queuable(jobs)
-
-    print("\n")
 
     tasks = add_queuer_data(
         jobs,
