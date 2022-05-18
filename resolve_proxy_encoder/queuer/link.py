@@ -3,10 +3,6 @@
 
 import logging
 import os
-import tkinter
-import tkinter.messagebox
-import traceback
-from tkinter import filedialog
 from typing import Tuple, Union
 
 from rich import print

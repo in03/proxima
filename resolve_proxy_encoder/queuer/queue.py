@@ -1,9 +1,6 @@
 #!/usr/bin/env python3.6
 
 import logging
-import os
-import tkinter
-import tkinter.messagebox
 
 from celery import group
 from rich import print as print
@@ -22,8 +19,6 @@ logger.setLevel(settings["app"]["loglevel"])
 
 # Set global flags
 SOME_ACTION_TAKEN = False
-tk_root = tkinter.Tk()
-tk_root.withdraw()
 
 
 def add_queuer_data(jobs, **kwargs):
@@ -94,7 +89,6 @@ def main():
     timeline_name = r_.timeline.GetName()
 
     print(f"[cyan]Working on: {r_.project.GetName()}[/]")
-    handlers.handle_workers()
     print("\n")
 
     # Lets make it happen!
@@ -108,6 +102,8 @@ def main():
     jobs = handlers.handle_already_linked(jobs, offline_types=["Offline", "None"])
     jobs = handlers.handle_offline_proxies(jobs)
     jobs = handlers.handle_existing_unlinked(jobs)
+
+    print("\n")
 
     # Remove unhashable PyRemoteObj
     for job in jobs:

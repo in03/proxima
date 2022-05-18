@@ -55,7 +55,7 @@ def queue():
     Queue proxies from the currently open
     DaVinci Resolve timeline
     """
-    checks.check_worker_compatability()
+    checks.check_worker_compatability(settings["online_workers"])
 
     print_routing_key()
 
@@ -155,12 +155,17 @@ def config():
 def init():
     """Run before CLI App load."""
 
+    # Check for any updates and inject version info into user settings.
     version_info = checks.check_for_updates(
         github_url=settings["app"]["update_check_url"],
         package_name="resolve_proxy_encoder",
     )
 
     settings.update({"version_info": version_info})
+
+    # Check for online workers to pass to other checks
+    online_workers = checks.check_worker_presence()
+    settings.update({"online_workers": online_workers})
 
 
 def main():
