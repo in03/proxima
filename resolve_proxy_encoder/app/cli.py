@@ -100,24 +100,22 @@ def work(
 ):
     """Prompt to start Celery workers on local machine"""
 
-    print("\n")
-    console.rule(f"[green bold]Start workers[/] :construction_worker:", align="left")
-    print("\n")
-
-    # Print worker queue
-
-    ver_colour = "green" if settings["version_info"]["is_latest"] else "yellow"
-    print(
-        f"[cyan]Consuming from queue: [/][{ver_colour}]'{settings['version_info']['commit_short_sha']}'[/]"
-    )
-
     if not workers_to_launch:
         workers_to_launch = 0
 
+    print("\n")
+
     if workers_to_launch > 0:
-        print(f"[green]Starting workers! :construction_worker:[/]")
+        console.rule(
+            f"[green bold]Starting workers![/] :construction_worker:", align="left"
+        )
     else:
-        print(f"[cyan]Starting worker launcher prompt :construction_worker:[/]")
+        console.rule(
+            f"[green bold]Starting worker launcher prompt[/] :construction_worker:",
+            align="left",
+        )
+
+    print("\n")
 
     from ..worker import launch_workers
 
