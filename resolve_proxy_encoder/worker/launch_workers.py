@@ -171,7 +171,7 @@ def new_worker(id=None):
     )
 
 
-def launch_workers(workers_to_launch: int):
+def launch_workers(workers_to_launch: int, queue_name: str):
 
     # Start launching
 
@@ -186,17 +186,24 @@ def main(workers: int = 0):
     os_ = platform.system()
     cpu_cores = multiprocessing.cpu_count()
 
+    queue_name = get_queue()
+    if not queue_name:
+        raise TypeError("Couldn't get queue!")
+
+    print()
+    logger.info(f"[cyan]Consuming from queue: '{queue_name}'\n")
+
     # Don't bother with tips if not prompting
     if workers:
 
-        launch_workers(workers)
+        launch_workers(workers, queue_name)
 
     else:
 
         print(f"[green]Running on {os_} with {cpu_cores} cores.[/]\n")
         print("For maximum performance, start as many workers as CPU cores.")
         print("Default recommendation is 2 cores spare for Resolve and other tasks.\n")
-        launch_workers(prompt_worker_amount(cpu_cores))
+        launch_workers(prompt_worker_amount(cpu_cores), queue_name)
 
     print(f"[green]Done![/]")
     core.app_exit(0, 5)
