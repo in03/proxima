@@ -380,17 +380,21 @@ def handle_final_queuable(jobs: list):
         TypeError: if media_list is not a list
     """
 
+    logger.debug(f"[magenta]Final queueable:[/]\n{[x['file_name'] for x in jobs]}\n")
+
     if len(jobs) == 0:
 
         global SOME_ACTION_TAKEN
         if not SOME_ACTION_TAKEN:
 
             pprint(
-                "[green]Looks like all your media is already linked.[/]\n"
+                "\n[green]Looks like all your media is already linked.[/]\n"
                 "[magenta italic]If you want to re-rerender proxies, unlink them within Resolve and try again."
             )
-
             core.app_exit(0, -1)
+
+        pprint("[bold][green]All linked up![/bold] Nothing to queue[/] :link:")
+        core.app_exit(0, -1)
 
     # Final Prompt confirm
     if not Confirm.ask(

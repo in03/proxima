@@ -99,12 +99,15 @@ def main():
     # Prompt user for intervention if necessary
     print()
     jobs = handlers.handle_already_linked(jobs, unlinked_types=["Offline", "None"])
+    logger.debug(f"[magenta]Remaining queuable:[/]\n{[x['file_name'] for x in jobs]}")
 
     print()
     jobs = handlers.handle_existing_unlinked(jobs, unlinked_types=["Offline", "None"])
+    logger.debug(f"[magenta]Remaining queuable:[/]\n{[x['file_name'] for x in jobs]}")
 
     print()
     jobs = handlers.handle_offline_proxies(jobs)
+    logger.debug(f"[magenta]Remaining queuable:[/]\n{[x['file_name'] for x in jobs]}")
 
     # Remove unhashable PyRemoteObj
     for job in jobs:
