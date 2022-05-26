@@ -282,6 +282,7 @@ def link_proxies_with_mpi(media_list):
 
     media_list = [x for x in media_list if x not in link_success]
 
+    logger.debug(f"[magenta]Remaining unlinked media: {media_list}")
     return media_list
 
 
