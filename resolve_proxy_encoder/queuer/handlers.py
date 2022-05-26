@@ -224,17 +224,17 @@ def handle_offline_proxies(media_list: list) -> list:
 
     if len(offline_proxies) > 0:
 
-        pprint(f"[cyan]Offline proxies: {len(offline_proxies)}[/]")
+        logger.warning(f"[yellow]Offline proxies: {len(offline_proxies)}[/]")
 
         for offline_proxy in offline_proxies:
 
             answer = Prompt.ask(
-                f"'{offline_proxy}' [yellow]is offline.\n"
-                "Would you like to re-render it?[/] [magenta][Y/N or All)]"
+                f"\n[yellow][bold]'{offline_proxy['file_name']}' is offline.\n"
+                "[/bold]Would you like to re-render it?[/] [magenta][Y/N or All)]"
             )
 
             if answer.lower().startswith("y"):
-                pprint(f"[yellow]Queuing '{offline_proxy}' for re-render")
+                pprint(f"[yellow]Queuing '{offline_proxy['file_name']}' for re-render")
                 [
                     x["proxy"].update("None")
                     for x in media_list
