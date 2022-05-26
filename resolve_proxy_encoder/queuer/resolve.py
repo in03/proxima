@@ -292,7 +292,7 @@ def get_resolve_proxy_jobs(media_pool_items):
             "h_flip": True if cp["H-FLIP"] is "On" else False,
             "v_flip": True if cp["H-FLIP"] is "On" else False,
             "proxy": cp["Proxy"],
-            "proxy_media_path": None
+            "proxy_media_path": cp["Proxy Media Path"]
             if not len(cp["Proxy Media Path"])
             else cp["Proxy Media Path"],
             "expected_proxy_dir": expected_proxy_dir,

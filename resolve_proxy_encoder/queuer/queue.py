@@ -98,13 +98,13 @@ def main():
 
     # Prompt user for intervention if necessary
     print()
-    jobs = handlers.handle_already_linked(jobs, offline_types=["Offline", "None"])
+    jobs = handlers.handle_already_linked(jobs, unlinked_types=["Offline", "None"])
+
+    print()
+    jobs = handlers.handle_existing_unlinked(jobs, unlinked_types=["Offline", "None"])
 
     print()
     jobs = handlers.handle_offline_proxies(jobs)
-
-    print()
-    jobs = handlers.handle_existing_unlinked(jobs)
 
     # Remove unhashable PyRemoteObj
     for job in jobs:
