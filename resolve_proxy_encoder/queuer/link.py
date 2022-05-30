@@ -275,12 +275,19 @@ def link_proxies_with_mpi(media_list):
         if Confirm.ask(
             f"[yellow]{len(link_fail)} proxies failed to link. Would you like to re-render them?"
         ):
+            # Remove offline status, redefine media list
+            for x in media_list:
+                if x in link_fail:
+                    x["proxy"] = "None"
 
-            media_list = [
-                x for x in media_list if x not in link_success or x not in link_fail
-            ]
+            media_list = [x for x in media_list if x not in link_success]
 
-    media_list = [x for x in media_list if x not in link_success]
+    else:
+
+        # Queue only those that remain
+        media_list = [
+            x for x in media_list if x not in link_success or x not in link_fail
+        ]
 
     logger.debug(f"[magenta]Remaining unlinked media: {media_list}")
     return media_list

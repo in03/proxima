@@ -348,18 +348,20 @@ def handle_offline_proxies(media_list: list) -> list:
 
             if answer.lower().startswith("y"):
                 pprint(f"[yellow]Queuing '{offline_proxy['file_name']}' for re-render")
-                [
-                    x["proxy"].update("None")
-                    for x in media_list
-                    if x["file_path"] == offline_proxy["file_path"]
-                ]
+
+                for x in media_list:
+                    if x["file_path"] == offline_proxy["file_path"]:
+                        x["proxy"] = "None"
 
             elif answer.lower().startswith("a"):
 
                 pprint(
                     f"[yellow]Queuing {len(offline_proxies)} offline proxies for re-render"
                 )
-                [x["proxy"].update("None") for x in media_list if x == "Offline"]
+
+                for x in media_list:
+                    if x == "Offline":
+                        x["proxy"] = "None"
 
         global SOME_ACTION_TAKEN
         SOME_ACTION_TAKEN = True
