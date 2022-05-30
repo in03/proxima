@@ -44,7 +44,7 @@ def queue_jobs(jobs):
 
     # Wrap job objects in Celery task function
     callable_tasks = [encode_proxy.s(x) for x in jobs]
-    logger.debug(f"callable_tasks: {callable_tasks}")
+    logger.debug(f"[magenta]callable_tasks:[/] {callable_tasks}")
 
     # Create job group to retrieve job results as batch
     task_group = group(callable_tasks)

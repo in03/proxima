@@ -289,8 +289,8 @@ def get_resolve_proxy_jobs(media_pool_items):
             "resolution": str(cp["Resolution"]).split("x"),
             "frames": int(cp["Frames"]),
             "fps": float(cp["FPS"]),
-            "h_flip": True if cp["H-FLIP"] is "On" else False,
-            "v_flip": True if cp["H-FLIP"] is "On" else False,
+            "h_flip": True if cp["H-FLIP"] == "On" else False,
+            "v_flip": True if cp["H-FLIP"] == "On" else False,
             "proxy": cp["Proxy"],
             "proxy_media_path": cp["Proxy Media Path"]
             if not len(cp["Proxy Media Path"])
@@ -303,6 +303,7 @@ def get_resolve_proxy_jobs(media_pool_items):
             "media_pool_item": media_pool_item,
         }
 
+        logger.debug(f"[magenta]Clip properties: {job}\n")
         jobs.append(job)
 
     logger.info(f"[green]Total queuable clips on timeline: {len(jobs)}[/]")
