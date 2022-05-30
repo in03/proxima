@@ -15,12 +15,12 @@ from rich.console import Console
 
 # Worker and Celery settings pulled from local user_settings file
 # All other settings are passed from queuer
-worker_settings = SettingsManager()
+settings = SettingsManager()
 console = Console()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
-logger.setLevel(worker_settings["worker"]["loglevel"])
+logger.setLevel(settings["worker"]["loglevel"])
 
 
 @app.task(
@@ -57,7 +57,7 @@ def encode_proxy(self, job):
 
     # Create proxy dir
 
-    logger.debug(f"Output Dir: {job['expected_proxy_dir']}")
+    logger.debug(f"Output Dir: '{job['expected_proxy_dir']}'")
     try:
 
         os.makedirs(
@@ -86,7 +86,7 @@ def encode_proxy(self, job):
 
     # Get Orientation
     flip = str()
-    logger.info(f"Horizontal Flip: {job['h_flip']}\n" f"Vertical Flip {job['h_flip']}")
+    logger.info(f"Horizontal Flip: {job['h_flip']}\n" f"Vertical Flip: {job['h_flip']}")
 
     if job["h_flip"]:
         flip += " hflip, "
