@@ -133,9 +133,12 @@ def encode_proxy(self, job):
     encode_log_dir = path_settings["ffmpeg_logfile_path"]
     os.makedirs(encode_log_dir, exist_ok=True)
 
-    encode_log_file = os.path.join(
-        encode_log_dir, os.path.splitext(os.path.basename(output_file))[0] + ".txt"
+    encode_log_file = os.path.normpath(
+        os.path.join(
+            encode_log_dir, os.path.splitext(os.path.basename(output_file))[0] + ".txt"
+        )
     )
+
     logger.debug(f"[magenta]Encoder logfile path: {encode_log_file}[/]")
 
     # Run encode job
