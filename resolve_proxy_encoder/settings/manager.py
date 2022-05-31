@@ -91,7 +91,12 @@ class SettingsManager(metaclass=Singleton):
         if type(__items) == str:
             __items = __items.split(" ")
 
-        return reduce(operator.getitem, __items, self.user_settings)
+        try:
+            return reduce(operator.getitem, __items, self.user_settings)
+
+        except KeyError as e:
+
+            raise KeyError(e)
 
     def _load_default_file(self):
         """Load default settings from yaml"""

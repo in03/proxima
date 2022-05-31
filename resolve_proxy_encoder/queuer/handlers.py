@@ -3,8 +3,6 @@ import logging
 import os
 import pathlib
 import shutil
-import sys
-from tkinter import E
 from typing import Union
 
 from rich import print as pprint
@@ -119,7 +117,7 @@ def handle_orphaned_proxies(media_list: list) -> list:
     orphaned_proxies = []
 
     for media in media_list:
-        if media["proxy"] != "None" or media["proxy"] == "Offline":
+        if media["proxy_status"] != "None" or media["proxy_status"] == "Offline":
             linked_proxy_path = os.path.splitext(media["proxy_media_path"])
             linked_proxy_path[1].lower()
 
@@ -196,7 +194,9 @@ def handle_already_linked(
     """
 
     logger.info(f"[cyan]Checking for source media with linked proxies.[/]")
-    already_linked = [x for x in media_list if str(x["proxy"]) not in unlinked_types]
+    already_linked = [
+        x for x in media_list if str(x["proxy_status"]) not in unlinked_types
+    ]
 
     if len(already_linked) > 0:
 
@@ -267,15 +267,13 @@ def handle_existing_unlinked(
     # Iterate media list
     for media in media_list:
 
-        if media["proxy"] in unlinked_types:
+        if media["proxy_status"] in unlinked_types:
 
-            expected_proxy_dir = media["expected_proxy_dir"]
-            logger.debug(
-                f"[magenta]Expected proxy directory:[/] '{expected_proxy_dir}'"
-            )
+            proxy_dir = media["proxy_dir"]
+            logger.debug(f"[magenta]Expected proxy directory:[/] '{proxy_dir}'")
 
             # Get expected proxy path
-            glob_partial_match = os.path.join(expected_proxy_dir, media["file_name"])
+            glob_partial_match = os.path.join(proxy_dir, media["file_name"])
 
             # Get expected path partial match for globbing
             glob_partial_match = os.path.splitext(glob_partial_match)[0]
@@ -289,7 +287,7 @@ def handle_existing_unlinked(
                 logger.debug(
                     f"[green bold]Matched existing proxy: '{existing_proxy_file}'\n"
                 )
-                media.update({"unlinked_proxy": existing_proxy_file})
+                media.update({"proxy_media_path": existing_proxy_file})
                 existing_unlinked.append(existing_proxy_file)
 
     # If any unlinked, prompt for linking
@@ -307,7 +305,9 @@ def handle_existing_unlinked(
             "[/bold]Would you like to link them? If not they will be re-rendered."
         ):
 
-            return link.link_proxies_with_mpi(media_list)
+            return link.link_proxies_with_mpi(
+                media_list, linkable_types=["Offline", "None"]
+            )
 
         else:
 
@@ -332,7 +332,7 @@ def handle_offline_proxies(media_list: list) -> list:
     """
 
     logger.info(f"[cyan]Checking for offline proxies[/]")
-    offline_proxies = [x for x in media_list if x["proxy"] == "Offline"]
+    offline_proxies = [x for x in media_list if x["proxy_status"] == "Offline"]
 
     if len(offline_proxies) > 0:
 
@@ -351,7 +351,7 @@ def handle_offline_proxies(media_list: list) -> list:
 
                 for x in media_list:
                     if x["file_path"] == offline_proxy["file_path"]:
-                        x["proxy"] = "None"
+                        x["proxy_status"] = "None"
 
             elif answer.lower().startswith("a"):
 
@@ -361,7 +361,7 @@ def handle_offline_proxies(media_list: list) -> list:
 
                 for x in media_list:
                     if x == "Offline":
-                        x["proxy"] = "None"
+                        x["proxy_status"] = "None"
 
         global SOME_ACTION_TAKEN
         SOME_ACTION_TAKEN = True

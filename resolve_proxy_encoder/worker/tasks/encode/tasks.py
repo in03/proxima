@@ -53,15 +53,15 @@ def encode_proxy(self, job):
     # TODO: Integrate cross-platform path mapping. Move `check_wsl` func.
     # Convert paths for WSL
     if check_wsl():
-        job["expected_proxy_dir"].update(get_wsl_path(job["expected_proxy_dir"]))
+        job["proxy_dir"].update(get_wsl_path(job["proxy_dir"]))
 
     # Create proxy dir
 
-    logger.debug(f"Output Dir: '{job['expected_proxy_dir']}'")
+    logger.debug(f"Output Dir: '{job['proxy_dir']}'")
     try:
 
         os.makedirs(
-            job["expected_proxy_dir"],
+            job["proxy_dir"],
             exist_ok=True,
         )
 
@@ -70,7 +70,7 @@ def encode_proxy(self, job):
         raise e
 
     output_file = os.path.join(
-        job["expected_proxy_dir"],
+        job["proxy_dir"],
         os.path.splitext(job["file_name"])[0] + proxy_settings["ext"],
     )
     logger.info(f"Output File: '{output_file}'\n")

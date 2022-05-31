@@ -136,7 +136,7 @@ def main():
     logger.info("[cyan]Linking proxies")
 
     try:
-        proxies = [x["unlinked_proxy"] for x in jobs]
+        proxies = [x["proxy_media_path"] for x in jobs]
         link.find_and_link_proxies(r_.project, proxies)
         core.app_exit(0)
 

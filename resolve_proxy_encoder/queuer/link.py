@@ -222,7 +222,7 @@ def find_and_link_proxies(project, proxy_files) -> Tuple[list, list]:
     return linked, failed
 
 
-def link_proxies_with_mpi(media_list):
+def link_proxies_with_mpi(media_list, linkable_types: list = ["Offline", "None"]):
     """Iterate through media mutated during script call, attempt to link the source media.
     Return all that are not succesfully linked."""
 
@@ -234,23 +234,26 @@ def link_proxies_with_mpi(media_list):
     # Iterate through all available proxies
     for media in media_list:
 
-        proxy = media.get("unlinked_proxy", None)
+        proxy_media_path = media.get("proxy_media_path", None)
+        proxy_status = media.get("proxy_status")
 
-        if not proxy:
+        if proxy_status not in linkable_types:
             continue
 
-        if not os.path.exists(proxy):
-            logger.error(f"[red]Proxy media not found at '{proxy}'")
-
-        else:
-            # Set existing to none once linked
-            media.update({"unlinked_proxy": None})
+        if not os.path.exists(proxy_media_path):
+            logger.error(f"[red]Proxy media not found at '{proxy_media_path}'")
+            media.update({"proxy_media_path": None})
 
         # TODO: Should probably use MediaInfo here instead of hardcode
-        media.update({"Proxy": "1280x720"})
+
+        # We only define the vertical res in `user_settings` so we can preserve aspect ratio.
+        # To get the proper resolution, we'd have to get the original file resolution.
+        # labels: enhancement
+
+        media.update({"proxy_status": "1280x720"})
 
         # Actually link proxies
-        if media["media_pool_item"].LinkProxyMedia(proxy):
+        if media["media_pool_item"].LinkProxyMedia(proxy_media_path):
 
             # TODO get this working!
             logger.info(f"[green bold]Linked [/]'{media['clip_name']}'")
@@ -278,7 +281,7 @@ def link_proxies_with_mpi(media_list):
             # Remove offline status, redefine media list
             for x in media_list:
                 if x in link_fail:
-                    x["proxy"] = "None"
+                    x["proxy_status"] = "None"
 
             media_list = [x for x in media_list if x not in link_success]
 

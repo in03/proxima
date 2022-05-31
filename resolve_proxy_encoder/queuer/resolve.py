@@ -271,7 +271,7 @@ def get_resolve_proxy_jobs(media_pool_items):
         file_path = clip_properties["File Path"]
         p = pathlib.Path(file_path)
 
-        expected_proxy_dir = os.path.normpath(
+        proxy_dir = os.path.normpath(
             os.path.join(
                 settings["paths"]["proxy_path_root"],
                 os.path.dirname(p.relative_to(*p.parts[:1])),
@@ -291,11 +291,11 @@ def get_resolve_proxy_jobs(media_pool_items):
             "fps": float(cp["FPS"]),
             "h_flip": True if cp["H-FLIP"] == "On" else False,
             "v_flip": True if cp["H-FLIP"] == "On" else False,
-            "proxy": cp["Proxy"],
+            "proxy_status": cp["Proxy"],
             "proxy_media_path": cp["Proxy Media Path"]
             if not len(cp["Proxy Media Path"])
             else cp["Proxy Media Path"],
-            "expected_proxy_dir": expected_proxy_dir,
+            "proxy_dir": proxy_dir,
             "start": int(cp["Start"]),
             "end": int(cp["End"]),
             "start_tc": cp["Start TC"],
