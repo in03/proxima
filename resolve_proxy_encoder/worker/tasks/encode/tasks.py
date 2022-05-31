@@ -85,16 +85,18 @@ def encode_proxy(self, job):
     logger.info(f"Output Resolution: {[h_res, v_res]}")
 
     def get_flip():
-        
+
         flip = str()
-        logger.info(f"Horizontal Flip: {job['h_flip']}\n" f"Vertical Flip: {job['h_flip']}")
+        logger.info(
+            f"Horizontal Flip: {job['h_flip']}\n" f"Vertical Flip: {job['h_flip']}"
+        )
 
         if job["h_flip"]:
             flip += " hflip, "
 
         if job["v_flip"]:
             flip += "vflip, "
-            
+
         return flip
 
     # Log Timecode
@@ -114,7 +116,7 @@ def encode_proxy(self, job):
         "-vsync",
         "-1",  # Necessary to match VFR
         "-vf",
-        f"scale={h_res}:{v_res},{get_flip()} format={proxy_settings['pix_fmt']}",
+        f"scale=-2:{v_res},{get_flip()} format={proxy_settings['pix_fmt']}",
         "-c:a",
         proxy_settings["audio_codec"],
         "-ar",
