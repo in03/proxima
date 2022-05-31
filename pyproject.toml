@@ -1,0 +1,50 @@
+[tool.poetry]
+name = "resolve-proxy-encoder"
+version = "0.1.0"
+description = "Transcode source media in DaVinci Resolve using multiple machines. Great for quickly creating proxies without interrupting work."
+authors = ["Caleb Trevatt <in03@users.noreply.github.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = ">=3.6.2,<3.7.*"
+celery = "^5.1.2"
+rich = "^10.12.0"
+typer = "^0.4.0"
+pyfiglet = "^0.8.post1"
+redis = "^3.5.3"
+semver = "^2.13.0"
+requests = "^2.26.0"
+"ruamel.yaml" = "^0.17.17"
+schema = "^0.7.5"
+deepdiff = "^5.7.0"
+pymediainfo = "^5.1.0"
+commonregex = "^1.5.3"
+notify-py = "^0.3.3"
+shortuuid = "^1.0.8"
+yaspin = "^2.1.0"
+ffmpeg-python = "^0.2.0"
+asciimatics = "^1.14.0"
+
+[tool.poetry.dev-dependencies]
+mkdocs-material = "^7.3.6"
+black = "^21.12b0"
+isort = "^5.10.1"
+pre-commit = "^2.16.0"
+
+[tool.semantic_release]
+version_variable = [
+    "resolve_proxy_encoder/__init__.py:__version__",
+    "pyproject.toml:version"
+]
+branch = "main"
+upload_to_pypi = false
+upload_to_release = true
+build_command = "pip install poetry && poetry build"
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+rprox = "resolve_proxy_encoder.app.cli:main"

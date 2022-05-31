@@ -3,8 +3,6 @@ import logging
 import os
 import pathlib
 import shutil
-import sys
-from tkinter import E
 from typing import Union
 
 from rich import print as pprint
@@ -118,12 +116,12 @@ def handle_orphaned_proxies(media_list: list) -> list:
     logger.info(f"[cyan]Checking for orphaned proxies.")
     orphaned_proxies = []
 
-    for clip in media_list:
-        if clip["proxy"] != "None" or clip["proxy"] == "Offline":
-            linked_proxy_path = os.path.splitext(clip["proxy_media_path"])
+    for media in media_list:
+        if media["proxy_status"] != "None" or media["proxy_status"] == "Offline":
+            linked_proxy_path = os.path.splitext(media["proxy_media_path"])
             linked_proxy_path[1].lower()
 
-            file_path = clip["file_path"]
+            file_path = media["file_path"]
             p = pathlib.Path(file_path)
 
             # Append the source media relative path onto the proxy media path
@@ -152,7 +150,7 @@ def handle_orphaned_proxies(media_list: list) -> list:
         logger.warning(f"[yellow]Orphaned proxies: {len(orphaned_proxies)}[/]")
 
         if Confirm.ask(
-            f"[yellow]{len(orphaned_proxies)} clip(s) have orphaned proxy media."
+            f"[yellow]{len(orphaned_proxies)} source files have orphaned proxy media."
             "Would you like to attempt to automatically move these proxies to the up-to-date proxy folder?\n\n"
             "For help, check 'Managing Proxies' in our YouTour documentation portal."
         ):
@@ -178,11 +176,11 @@ def handle_orphaned_proxies(media_list: list) -> list:
 
 
 def handle_already_linked(
-    media_list: list, offline_types: list = ["Offline", "None"]
+    media_list: list, unlinked_types: list = ["Offline", "None"]
 ) -> list:
     """Remove items from media-list that are already linked to a proxy.
     
-    Since re-rendering linked clips is rarely desired behaviour, we remove them without prompting.
+    Since re-rendering linked source media is rarely desired behaviour, we remove them without prompting.
     If we do want to re-render proxies, we can unlink them from Resolve and we'll be prompted with the 
     'unlinked media' warning. By default if a proxy item is marked as 'Offline' it won't be removed
     since we most likely need to re-render it.
@@ -196,65 +194,19 @@ def handle_already_linked(
     """
 
     logger.info(f"[cyan]Checking for source media with linked proxies.[/]")
-    already_linked = [x for x in media_list if str(x["proxy"]) not in offline_types]
+    already_linked = [x for x in media_list if str(x["proxy_status"]) not in unlinked_types]
 
     if len(already_linked) > 0:
 
-        logger.info(f"[yellow] -> Skipping {len(already_linked)} already linked.[/]")
+        logger.info(f"[yellow]Skipping {len(already_linked)} already linked.[/]")
         media_list = [x for x in media_list if x not in already_linked]
 
     return media_list
 
 
-def handle_offline_proxies(media_list: list) -> list:
-    """Prompt to rerender proxies that are 'linked' but their media does not exist.
-
-    Resolve refers to proxies that are linked but inaccessible as 'offline'.
-    This prompt can warn users to find that media if it's missing, or rerender if intentionally unavailable.
-
-    Args:
-        media_list: list of dictionary media items to check for `Proxy` value.
-
-    Returns:
-        media_list: Modified list of dictionary media items with `Proxy` set to `None` if re-rendering.
-    """
-
-    logger.info(f"[cyan]Checking for offline proxies[/]")
-    offline_proxies = [x for x in media_list if x["proxy"] == "Offline"]
-
-    if len(offline_proxies) > 0:
-
-        logger.warning(f"[yellow]Offline proxies: {len(offline_proxies)}[/]")
-
-        for offline_proxy in offline_proxies:
-
-            answer = Prompt.ask(
-                f"\n[yellow][bold]'{offline_proxy['file_name']}' is offline.\n"
-                "[/bold]Would you like to re-render it?[/] [magenta][Y/N or All)]"
-            )
-
-            if answer.lower().startswith("y"):
-                pprint(f"[yellow]Queuing '{offline_proxy['file_name']}' for re-render")
-                [
-                    x["proxy"].update("None")
-                    for x in media_list
-                    if x["file_path"] == offline_proxy["file_path"]
-                ]
-
-            elif answer.lower().startswith("a"):
-
-                pprint(
-                    f"[yellow]Queuing {len(offline_proxies)} offline proxies for re-render"
-                )
-                [x["proxy"].update("None") for x in media_list if x == "Offline"]
-
-        global SOME_ACTION_TAKEN
-        SOME_ACTION_TAKEN = True
-
-    return media_list
-
-
-def handle_existing_unlinked(media_list: list) -> list:
+def handle_existing_unlinked(
+    media_list: list, unlinked_types: list = ["Offline", "None"]
+) -> list:
 
     """Prompts user to either link or re-render unlinked proxy media that exists in the expected location.
 
@@ -269,7 +221,7 @@ def handle_existing_unlinked(media_list: list) -> list:
 
     logger.info(f"[cyan]Checking for existing, unlinked media.")
 
-    def get_newest_proxy_file(expected_path: str) -> Union[str, None]:
+    def get_newest_proxy_file(media, expected_proxy_path: str) -> Union[str, None]:
         """Get the last modified proxy file if multiple variants of same filename exist.
 
         Args:
@@ -280,14 +232,14 @@ def handle_existing_unlinked(media_list: list) -> list:
 
         """
 
-        expected_filename = os.path.basename(expected_path)
+        expected_filename = os.path.basename(expected_proxy_path)
 
         # Fetch paths of all possible variants of source filename
-        matching_proxy_files = glob.glob(expected_path + "*.*")
+        matching_proxy_files = glob.glob(expected_proxy_path + "*.*")
 
         if not len(matching_proxy_files):
             logger.info(
-                f"[yellow] -> No existing proxies found for '{expected_filename}'"
+                f"[yellow]No existing proxies matched for '{media['file_name']}'\n"
             )
             return None
 
@@ -313,22 +265,29 @@ def handle_existing_unlinked(media_list: list) -> list:
     # Iterate media list
     for media in media_list:
 
-        if media["proxy"] == "None":
+        if media["proxy_status"] in unlinked_types:
 
-            expected_proxy_dir = media["expected_proxy_dir"]
-            source_media_basename = os.path.splitext(
-                os.path.basename(media["file_path"])
-            )[0]
-            expected_proxy_file = os.path.join(
-                expected_proxy_dir, source_media_basename
+            proxy_dir = media["proxy_dir"]
+            logger.debug(
+                f"[magenta]Expected proxy directory:[/] '{proxy_dir}'"
             )
-            expected_proxy_file = os.path.splitext(expected_proxy_file)[0]
-            existing_proxy_file = get_newest_proxy_file(expected_proxy_file)
+
+            # Get expected proxy path
+            glob_partial_match = os.path.join(proxy_dir, media["file_name"])
+
+            # Get expected path partial match for globbing
+            glob_partial_match = os.path.splitext(glob_partial_match)[0]
+            logger.debug(f"[magenta]Glob match criteria:[/] '{glob_partial_match}'")
+
+            # Check for any file variants, including multiple extensions and suffixes
+            existing_proxy_file = get_newest_proxy_file(media, glob_partial_match)
 
             if existing_proxy_file:
 
-                logger.debug(f"[magenta]Adding unlinked proxy: {existing_proxy_file}")
-                media.update({"unlinked_proxy": existing_proxy_file})
+                logger.debug(
+                    f"[green bold]Matched existing proxy: '{existing_proxy_file}'\n"
+                )
+                media.update({"proxy_media_path": existing_proxy_file})
                 existing_unlinked.append(existing_proxy_file)
 
     # If any unlinked, prompt for linking
@@ -339,20 +298,71 @@ def handle_existing_unlinked(media_list: list) -> list:
 
         r_ = ResolveObjects()
 
-        logger.info(f"[yellow] -> Found {len(existing_unlinked)} unlinked[/]")
+        logger.info(f"[yellow]Found {len(existing_unlinked)} unlinked[/]")
 
         if Confirm.ask(
-            f"{len(existing_unlinked)} clip(s) have existing but unlinked proxy media. "
-            "Would you like to link them? If you select 'No' they will be re-rendered."
+            f"\n[yellow][bold]{len(existing_unlinked)} source files have existing but unlinked proxy media.\n"
+            "[/bold]Would you like to link them? If not they will be re-rendered."
         ):
 
-            return link.link_proxies_with_mpi(media_list)
+            return link.link_proxies_with_mpi(media_list, linkable_types=["Offline", "None"])
 
         else:
 
             logger.warning(
                 f"[yellow]Existing proxies will be [bold]OVERWRITTEN![/bold][/yellow]"
             )
+
+    return media_list
+
+
+def handle_offline_proxies(media_list: list) -> list:
+    """Prompt to rerender proxies that are 'linked' but their media does not exist.
+
+    Resolve refers to proxies that are linked but inaccessible as 'offline'.
+    This prompt can warn users to find that media if it's missing, or rerender if intentionally unavailable.
+
+    Args:
+        media_list: list of dictionary media items to check for `Proxy` value.
+
+    Returns:
+        media_list: Modified list of dictionary media items with `Proxy` set to `None` if re-rendering.
+    """
+
+    logger.info(f"[cyan]Checking for offline proxies[/]")
+    offline_proxies = [x for x in media_list if x["proxy_status"] == "Offline"]
+
+    if len(offline_proxies) > 0:
+
+        logger.warning(f"[yellow]Offline proxies: {len(offline_proxies)}[/]")
+
+        for offline_proxy in offline_proxies:
+
+            answer = Prompt.ask(
+                f"\n[yellow][bold]'{offline_proxy['file_name']}' is offline.\n"
+                f"[/yellow][/bold]Last path was '{offline_proxy['proxy_media_path']}'\n"
+                "[yellow]Would you like to re-render it?[/] [magenta][Y/N or All)]"
+            )
+
+            if answer.lower().startswith("y"):
+                pprint(f"[yellow]Queuing '{offline_proxy['file_name']}' for re-render")
+
+                for x in media_list:
+                    if x["file_path"] == offline_proxy["file_path"]:
+                        x["proxy_status"] = "None"
+
+            elif answer.lower().startswith("a"):
+
+                pprint(
+                    f"[yellow]Queuing {len(offline_proxies)} offline proxies for re-render"
+                )
+
+                for x in media_list:
+                    if x == "Offline":
+                        x["proxy_status"] = "None"
+
+        global SOME_ACTION_TAKEN
+        SOME_ACTION_TAKEN = True
 
     return media_list
 
@@ -370,17 +380,21 @@ def handle_final_queuable(jobs: list):
         TypeError: if media_list is not a list
     """
 
+    logger.debug(f"[magenta]Final queueable:[/]\n{[x['file_name'] for x in jobs]}\n")
+
     if len(jobs) == 0:
 
         global SOME_ACTION_TAKEN
         if not SOME_ACTION_TAKEN:
 
             pprint(
-                "[green]Looks like all your media is already linked.[/]\n"
+                "\n[green]Looks like all your media is already linked.[/]\n"
                 "[magenta italic]If you want to re-rerender proxies, unlink them within Resolve and try again."
             )
-
             core.app_exit(0, -1)
+
+        pprint("[bold][green]All linked up![/bold] Nothing to queue[/] :link:")
+        core.app_exit(0, -1)
 
     # Final Prompt confirm
     if not Confirm.ask(
