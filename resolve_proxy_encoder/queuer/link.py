@@ -245,11 +245,11 @@ def link_proxies_with_mpi(media_list, linkable_types: list = ["Offline", "None"]
             media.update({"proxy_media_path": None})
 
         # TODO: Should probably use MediaInfo here instead of hardcode
-        
+
         # We only define the vertical res in `user_settings` so we can preserve aspect ratio.
         # To get the proper resolution, we'd have to get the original file resolution.
         # labels: enhancement
-        
+
         media.update({"proxy_status": "1280x720"})
 
         # Actually link proxies

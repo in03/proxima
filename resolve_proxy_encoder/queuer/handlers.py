@@ -194,7 +194,9 @@ def handle_already_linked(
     """
 
     logger.info(f"[cyan]Checking for source media with linked proxies.[/]")
-    already_linked = [x for x in media_list if str(x["proxy_status"]) not in unlinked_types]
+    already_linked = [
+        x for x in media_list if str(x["proxy_status"]) not in unlinked_types
+    ]
 
     if len(already_linked) > 0:
 
@@ -268,9 +270,7 @@ def handle_existing_unlinked(
         if media["proxy_status"] in unlinked_types:
 
             proxy_dir = media["proxy_dir"]
-            logger.debug(
-                f"[magenta]Expected proxy directory:[/] '{proxy_dir}'"
-            )
+            logger.debug(f"[magenta]Expected proxy directory:[/] '{proxy_dir}'")
 
             # Get expected proxy path
             glob_partial_match = os.path.join(proxy_dir, media["file_name"])
@@ -305,7 +305,9 @@ def handle_existing_unlinked(
             "[/bold]Would you like to link them? If not they will be re-rendered."
         ):
 
-            return link.link_proxies_with_mpi(media_list, linkable_types=["Offline", "None"])
+            return link.link_proxies_with_mpi(
+                media_list, linkable_types=["Offline", "None"]
+            )
 
         else:
 
