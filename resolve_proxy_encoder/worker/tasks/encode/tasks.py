@@ -75,14 +75,10 @@ def encode_proxy(self, job):
     )
     logger.info(f"Output File: '{output_file}'\n")
 
-    # Get Resolution
+    # Get Resolutions
     source_res = [int(x) for x in job["resolution"]]
-    logger.info(f"Source Resolution: {source_res}")
-
     v_res = int(proxy_settings["vertical_res"])
-    res_scale = int(source_res[1] / v_res)
-    h_res = int(source_res[0] / res_scale)
-    logger.info(f"Output Resolution: {[h_res, v_res]}")
+    logger.info(f"Source Resolution: {source_res}")
 
     def get_flip():
 
