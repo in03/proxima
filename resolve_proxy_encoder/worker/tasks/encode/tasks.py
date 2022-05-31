@@ -75,24 +75,25 @@ def encode_proxy(self, job):
     )
     logger.info(f"Output File: '{output_file}'\n")
 
-    # Get Resolution
+    # Get Resolutions
     source_res = [int(x) for x in job["resolution"]]
+    v_res = int(proxy_settings["vertical_res"])
     logger.info(f"Source Resolution: {source_res}")
 
-    v_res = int(proxy_settings["vertical_res"])
-    res_scale = int(source_res[1] / v_res)
-    h_res = int(source_res[0] / res_scale)
-    logger.info(f"Output Resolution: {[h_res, v_res]}")
+    def get_flip():
 
-    # Get Orientation
-    flip = str()
-    logger.info(f"Horizontal Flip: {job['h_flip']}\n" f"Vertical Flip: {job['h_flip']}")
+        flip = str()
+        logger.info(
+            f"Horizontal Flip: {job['h_flip']}\n" f"Vertical Flip: {job['h_flip']}"
+        )
 
-    if job["h_flip"]:
-        flip += " hflip, "
+        if job["h_flip"]:
+            flip += " hflip, "
 
-    if job["v_flip"]:
-        flip += "vflip, "
+        if job["v_flip"]:
+            flip += "vflip, "
+
+        return flip
 
     # Log Timecode
     logger.info(f"Starting Timecode: {job['start_tc']}")
@@ -111,7 +112,7 @@ def encode_proxy(self, job):
         "-vsync",
         "-1",  # Necessary to match VFR
         "-vf",
-        f"scale={h_res}:{v_res},{flip} format={proxy_settings['pix_fmt']}",
+        f"scale=-2:{v_res},{get_flip()} format={proxy_settings['pix_fmt']}",
         "-c:a",
         proxy_settings["audio_codec"],
         "-ar",
@@ -132,9 +133,12 @@ def encode_proxy(self, job):
     encode_log_dir = path_settings["ffmpeg_logfile_path"]
     os.makedirs(encode_log_dir, exist_ok=True)
 
-    encode_log_file = os.path.join(
-        encode_log_dir, os.path.splitext(os.path.basename(output_file))[0] + ".txt"
+    encode_log_file = os.path.normpath(
+        os.path.join(
+            encode_log_dir, os.path.splitext(os.path.basename(output_file))[0] + ".txt"
+        )
     )
+
     logger.debug(f"[magenta]Encoder logfile path: {encode_log_file}[/]")
 
     # Run encode job
