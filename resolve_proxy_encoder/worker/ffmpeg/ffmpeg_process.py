@@ -136,9 +136,7 @@ class FfmpegProcess:
         except KeyboardInterrupt:
             progress_bar.stop()
             process.kill()
-            logger.warning(
-                "[yellow][KeyboardInterrupt] FFmpeg process killed. Exiting...[/]"
-            )
+            print("[yellow][KeyboardInterrupt] FFmpeg process killed. Exiting...[/]")
             core.app_exit(0)
 
         except Exception as e:

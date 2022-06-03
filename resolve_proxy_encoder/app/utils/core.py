@@ -37,7 +37,7 @@ def install_rich_tracebacks(show_locals=False):
     install(show_locals=show_locals)
 
 
-def app_exit(level: int = 0, timeout: int = -1, cleanup_funcs: list = []):
+def app_exit(level: int = 0, timeout: int = 0, cleanup_funcs: list = []):
 
     """
     Exit function to allow time to
