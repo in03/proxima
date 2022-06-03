@@ -51,7 +51,7 @@ def get_queue():
 
         logger.warning(
             "[yellow]Version constrain is disabled!\n"
-            "You [bold]must[/] ensure routing and version compatability yourself!"
+            "You [bold]must[/] ensure routing and version compatibility yourself!"
         )
 
         return "celery"

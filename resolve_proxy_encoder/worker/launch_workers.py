@@ -94,7 +94,7 @@ def new_worker(id=None):
         if celery_bin:
             return celery_bin
         logger.warning(
-            "[yellow]Using Celery on path." + "Please ensure version compatability![/]"
+            "[yellow]Using Celery on path." + "Please ensure version compatibility![/]"
         )
 
         logger.error("[red]Couldn't find celery binary! Is it installed?[/]")
