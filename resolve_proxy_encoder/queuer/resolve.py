@@ -56,7 +56,7 @@ class ResolveObjects:
 
         except:
 
-            logger.warning(
+            logger.critical(
                 "[red] :warning: Couldn't access the Resolve Python API. Is DaVinci Resolve running?[/]"
             )
             core.app_exit(1, -1)
@@ -69,7 +69,7 @@ class ResolveObjects:
 
         except:
 
-            logger.warning(
+            logger.critical(
                 "[red] :warning: Couldn't get current project. Is a project open in Resolve?[/]"
             )
             core.app_exit(1, -1)
@@ -81,7 +81,7 @@ class ResolveObjects:
                 raise TypeError
         except:
 
-            logger.warning(
+            logger.critical(
                 "[red] :warning: Couldn't get current timeline. Is a timeline open in Resolve?[/]"
             )
             core.app_exit(1, -1)
@@ -94,7 +94,7 @@ class ResolveObjects:
 
         except:
 
-            logger.warning("[red] :warning: Couldn't get Resolve's media pool.[/]")
+            logger.critical("[red] :warning: Couldn't get Resolve's media pool.[/]")
             core.app_exit(1, -1)
 
 
