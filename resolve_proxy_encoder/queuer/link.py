@@ -28,7 +28,7 @@ def get_proxy_path():
     f = Prompt.ask("Enter path to search for proxies")
     if f is None:
         print("User cancelled. Exiting.")
-        exit(0)
+        core.app_exit(0, 0)
     return f
 
 

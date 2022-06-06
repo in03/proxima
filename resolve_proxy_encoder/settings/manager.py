@@ -176,7 +176,7 @@ class SettingsManager(metaclass=Singleton):
                 except OSError:
 
                     self.spinner.fail("❌ ")
-                    logger.error("[red]Error creating directory![/]")
+                    logger.critical("[red]Error creating directory![/]")
                     core.app_exit(1, -1)
 
                 try:
@@ -187,7 +187,7 @@ class SettingsManager(metaclass=Singleton):
                 except:
 
                     self.spinner.fail("❌ ")
-                    print(
+                    logger.error(
                         f"[red]Couldn't copy default settings to {self.user_file}![/]"
                     )
                     core.app_exit(1, -1)

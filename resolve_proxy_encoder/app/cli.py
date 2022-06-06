@@ -58,7 +58,7 @@ def queue():
     DaVinci Resolve timeline
     """
 
-    checks.check_worker_compatability(settings["online_workers"])
+    checks.check_worker_compatibility(settings["online_workers"])
 
     print("\n")
     console.rule(

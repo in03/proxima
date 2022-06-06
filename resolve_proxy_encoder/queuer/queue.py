@@ -142,8 +142,7 @@ def main():
 
     except Exception as e:
 
-        print("[red]Couldn't link jobs. Link manually:[/]")
-        print(e)
+        logger.error(f"[red]Couldn't link jobs. Link manually.[/]\nError: {e}")
         core.app_exit(1, -1)
 
 

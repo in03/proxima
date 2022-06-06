@@ -22,14 +22,6 @@ def check_worker_presence():
     """Warn user if no celery workers are available"""
 
     online_workers = celery_app.control.inspect().active_queues()
-
-    if not online_workers:
-
-        logger.warning(
-            "[yellow]There are no workers currently online to process jobs!\n"
-            "Make sure you start at least one."
-        )
-
     logger.debug(f"[magenta]Online workers:[/]\n{online_workers}")
     return online_workers
 
@@ -105,7 +97,7 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
     }
 
 
-def check_worker_compatability(online_workers):
+def check_worker_compatibility(online_workers):
 
     if settings["app"]["disable_version_constrain"]:
         logger.warning(
@@ -115,7 +107,7 @@ def check_worker_compatability(online_workers):
         return
 
     spinner = yaspin(
-        text="Checking worker compatability...",
+        text="Checking worker compatibility...",
         color="cyan",
     )
 
@@ -124,12 +116,14 @@ def check_worker_compatability(online_workers):
 
         spinner.fail("❌ ")
         logger.warning(
-            "[yellow]No workers found. Can't check compatability.\n"
+            "[yellow]No workers found. Can't check compatibility.\n"
             + "Jobs may not be received if no compatible workers are available!\n[/]"
             + "[red]CONTINUE AT OWN RISK![/]\n"
         )
 
-        if not Confirm.ask("[cyan]Do you wish to continue?[/]"):
+        if not Confirm.ask(
+            "[yellow]No workers found.[/] [cyan]Do you wish to continue?[/]"
+        ):
             core.app_exit(1, -1)
 
         return
