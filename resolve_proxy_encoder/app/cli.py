@@ -21,25 +21,6 @@ from ..settings.manager import SettingsManager
 from .utils.core import setup_rich_logging
 
 
-def get_colorized_routing_key():
-
-    """Returns a formatted the routing key based on version info"""
-
-    ver_colour = "red"
-    queue = "Unknown"
-
-    if settings["app"]["disable_version_constrain"]:
-
-        ver_colour = "yellow"
-        queue = "celery"
-
-    else:
-        ver_colour = "green" if settings["version_info"]["is_latest"] else "yellow"
-        queue = settings["version_info"]["commit_short_sha"]
-
-    return f"[{ver_colour}]'{queue}'[/]"
-
-
 # Init classes
 console = Console()
 settings = SettingsManager()
@@ -66,8 +47,6 @@ def queue():
         align="left",
     )
     print("\n")
-
-    logger.info(f"[cyan]Routing to queue: {get_colorized_routing_key()}\n")
 
     from ..queuer import queue
 
@@ -189,6 +168,7 @@ def init():
     )
 
     settings.update({"version_info": version_info})
+    print(f"[bold]VERSION: {settings['version_info']['commit_short_sha']}")
 
     # Check for online workers to pass to other checks
     online_workers = checks.check_worker_presence()
