@@ -1,0 +1,51 @@
+name: Update Queue ID file
+
+on: push
+
+jobs:
+
+  update-queue-id:
+
+    runs-on: [ubuntu-latest]
+
+    steps:
+
+      - name: Get alliteration char
+        run: |
+          echo "random_char=$(tr -dc 'a-z' < /dev/urandom | dd bs=1 count=1 2>/dev/null)" >> $GITHUB_ENV
+    
+      - name: Generate name
+        id: generate-name
+        uses: cyberbartels/random-pet@main
+        with:
+          alliteration: ${{ env.random_char }}
+
+      - name: Check result
+        shell: bash
+        run: |
+          echo ${{ steps.generate-name.outputs.petname }}
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Write queue-ID file
+        uses: DamianReeves/write-file-action@v1.0
+        with:
+          path: .queue_id
+          contents: |
+            echo "${{ steps.generate-name.outputs.name }}" >> ./Resolve-Proxy-Encoder/.queue_id
+          write-mode: overwrite
+
+      - name: Commit files
+        run: |
+          git config --local user.email "update-queue-id@github.com"
+          git config --local user.name "Update-Queue-ID"
+          git add .
+          git commit -m "ci: Update Queue-ID file"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          branch: ${{ GITHUB_REF_NAME }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: true
