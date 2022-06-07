@@ -240,7 +240,7 @@ def handle_existing_unlinked(
         matching_proxy_files = glob.glob(expected_proxy_path + "*.*")
 
         if not len(matching_proxy_files):
-            logger.info(
+            logger.debug(
                 f"[yellow]No existing proxies matched for '{media['file_name']}'\n"
             )
             return None
