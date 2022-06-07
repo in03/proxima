@@ -59,7 +59,7 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
             "is_latest": None,
             "remote_commit": None,
             "package_commit": pkg_commit,
-            "commit_short_sha": pkg_commit[:7:] if pkg_commit else None,
+            "commit_short_sha": pkg_commit[:4:] if pkg_commit else None,
         }
 
     latest = False
@@ -101,7 +101,7 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
         "is_latest": latest,
         "remote_commit": remote_commit,
         "package_commit": pkg_commit,
-        "commit_short_sha": pkg_commit[:7:] if pkg_commit else None,
+        "commit_short_sha": pkg_commit[:4:] if pkg_commit else None,
     }
 
 

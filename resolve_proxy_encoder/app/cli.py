@@ -166,9 +166,7 @@ def init():
         github_url=settings["app"]["update_check_url"],
         package_name="resolve_proxy_encoder",
     )
-
     settings.update({"version_info": version_info})
-    print(f"[bold]VERSION: {settings['version_info']['commit_short_sha']}")
 
     # Check for online workers to pass to other checks
     online_workers = checks.check_worker_presence()
