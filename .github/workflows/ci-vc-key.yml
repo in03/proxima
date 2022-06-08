@@ -1,4 +1,4 @@
-name: Update Queue ID file
+name: Update Version Constraint Key
 
 #TEST
 
@@ -6,7 +6,7 @@ on: push
 
 jobs:
 
-  update-queue-id:
+  update-vc-key:
 
     runs-on: [ubuntu-latest]
 
@@ -30,20 +30,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Write queue-ID file
+      - name: Write VC key file
         uses: DamianReeves/write-file-action@v1.0
         with:
-          path: .queue_id
+          path: version_constraint_key
           contents: |
-            echo "${{ steps.generate-name.outputs.name }}" >> ./Resolve-Proxy-Encoder/.queue_id
+            echo "${{ steps.generate-name.outputs.name }}"
           write-mode: overwrite
 
       - name: Commit files
         run: |
-          git config --local user.email "update-queue-id@github.com"
-          git config --local user.name "Update-Queue-ID"
+          git config --local user.email "action@github.com"
+          git config --local user.name "Update VC-key Action"
           git add .
-          git commit -m "ci: Update Queue-ID file"
+          git commit -m "refactor: Update version-constraint key"
 
       - name: Push changes
         uses: ad-m/github-push-action@master
