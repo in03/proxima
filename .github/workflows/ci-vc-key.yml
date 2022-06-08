@@ -35,7 +35,7 @@ jobs:
         with:
           path: version_constraint_key
           contents: |
-            echo "${{ steps.generate-name.outputs.petname }}"
+            ${{ steps.generate-name.outputs.petname }}
           write-mode: overwrite
 
       - name: Commit files
