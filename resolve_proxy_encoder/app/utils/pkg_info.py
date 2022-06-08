@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import subprocess
 from distutils.sysconfig import get_python_lib
@@ -9,66 +8,71 @@ from typing import Union
 import pkg_resources
 import requests
 
-from ...settings.manager import SettingsManager
 
-settings = SettingsManager()
-config = settings.user_settings
-
-logger = logging.getLogger(__name__)
-logger.setLevel(settings["app"]["loglevel"])
-
-
-def get_package_current_commit(package_name: str) -> Union[str, None]:
+def get_build_info(package_name: str) -> dict:
     """Attempt to find the current commit SHA from the locally installed package or the local GitHub repo.
 
     Args:
         - package_name (str): The name of the package to get last commit from.
 
     Returns:
-        - latest_commit_id (str): The commit ID.
-        - None: on fail
-
+        - dict:
+            - build: git/release
+            - installed: True/False
+            - version: git commit SHA / release version num
     Raises:
-        - TypeError: Caught by try/except; used to jump between blocks, readability.
+        - TypeError: When no versioning can be retrieved
     """
 
+    # Are we running a pip-installed version built from git?
     try:
-
-        logger.debug("[magenta]Getting commit ID from package dist info.")
 
         dist = pkg_resources.get_distribution(package_name)
         vcs_metadata_file = dist.get_metadata("direct_url.json")
         vcs_metadata = json.loads(vcs_metadata_file)
         package_current_commit = vcs_metadata["vcs_info"]["commit_id"]
 
-        if package_current_commit is None:
-            raise TypeError("Couldn't get package last commit id")
+    # Assume any failure means not an installed git-repo.
+    except KeyError:
+        pass
+    except TypeError:
+        pass
+    except FileNotFoundError:
+        pass
 
-        return package_current_commit.strip()
+    else:
 
-    except:
+        return {
+            "build": "git",
+            "installed": True,
+            "version": package_current_commit.strip(),
+        }
 
-        logger.debug("[magenta]Couldn't get package dist info, assuming git repo.")
-
+    # Are we running a local git-clone version?
     try:
-        logger.debug("[magenta]Getting commit ID from git[/]")
 
         latest_commit_id = subprocess.check_output(
             'git --no-pager log -1 --format="%H"', stderr=subprocess.STDOUT, shell=True
         ).decode()
 
-        if latest_commit_id is None:
-            raise TypeError("Couldn't get git last commit id")
+        return {
+            "build": "git",
+            "installed": False,
+            "version": latest_commit_id.strip(),
+        }
 
-        return latest_commit_id.strip()
+    # Must be running a release install :)
+    # Poetry forces a version, so can rely on the version number existing,
+    # but will not be accurate if using git
+    except subprocess.CalledProcessError as e:
+        pass
 
-    except:
-
-        logger.warning(
-            f"[yellow]Couldn't get package info from git or dist!\n"
-            + "Check properly cloned or installed[/]",
-        )
-        return None
+    release_version = pkg_resources.get_distribution("Resolve-Proxy-Encoder").version
+    return {
+        "build": "release",
+        "installed": True,
+        "version": release_version.strip(),
+    }
 
 
 def get_remote_current_commit(github_url: str) -> Union[str, None]:
@@ -96,14 +100,14 @@ def get_remote_current_commit(github_url: str) -> Union[str, None]:
 
         r = requests.get(api_endpoint, timeout=8)
         if not str(r.status_code).startswith("2"):
-            logger.warning(
+            print(
                 f"[red]Couldn't connect to GitHub API\n[/]"
                 + f"[yellow]HTTP status code:[/] {r.status_code}\n\n"
             )
             return None
 
     except Exception as e:
-        logger.error(f"[red]Couldn't connect to GitHub API:[/]\n{e}")
+        print(f"[red]Couldn't connect to GitHub API:[/]\n{e}")
         return None
 
     results = r.json()

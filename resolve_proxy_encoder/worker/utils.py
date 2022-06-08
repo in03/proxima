@@ -58,5 +58,5 @@ def get_queue():
 
     # NOTE: Can't get short-sha from version-info from settings since it's never persisted to disk
     # and the workers are spawned as new processes! Must get package commit afresh.
-    pkg_commit = pkg_info.get_package_current_commit("resolve_proxy_encoder")
+    pkg_commit = pkg_info.get_build_info("resolve_proxy_encoder")
     return pkg_commit[-4:] if pkg_commit else None
