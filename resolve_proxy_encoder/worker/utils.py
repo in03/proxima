@@ -1,6 +1,7 @@
 import logging
 import platform
 import subprocess
+from pathlib import Path
 
 from ..app.utils import core, pkg_info
 from ..settings.manager import SettingsManager
@@ -56,7 +57,6 @@ def get_queue():
 
         return "celery"
 
-    # NOTE: Can't get short-sha from version-info from settings since it's never persisted to disk
-    # and the workers are spawned as new processes! Must get package commit afresh.
-    pkg_commit = pkg_info.get_build_info("resolve_proxy_encoder")
-    return pkg_commit[-4:] if pkg_commit else None
+    vc_key_file = Path(__file__).parent.parent.parent.joinpath("version_constraint_key")
+    with open(vc_key_file) as file:
+        return file.read()
