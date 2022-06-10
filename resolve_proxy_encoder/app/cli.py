@@ -248,7 +248,7 @@ def config():
     webbrowser.open_new(settings.user_file)
 
 
-# Other
+
 
 
 def main():
