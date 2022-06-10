@@ -30,6 +30,7 @@ mkdocs-material = "^7.3.6"
 black = "^21.12b0"
 isort = "^5.10.1"
 pre-commit = "^2.16.0"
+commitizen = "^2.27.1"
 
 [tool.semantic_release]
 version_variable = [
