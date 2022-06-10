@@ -191,7 +191,7 @@ def main(workers: int = 0):
         raise TypeError("Couldn't get queue!")
 
     print()
-    logger.info(f"[cyan]Consuming from queue: '{queue_name}'\n")
+    logger.info(f"[cyan]Consuming from queue with key: '{queue_name}'\n")
 
     # Don't bother with tips if not prompting
     if workers:
