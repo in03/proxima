@@ -1,4 +1,5 @@
 import logging
+import pathlib
 import time
 from typing import Union
 
@@ -18,14 +19,6 @@ core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
 
 
-def check_worker_presence():
-    """Warn user if no celery workers are available"""
-
-    online_workers = celery_app.control.inspect().active_queues()
-    logger.debug(f"[magenta]Online workers:[/]\n{online_workers}")
-    return online_workers
-
-
 def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
 
     """Compare git origin to local git or package dist for updates
@@ -43,35 +36,47 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
         - none
     """
 
-    pkg_commit = pkg_info.get_package_current_commit(package_name)
-
-    if not settings["app"]["check_for_updates"]:
-
-        return {
-            "is_latest": None,
-            "remote_commit": None,
-            "package_commit": pkg_commit,
-            "commit_short_sha": pkg_commit[:4:] if pkg_commit else None,
-        }
-
     latest = False
 
     spinner = yaspin(
         text="Checking for updates...",
         color="cyan",
     )
-
     spinner.start()
+
+    build_info = pkg_info.get_build_info(package_name)
+    if build_info["build"] != "git":
+
+        spinner.fail("❌ ")
+        logger.warning(
+            "[yellow][bold]WIP:[/bold] Currently unable to check for release updates[/]"
+        )
+        return None
+
+    if not build_info["version"]:
+
+        spinner.fail("❌ ")
+        logger.warning("[yellow]Unable to retrieve package version[/]")
+        return None
+
+    if not settings["app"]["check_for_updates"]:
+
+        return {
+            "is_latest": None,
+            "remote_commit": None,
+            "package_commit": build_info["version"],
+            "commit_short_sha": build_info["version"][:7:],
+        }
 
     remote_commit = pkg_info.get_remote_current_commit(github_url)
 
-    if not remote_commit or not pkg_commit:
+    if not remote_commit or not build_info["version"]:
 
         spinner.fail("❌ ")
         logger.warning("[red]Failed to check for updates[/]")
         return None
 
-    elif remote_commit != pkg_commit:
+    elif remote_commit != build_info["version"]:
 
         spinner.ok("🔼 ")
         logger.warning(
@@ -82,7 +87,7 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
         )
 
         logger.debug(f"Remote: {remote_commit}")
-        logger.debug(f"Current: {pkg_commit}")
+        logger.debug(f"Current: {build_info['version']}")
 
     else:
 
@@ -92,12 +97,15 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
     return {
         "is_latest": latest,
         "remote_commit": remote_commit,
-        "package_commit": pkg_commit,
-        "commit_short_sha": pkg_commit[:4:] if pkg_commit else None,
+        "package_commit": build_info["version"],
+        "commit_short_sha": build_info["version"][:7:],
     }
 
 
-def check_worker_compatibility(online_workers):
+def check_worker_compatibility():
+
+    online_workers = celery_app.control.inspect().active_queues()
+    logger.debug(f"[magenta]Online workers:[/]\n{online_workers}")
 
     if settings["app"]["disable_version_constrain"]:
         logger.warning(
@@ -128,40 +136,45 @@ def check_worker_compatibility(online_workers):
 
         return
 
-    # Get package current commit
+    # Get current version constraint key
     spinner.start()
-    git_full_sha = pkg_info.get_package_current_commit("resolve_proxy_encoder")
 
-    if git_full_sha is None:
+    try:
+        vc_key_file = pathlib.Path(__file__).parent.parent.parent.joinpath(
+            "version_constraint_key"
+        )
+        with open(vc_key_file) as file:
+            queuer_vc_key = file.read()
+
+        if not queuer_vc_key:
+            raise ValueError("VC key file is empty!")
+
+    except ValueError and FileNotFoundError as error:
+
         spinner.fail("❌ ")
         logger.warning(
-            "[yellow]Couldn't get local package git commit SHA\n"
-            + "Any incompatible workers will not be reported.\n"
-            + "[red]CONTINUE AT OWN RISK![/]"
+            "[yellow]Couldn't get version constraint key from file.\n"
+            "Any incompatible workers will not be reported.\n"
+            "[red]CONTINUE AT OWN RISK![/]\n"
+            f"[red]{error}[/]"
         )
-        return
-
-    git_short_sha = git_full_sha[-4:]
+        return None
 
     # Get incompatible workers
     incompatible_workers = []
     compatible_workers = []
     for worker, attributes in online_workers.items():
 
-        routing_key = attributes[0]["routing_key"]
-
-        # Strip whitespace
-        routing_key = "".join(routing_key.split())
-        git_short_sha = "".join(git_short_sha.split())
+        worker_vc_key = attributes[0]["routing_key"]
 
         worker_dict = {
             "name": worker,
             "host": str(worker).split("@")[1],
-            "routing_key": routing_key,
+            "version_constraint_key": worker_vc_key,
         }
 
         # Compare git sha
-        if not routing_key == git_short_sha:
+        if not worker_vc_key == queuer_vc_key:
             incompatible_workers.append(worker_dict)
         else:
             compatible_workers.append(worker_dict)
@@ -190,8 +203,8 @@ def check_worker_compatibility(online_workers):
         logger.warning(
             f"[yellow]Incompatible {worker_plural} detected!\n"
             + f"{len(incompatible_workers)}/{len(online_workers)} workers {multi_incompatible_hosts_warning}are incompatible.\n"
-            + f"Only compatible workers can consume jobs from this queuer.\n"
-            + f"\n[green]To fix, update any incompatible hosts to this git commit:[/]\n'{git_full_sha}':\n"
+            + f"Only compatible workers can consume jobs from this queuer.[/]\n"
+            + f"\nTo fix, update any incompatible hosts to match this build's version constraint key.\n"
             + f"\n[magenta]Incompatible hosts:\n{incompatible_hosts}[/]"
             + "\n"
         )

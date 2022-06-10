@@ -1,0 +1,53 @@
+name: Update Version Constraint Key
+
+#TEST
+
+on: push
+
+jobs:
+
+  update-vc-key:
+
+    runs-on: [ubuntu-latest]
+
+    steps:
+
+      - name: Get alliteration char
+        run: |
+          echo "random_char=$(tr -dc 'a-z' < /dev/urandom | dd bs=1 count=1 2>/dev/null)" >> $GITHUB_ENV
+    
+      - name: Generate name
+        id: generate-name
+        uses: cyberbartels/random-pet@main
+        with:
+          alliteration: ${{ env.random_char }}
+
+      - name: Check result
+        shell: bash
+        run: |
+          echo ${{ steps.generate-name.outputs.petname }}
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Write VC key file
+        uses: DamianReeves/write-file-action@v1.0
+        with:
+          path: version_constraint_key
+          contents: |
+            ${{ steps.generate-name.outputs.petname }}
+          write-mode: overwrite
+
+      - name: Commit files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "Update VC-key Action"
+          git add .
+          git commit -m "refactor: Update version-constraint key"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          branch: ${{ github.ref }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: true

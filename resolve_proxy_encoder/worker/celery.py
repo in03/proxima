@@ -35,8 +35,6 @@ app.conf.update(
     result_serializer="json",  # Keep same as above
     result_extended=True,  # Allows us to get task args after task completion
     acks_late=True,
-    accept_content=["json", "pickle", "application/x-python-serialize"],
-    result_accept_content=["json", "pickle", "application/x-python-serialize"],
     worker_pool_restarts=True,
     worker_send_task_events=True,
     worker_cancel_long_running_tasks_on_connection_loss=True,
