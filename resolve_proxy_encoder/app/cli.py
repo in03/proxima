@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from merge_args import merge_args
 from pyfiglet import Figlet
 from rich import print
 from rich.console import Console
@@ -246,9 +245,6 @@ def config():
     print("\n")
 
     webbrowser.open_new(settings.user_file)
-
-
-
 
 
 def main():
