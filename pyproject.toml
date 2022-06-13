@@ -5,6 +5,8 @@ description = "Transcode source media in DaVinci Resolve using multiple machines
 authors = ["Caleb Trevatt <in03@users.noreply.github.com>"]
 license = "MIT"
 
+include = ["version_constraint_key"]
+
 [tool.poetry.dependencies]
 python = ">=3.6.2,<3.7.*"
 celery = "^5.1.2"
