@@ -1,7 +1,5 @@
 name: Update Version Constraint Key
 
-#TEST
-
 on: push
 
 jobs:
@@ -28,7 +26,7 @@ jobs:
           echo ${{ steps.generate-name.outputs.petname }}
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Write VC key file
         uses: DamianReeves/write-file-action@v1.0
