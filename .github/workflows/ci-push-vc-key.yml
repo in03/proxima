@@ -49,20 +49,3 @@ jobs:
           branch: ${{ github.ref }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           force: true
-
-name: poetry export requirements.txt
-
-on:
-  pull_request:
-  push:
-    branches: [main]
-
-jobs:
-  export-requirements-txt:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - uses: DivideProjects/poetry-export-requirements-action@v1
-      with:
-        without-hashes: true
-        outfile-name: requirements.txt
