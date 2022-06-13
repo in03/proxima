@@ -9,8 +9,26 @@ jobs:
   export-requirements-txt:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Export requirements
     - uses: DivideProjects/poetry-export-requirements-action@v1
       with:
         without-hashes: true
         outfile-name: requirements.txt
+
+    - name: Commit files
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "Export requirements Action"
+        git add .
+        git commit -m "build: Export updated requirements.txt"
+
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        branch: ${{ github.ref }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        force: true
