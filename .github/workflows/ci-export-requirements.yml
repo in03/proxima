@@ -1,9 +1,7 @@
 name: poetry export requirements.txt
 
 on:
-  pull_request:
   push:
-    branches: [main]
 
 jobs:
   export-requirements-txt:
@@ -20,11 +18,9 @@ jobs:
         outfile-name: requirements.txt
 
     - name: Commit files
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "Export requirements Action"
-        git add .
-        git commit -m "build: Export updated requirements.txt"
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: "build: Export updated requirements.txt"
 
     - name: Push changes
       uses: ad-m/github-push-action@master
