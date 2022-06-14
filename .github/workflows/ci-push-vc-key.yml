@@ -10,20 +10,21 @@ jobs:
 
     steps:
 
-      - name: Get alliteration char
+      - name: Install petname
+        shell: bash
         run: |
-          echo "random_char=$(tr -dc 'a-z' < /dev/urandom | dd bs=1 count=1 2>/dev/null)" >> $GITHUB_ENV
-    
+          sudo apt update
+          sudo apt install petname -y
+
       - name: Generate name
-        id: generate-name
-        uses: cyberbartels/random-pet@main
-        with:
-          alliteration: ${{ env.random_char }}
+        shell: bash
+        run: |
+          echo "petname=$(petname --words 3 --complexity 0 --ubuntu)" >> $GITHUB_ENV
 
       - name: Check result
         shell: bash
         run: |
-          echo ${{ steps.generate-name.outputs.petname }}
+          echo New version constraint key: ${{ env.petname }}
 
       - name: Checkout
         uses: actions/checkout@v3
@@ -33,19 +34,10 @@ jobs:
         with:
           path: version_constraint_key
           contents: |
-            ${{ steps.generate-name.outputs.petname }}
+            ${{ env.petname }}
           write-mode: overwrite
 
       - name: Commit files
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "Update VC-key Action"
-          git add .
-          git commit -m "refactor: Update version-constraint key"
-
-      - name: Push changes
-        uses: ad-m/github-push-action@master
+        uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          branch: ${{ github.ref }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          force: true
+          commit_message: "refactor: Update version_constraint_key"
