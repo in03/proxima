@@ -109,14 +109,17 @@ def main():
     jobs = handlers.handle_offline_proxies(jobs)
     logger.debug(f"[magenta]Remaining queuable:[/]\n{[x['file_name'] for x in jobs]}")
 
-    # Remove unhashable PyRemoteObj
-    for job in jobs:
-        del job["media_pool_item"]
-
     print("\n")
 
     # Alert user final queuable. Confirm.
     handlers.handle_final_queuable(jobs)
+
+    # Celery can't accept MPI (pyremoteobj)
+    # Convert to string for later reference
+    jobs_with_mpi = []
+    for job in jobs:
+        jobs_with_mpi.append({str(job["media_pool_item"]): job["media_pool_item"]})
+        job.update({"media_pool_item": str(job["media_pool_item"])})
 
     tasks = add_queuer_data(
         jobs,
@@ -130,14 +133,18 @@ def main():
 
     core.notify(f"Started encoding job '{project_name} - {timeline_name}'")
     print(f"[yellow]Waiting for job to finish. Feel free to minimize.[/]")
-    job_results = wait_jobs(job_group)
+    wait_jobs(job_group)
 
-    # Post-encode link
-    logger.info("[cyan]Linking proxies")
+    # Get media pool items back
+    for job in jobs:
+        for jobm in jobs_with_mpi:
+            mpi_str = job["media_pool_item"]
+            mpi_obj = jobm[mpi_str]
+            job.update({"media_pool_item": mpi_obj})
 
     try:
-        proxies = [x["proxy_media_path"] for x in jobs]
-        link.find_and_link_proxies(r_.project, proxies)
+
+        link.link_proxies_with_mpi(jobs)
         core.app_exit(0)
 
     except Exception as e:

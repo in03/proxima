@@ -198,6 +198,9 @@ def find_and_link_proxies(project, proxy_files) -> Tuple[list, list]:
 
         pprint()
 
+        print(f"Proxy files for link: {proxy_files}")
+        print(f"Source media to link with: {clips}")
+
         # This inter-function nested loop thing is a little dank.
         linked_, failed_ = _link_proxies(proxy_files, clips)
         if len(linked_) + len(failed_) == len(proxy_files):
@@ -226,13 +229,15 @@ def link_proxies_with_mpi(media_list, linkable_types: list = ["Offline", "None"]
     """Iterate through media mutated during script call, attempt to link the source media.
     Return all that are not succesfully linked."""
 
-    pprint(f"[cyan]Linking {len(media_list)} proxies.[/]")
+    logger.info(f"[cyan]Linking {len(media_list)} proxies.[/]")
 
     link_success = []
     link_fail = []
 
     # Iterate through all available proxies
     for media in media_list:
+
+        logger.debug(f"[magenta]Iterating job:[/]\n {media}")
 
         proxy_media_path = media.get("proxy_media_path", None)
         proxy_status = media.get("proxy_status")
@@ -255,7 +260,6 @@ def link_proxies_with_mpi(media_list, linkable_types: list = ["Offline", "None"]
         # Actually link proxies
         if media["media_pool_item"].LinkProxyMedia(proxy_media_path):
 
-            # TODO get this working!
             logger.info(f"[green bold]Linked [/]'{media['clip_name']}'")
             link_success.append(media)
 
