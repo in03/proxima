@@ -248,17 +248,27 @@ def handle_existing_unlinked(
         if len(matching_proxy_files) == 1:
             return os.path.normpath(matching_proxy_files[0])
 
-        # Sort matching proxy files by last modified in descending order
-        matching_proxy_files.sort(key=os.path.getmtime, reverse=True)
+        # Sort matching proxy files by last modified
+        matching_proxy_files = sorted(
+            matching_proxy_files, key=os.path.getmtime, reverse=True
+        )
 
         # Assume we want newest matching file
         final_proxy_path = matching_proxy_files[0]
         final_proxy_filename = os.path.basename(final_proxy_path)
 
-        logger.warning(
-            f"[yellow]Found {len(matching_proxy_files)} existing matches for '{expected_filename}'[/]\n"
-            f"[cyan]Using newest: '{os.path.basename(final_proxy_filename)}'[/]"
-        )
+        if len(matching_proxy_files) > 1:
+
+            if logger.getEffectiveLevel() == logging.DEBUG:
+                logger.warning(
+                    f"[yellow]Found {len(matching_proxy_files)} matches for '{expected_filename}':[/]\n"
+                    f"{matching_proxy_files}"
+                )
+            else:
+                logger.warning(
+                    f"[yellow]Found {len(matching_proxy_files)} existing matches for '{expected_filename}'[/]\n"
+                    f"[cyan]Using newest: '{os.path.basename(final_proxy_filename)}'[/]"
+                )
 
         return os.path.normpath(final_proxy_path)
 
