@@ -268,22 +268,24 @@ def link_proxies_with_mpi(
 
         job.update({"proxy_status": "1280x720"})
 
+        logger.info(f"[cyan]Linking '{job['file_name']}'")
+
         # Actually link proxies
         if job["media_pool_item"].LinkProxyMedia(proxy_media_path):
 
-            logger.info(f"[green bold]Linked '{job['clip_name']}'")
+            logger.info(f"[green]:heavy_check_mark: Linked\n")
             link_success.append(job)
 
         else:
-            logger.error(f"[red]Failed to link '{job['file_path']}'")
+            logger.error(f"[red bold]:x: Failed link'\n")
             link_fail.append(job)
 
     if link_success:
-        logger.info(f"[green]Linked [/]{len(link_success)}")
+        logger.debug(f"[magenta]Total link success:[/] {len(link_success)}")
 
     if link_fail and prompt_rerender:
 
-        logger.error(f"[red]Failed to link [/]{len(link_fail)}")
+        logger.error(f"[red]Total link fail:[/] {len(link_fail)}")
         if Confirm.ask(
             f"[yellow]{len(link_fail)} proxies failed to link. Would you like to re-render them?"
         ):

@@ -51,7 +51,7 @@ def queue_jobs(jobs):
 
     # Queue job
     queued_group = task_group.apply_async()
-    logger.info(f"[cyan]Queued tasks {queued_group}[/]")
+    logger.debug(f"[cyan]Queued tasks {queued_group}[/]")
 
     return queued_group
 
@@ -129,6 +129,8 @@ def main():
         paths_settings=settings["paths"],
     )
 
+    print("\n")
+
     job_group = queue_jobs(tasks)
 
     core.notify(f"Started encoding job '{project_name} - {timeline_name}'")
@@ -144,13 +146,22 @@ def main():
 
     try:
 
-        link.link_proxies_with_mpi(jobs)
-        core.app_exit(0)
+        unlinkable = link.link_proxies_with_mpi(
+            jobs,
+            linkable_types=["None"],
+            prompt_rerender=False,
+        )
+        # We shouldn't have any leftover proxies!
+        assert len(unlinkable) == 0
 
     except Exception as e:
 
         logger.error(f"[red]Couldn't link jobs. Link manually.[/]\nError: {e}")
         core.app_exit(1, -1)
+
+    finally:
+        print("[bold][green]All linked up![/bold] Nothing to queue[/] :link:")
+        core.app_exit(0)
 
 
 if __name__ == "__main__":
