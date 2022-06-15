@@ -306,7 +306,7 @@ def handle_existing_unlinked(
         ):
 
             return link.link_proxies_with_mpi(
-                media_list, linkable_types=["Offline", "None"]
+                media_list, linkable_types=["Offline", "None"], prompt_rerender=True
             )
 
         else:
