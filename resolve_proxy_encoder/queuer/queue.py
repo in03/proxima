@@ -116,22 +116,27 @@ def main():
     handlers.handle_final_queuable(jobs)
 
     # Get output paths for queueable jobs
-    for job in jobs:
+    for x in jobs:
 
-        proxy_output_path = os.path.join(job["proxy_dir"], job["file_name"])
-        job.update({"proxy_media_path": proxy_output_path})
+        proxy_output_path = os.path.join(
+            x["proxy_dir"],
+            os.path.splitext(x["file_name"])[0]
+            + settings["proxy"]["ext"],  # Output ext, differs from source
+        )
+
+        x.update({"proxy_media_path": proxy_output_path})
 
         logger.debug(
             "[magenta]Set proxy_media_path to output path:[/]\n"
-            f"'{job['proxy_media_path']}'\n"
+            f"'{x['proxy_media_path']}'\n"
         )
 
     # Celery can't accept MPI (pyremoteobj)
     # Convert to string for later reference
     jobs_with_mpi = []
-    for job in jobs:
-        jobs_with_mpi.append({str(job["media_pool_item"]): job["media_pool_item"]})
-        job.update({"media_pool_item": str(job["media_pool_item"])})
+    for x in jobs:
+        jobs_with_mpi.append({str(x["media_pool_item"]): x["media_pool_item"]})
+        x.update({"media_pool_item": str(x["media_pool_item"])})
 
     tasks = add_queuer_data(
         jobs,
@@ -150,13 +155,19 @@ def main():
     wait_jobs(job_group)
 
     # Get media pool items back
+    logger.debug(f"[magenta]Restoring media-pool-items[/]")
+
+    # TODO: Improve restore speed
+    # Is there some sort of set/comprehension technique
+    # that is faster than multiple nested for loops here?
+    # labels: enhancement
+
     for x in jobs:
         for y in jobs_with_mpi:
             for k, v in y.items():
+                assert hasattr(v, "GetClipProperty()")
                 if x["media_pool_item"] == k:
                     x.update({"media_pool_item": v})
-
-    logger.debug(f"[magenta]Jobs with restored MPIs:[/]\n{jobs}")
 
     try:
 
@@ -165,7 +176,6 @@ def main():
             linkable_types=["None"],
             prompt_rerender=False,
         )
-        # We shouldn't have any leftover proxies!
         assert len(unlinkable) == 0
 
     except Exception as e:
