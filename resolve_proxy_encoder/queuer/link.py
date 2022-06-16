@@ -248,15 +248,10 @@ def link_proxies_with_mpi(
     # Iterate through all available proxies
     for job in jobs:
 
-        logger.debug(f"[magenta]Iterating job:[/]\n {job}")
+        logger.debug(f"[magenta]Attempting to link job:[/]\n {job}")
 
         if job["proxy_status"] not in linkable_types:
             continue
-
-        if not os.path.exists(job["proxy_media_path"]):
-            logger.error(f"[red]Proxy media not found at given path!")
-            logger.debug(f"[magenta]Full job metadata:{job}")
-            job.update({"proxy_media_path": None})
 
         # TODO: Should probably use MediaInfo here instead of hardcode
 
@@ -266,12 +261,12 @@ def link_proxies_with_mpi(
 
         job.update({"proxy_status": "1280x720"})
 
-        logger.info(f"[cyan]Linking '{job['file_name']}'")
+        logger.info(f"[cyan]:link: '{job['file_name']}'")
 
         # Actually link proxies
         if job["media_pool_item"].LinkProxyMedia(job["proxy_media_path"]):
 
-            logger.info(f"[green]:heavy_check_mark: Linked\n")
+            logger.info(f"[green bold]:heavy_check_mark: Linked\n")
             link_success.append(job)
 
         else:
@@ -300,7 +295,7 @@ def link_proxies_with_mpi(
         x for x in jobs if all([x not in link_success, x not in link_fail])
     ]
 
-    logger.debug(f"[magenta]Remaining unlinked jobs:\n{jobs}")
+    logger.debug(f"[magenta]Remaining unlinked jobs:\n{remaining_jobs}")
     return remaining_jobs
 
 

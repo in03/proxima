@@ -305,8 +305,12 @@ def handle_existing_unlinked(
             "[/bold]Would you like to link them? If not they will be re-rendered."
         ):
 
+            media_list_linkable_now = [
+                x for x in media_list if x["proxy_media_path"] in existing_unlinked
+            ]
+
             return link.link_proxies_with_mpi(
-                media_list,
+                media_list_linkable_now,
                 linkable_types=["Offline", "None"],
                 prompt_rerender=True,
             )

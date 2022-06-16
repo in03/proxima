@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.6
 
 import logging
+import os
 
 from celery import group
 from rich import print as print
@@ -114,6 +115,17 @@ def main():
     # Alert user final queuable. Confirm.
     handlers.handle_final_queuable(jobs)
 
+    # Get output paths for queueable jobs
+    for job in jobs:
+
+        proxy_output_path = os.path.join(job["proxy_dir"], job["file_name"])
+        job.update({"proxy_media_path": proxy_output_path})
+
+        logger.debug(
+            "[magenta]Set proxy_media_path to output path:[/]\n"
+            f"'{job['proxy_media_path']}'\n"
+        )
+
     # Celery can't accept MPI (pyremoteobj)
     # Convert to string for later reference
     jobs_with_mpi = []
@@ -138,11 +150,13 @@ def main():
     wait_jobs(job_group)
 
     # Get media pool items back
-    for job in jobs:
-        for jobm in jobs_with_mpi:
-            mpi_str = job["media_pool_item"]
-            mpi_obj = jobm[mpi_str]
-            job.update({"media_pool_item": mpi_obj})
+    for x in jobs:
+        for y in jobs_with_mpi:
+            for k, v in y.items():
+                if x["media_pool_item"] == k:
+                    x.update({"media_pool_item": v})
+
+    logger.debug(f"[magenta]Jobs with restored MPIs:[/]\n{jobs}")
 
     try:
 
