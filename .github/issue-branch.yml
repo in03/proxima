@@ -1,0 +1,21 @@
+mode: chatops
+branchname: full
+gitSafeReplacementChar: '-'
+autoCloseIssue: true
+openDraftPR: true
+copyIssueDescriptionToPR: true
+copyIssueLabelsToPR: true
+copyIssueAssigneeToPR: true
+copyIssueProjectsToPR: true
+copyIssueMilestoneToPR: true
+branches:
+  - label: feature
+    prefix: feature/
+  - label: enhancement
+    prefix: feature/
+  - label: bug
+    prefix: bugfix/
+  - label: question
+    skip: true
+  - label: '*'
+    prefix: issues/
