@@ -250,14 +250,12 @@ def link_proxies_with_mpi(
 
         logger.debug(f"[magenta]Iterating job:[/]\n {job}")
 
-        proxy_media_path = job.get("proxy_media_path", None)
-        proxy_status = job.get("proxy_status")
-
-        if proxy_status not in linkable_types:
+        if job["proxy_status"] not in linkable_types:
             continue
 
-        if not os.path.exists(proxy_media_path):
-            logger.error(f"[red]Proxy media not found at '{proxy_media_path}'")
+        if not os.path.exists(job["proxy_media_path"]):
+            logger.error(f"[red]Proxy media not found at given path!")
+            logger.debug(f"[magenta]Full job metadata:{job}")
             job.update({"proxy_media_path": None})
 
         # TODO: Should probably use MediaInfo here instead of hardcode
@@ -271,7 +269,7 @@ def link_proxies_with_mpi(
         logger.info(f"[cyan]Linking '{job['file_name']}'")
 
         # Actually link proxies
-        if job["media_pool_item"].LinkProxyMedia(proxy_media_path):
+        if job["media_pool_item"].LinkProxyMedia(job["proxy_media_path"]):
 
             logger.info(f"[green]:heavy_check_mark: Linked\n")
             link_success.append(job)
