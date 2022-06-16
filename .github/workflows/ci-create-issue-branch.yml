@@ -7,21 +7,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - name: Create Issue Branch
-        uses: robvanderleek/create-issue-branch@main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          branchname: full
-          gitSafeReplacementChar: '-'
-          autoCloseIssue: true
-          openDraftPR: true
-          copyIssueDescriptionToPR: true
-          copyIssueLabelsToPR: true
-          copyIssueAssigneeToPR: true
-          copyIssueProjectsToPR: true
-          copyIssueMilestoneToPR: true
-          branches:
+    - name: Create Issue Branch
+      uses: robvanderleek/create-issue-branch@main
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        branchname: full
+        gitSafeReplacementChar: '-'
+        autoCloseIssue: true
+        openDraftPR: true
+        copyIssueDescriptionToPR: true
+        copyIssueLabelsToPR: true
+        copyIssueAssigneeToPR: true
+        copyIssueProjectsToPR: true
+        copyIssueMilestoneToPR: true
+        branches:
           - label: feature
             prefix: feature/
           - label: enhancement
@@ -31,5 +31,5 @@ jobs:
           - label: '*'
             prefix: issues/
 
-      - name: Echo branch name
-        run: echo ${{ steps.Create_Issue_Branch.outputs.branchName }}
+    - name: Echo branch name
+      run: echo ${{ steps.Create_Issue_Branch.outputs.branchName }}
