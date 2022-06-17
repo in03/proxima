@@ -157,17 +157,11 @@ def main():
     # Get media pool items back
     logger.debug(f"[magenta]Restoring media-pool-items[/]")
 
-    # TODO: Improve restore speed
-    # Is there some sort of set/comprehension technique
-    # that is faster than multiple nested for loops here?
-    # labels: enhancement
-
-    for x in jobs:
-        for y in jobs_with_mpi:
-            for k, v in y.items():
-                assert hasattr(v, "GetClipProperty()")
-                if x["media_pool_item"] == k:
-                    x.update({"media_pool_item": v})
+    for x, y in zip(jobs, jobs_with_mpi):
+        for k, v in y.items():
+            assert hasattr(v, "GetClipProperty()")
+            if x["media_pool_item"] == k:
+                x.update({"media_pool_item": v})
 
     try:
 
