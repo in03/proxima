@@ -308,7 +308,8 @@ def handle_existing_unlinked(
             print()
 
             media_list_linkable_now = []
-            for x in media_list:
+            # Reverse list to prevent skipping iterations
+            for x in reversed(media_list):
                 if x["proxy_media_path"] in existing_unlinked:
                     media_list_linkable_now.append(x)
                     media_list.remove(x)
