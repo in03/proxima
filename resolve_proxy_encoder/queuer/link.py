@@ -270,12 +270,16 @@ def link_proxies_with_mpi(
         logger.info(f"[cyan]:link: '{job['file_name']}'")
 
         # Actually link proxies
-        if job["media_pool_item"].LinkProxyMedia(job["proxy_media_path"]):
+        try:
+
+            linked = job["media_pool_item"].LinkProxyMedia(job["proxy_media_path"])
+            assert linked
 
             logger.info(f"[green bold]:heavy_check_mark: Linked\n")
             link_success.append(job)
 
-        else:
+        except TypeError:
+            # MPI will be 'NoneType' if project change
             logger.error(f"[red bold]:x: Failed link'\n")
             link_fail.append(job)
 
