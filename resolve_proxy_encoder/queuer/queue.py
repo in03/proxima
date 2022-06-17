@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.6
 
 import logging
+import os
 
 from celery import group
 from rich import print as print
@@ -51,7 +52,7 @@ def queue_jobs(jobs):
 
     # Queue job
     queued_group = task_group.apply_async()
-    logger.info(f"[cyan]Queued tasks {queued_group}[/]")
+    logger.debug(f"[cyan]Queued tasks {queued_group}[/]")
 
     return queued_group
 
@@ -109,14 +110,33 @@ def main():
     jobs = handlers.handle_offline_proxies(jobs)
     logger.debug(f"[magenta]Remaining queuable:[/]\n{[x['file_name'] for x in jobs]}")
 
-    # Remove unhashable PyRemoteObj
-    for job in jobs:
-        del job["media_pool_item"]
-
     print("\n")
 
     # Alert user final queuable. Confirm.
     handlers.handle_final_queuable(jobs)
+
+    # Get output paths for queueable jobs
+    for x in jobs:
+
+        proxy_output_path = os.path.join(
+            x["proxy_dir"],
+            os.path.splitext(x["file_name"])[0]
+            + settings["proxy"]["ext"],  # Output ext, differs from source
+        )
+
+        x.update({"proxy_media_path": proxy_output_path})
+
+        logger.debug(
+            "[magenta]Set proxy_media_path to output path:[/]\n"
+            f"'{x['proxy_media_path']}'\n"
+        )
+
+    # Celery can't accept MPI (pyremoteobj)
+    # Convert to string for later reference
+    jobs_with_mpi = []
+    for x in jobs:
+        jobs_with_mpi.append({str(x["media_pool_item"]): x["media_pool_item"]})
+        x.update({"media_pool_item": str(x["media_pool_item"])})
 
     tasks = add_queuer_data(
         jobs,
@@ -126,24 +146,40 @@ def main():
         paths_settings=settings["paths"],
     )
 
+    print("\n")
+
     job_group = queue_jobs(tasks)
 
     core.notify(f"Started encoding job '{project_name} - {timeline_name}'")
     print(f"[yellow]Waiting for job to finish. Feel free to minimize.[/]")
-    job_results = wait_jobs(job_group)
+    wait_jobs(job_group)
 
-    # Post-encode link
-    logger.info("[cyan]Linking proxies")
+    # Get media pool items back
+    logger.debug(f"[magenta]Restoring media-pool-items[/]")
+
+    for x, y in zip(jobs, jobs_with_mpi):
+        for k, v in y.items():
+            assert hasattr(v, "GetClipProperty()")
+            if x["media_pool_item"] == k:
+                x.update({"media_pool_item": v})
 
     try:
-        proxies = [x["proxy_media_path"] for x in jobs]
-        link.find_and_link_proxies(r_.project, proxies)
-        core.app_exit(0)
+
+        unlinkable = link.link_proxies_with_mpi(
+            jobs,
+            linkable_types=["None"],
+            prompt_rerender=False,
+        )
+        assert len(unlinkable) == 0
 
     except Exception as e:
 
         logger.error(f"[red]Couldn't link jobs. Link manually.[/]\nError: {e}")
         core.app_exit(1, -1)
+
+    finally:
+        print("[bold][green]All linked up![/bold] Nothing to queue[/] :link:")
+        core.app_exit(0)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ from rich.prompt import Confirm, Prompt
 
 from ..app.utils import core
 from ..settings.manager import SettingsManager
+from .resolve import ResolveObjects
 
 console = Console()
 settings = SettingsManager()
@@ -128,21 +129,21 @@ def _link_proxies(proxy_files, clips):
                 break
 
             try:
-                media_pool_item = clip.GetMediaPoolItem()
-                path = media_pool_item.GetClipProperty("File Path")
+                mpi = clip.GetMediaPoolItem()
+                path = mpi.GetClipProperty("File Path")
                 filename = os.path.splitext(os.path.basename(path))[0]
 
                 if proxy_name.lower() in filename.lower():
 
                     logger.info("[cyan]Found match:\n" f"- '{proxy}' \n- '{path}'")
 
-                    if media_pool_item.LinkProxyMedia(proxy):
+                    if mpi.LinkProxyMedia(proxy):
 
                         logger.info(f"[green]:heavy_check_mark: Linked \n")
                         linked_proxies.append(proxy)
 
                     else:
-                        logger.error(f"[red bold]:x: Failed link.\n")
+                        logger.error(f"[red bold]:x: Failed to link {mpi.GetName()}\n")
                         failed_proxies.append(proxy)
 
                     break
@@ -189,8 +190,8 @@ def find_and_link_proxies(project, proxy_files) -> Tuple[list, list]:
             pprint("\n")
 
         unlinked_proxies = [x for x in proxy_files if x not in linked]
-        logger.info(f"Unlinked source count: {len(unlinked_source)}")
-        logger.info(f"Unlinked proxies count: {len(unlinked_proxies)}")
+        logger.info(f"[cyan]Unlinked source count:[/] {len(unlinked_source)}")
+        logger.info(f"[cyan]Unlinked proxies count:[/] {len(unlinked_proxies)}")
 
         if not unlinked_proxies:
             logger.info(f"[green]No more proxies to link[/]")
@@ -200,12 +201,13 @@ def find_and_link_proxies(project, proxy_files) -> Tuple[list, list]:
 
         # This inter-function nested loop thing is a little dank.
         linked_, failed_ = _link_proxies(proxy_files, clips)
-        if len(linked_) + len(failed_) == len(proxy_files):
-            break
 
         # Update lists for each timeline
         linked.extend(linked_)
         failed.extend(failed_)
+
+        if len(linked_) + len(failed_) == len(proxy_files):
+            break
 
     if linked:
 
@@ -222,27 +224,38 @@ def find_and_link_proxies(project, proxy_files) -> Tuple[list, list]:
     return linked, failed
 
 
-def link_proxies_with_mpi(media_list, linkable_types: list = ["Offline", "None"]):
-    """Iterate through media mutated during script call, attempt to link the source media.
-    Return all that are not succesfully linked."""
+def link_proxies_with_mpi(
+    jobs,
+    linkable_types: list = ["Offline", "None"],
+    prompt_reiterate=True,
+    prompt_rerender=False,
+):
+    """
+    Iterate through media list and link each finished proxy with its media pool item.
 
-    pprint(f"[cyan]Linking {len(media_list)} proxies.[/]")
+    Args:
+        jobs (list of dicts): queuable jobs with project, timeline and setting metadata
+        linkable_types (list, optional): List of job `proxy_status` values to attempt link on. Defaults to ["Offline", "None"].
+        prompt_reiterate(bool, optional): If any links fail, prompt the user to fetch media pool items again by reiterating timelines.
+        If prompt_rerender is enabled, prompt_reiterate runs first.
+        prompt_rerender (bool, optional): If any links fail, prompt the user to re-queue them. Defaults to False.
+
+    Returns:
+        remaining_jobs (list of cits): the remaining queuable jobs that haven't been linked
+    """
+
+    logger.info(f"[cyan]Linking {len(jobs)} proxies[/]")
 
     link_success = []
     link_fail = []
 
     # Iterate through all available proxies
-    for media in media_list:
+    for job in jobs:
 
-        proxy_media_path = media.get("proxy_media_path", None)
-        proxy_status = media.get("proxy_status")
+        logger.debug(f"[magenta]Attempting to link job:[/]\n {job}")
 
-        if proxy_status not in linkable_types:
+        if job["proxy_status"] not in linkable_types:
             continue
-
-        if not os.path.exists(proxy_media_path):
-            logger.error(f"[red]Proxy media not found at '{proxy_media_path}'")
-            media.update({"proxy_media_path": None})
 
         # TODO: Should probably use MediaInfo here instead of hardcode
 
@@ -250,49 +263,67 @@ def link_proxies_with_mpi(media_list, linkable_types: list = ["Offline", "None"]
         # To get the proper resolution, we'd have to get the original file resolution.
         # labels: enhancement
 
-        media.update({"proxy_status": "1280x720"})
+        job.update({"proxy_status": "1280x720"})
+
+        logger.info(f"[cyan]:link: '{job['file_name']}'")
 
         # Actually link proxies
-        if media["media_pool_item"].LinkProxyMedia(proxy_media_path):
+        try:
 
-            # TODO get this working!
-            logger.info(f"[green bold]Linked [/]'{media['clip_name']}'")
-            link_success.append(media)
+            linked = job["media_pool_item"].LinkProxyMedia(job["proxy_media_path"])
+            assert linked
 
-        else:
-            logger.error(f"[red]Failed to link [/]'{media['file_path']}'")
-            link_fail.append(media)
+            logger.info(f"[green bold]:heavy_check_mark: Linked\n")
+            link_success.append(job)
+
+        except TypeError:
+            # MPI will be 'NoneType' if project change
+            logger.error(f"[red bold]:x: Failed to link {job['file_name']}'\n")
+            link_fail.append(job)
 
     if link_success:
-        pprint(f"[green]Succeeded linking: [/]{len(link_success)}")
+        logger.debug(f"[magenta]Total link success:[/] {len(link_success)}")
 
     if link_fail:
-        pprint(f"[red]Failed linking: [/]{len(link_fail)}")
+        logger.error(f"[red]{len(link_fail)} proxies failed to link!")
 
-    pprint()
+        if prompt_reiterate:
 
-    pprint(f"[green]{len(link_success)} proxy(s) successfully linked.")
+            if Confirm.ask(
+                f"\n[yellow]If you've changed projects since queuing you'll have to run\n"
+                "a comprehensive search. Make sure you're in the correct project!\n[bold]Run now?"
+            ):
+                r_ = ResolveObjects()
+                linked_, _ = find_and_link_proxies(
+                    r_.project, [x["proxy_media_path"] for x in jobs]
+                )
 
-    if link_fail:
+                # Remove from link_fail if retry success
+                for x in reversed(link_fail):
+                    if x["proxy_media_path"] in linked_:
+                        link_fail.remove(x)
 
-        if Confirm.ask(
-            f"[yellow]{len(link_fail)} proxies failed to link. Would you like to re-render them?"
-        ):
-            # Remove offline status, redefine media list
-            for x in media_list:
-                if x in link_fail:
-                    x["proxy_status"] = "None"
+                # Move to link_success to prevent requeuing
+                link_success.extend([x for x in jobs if x not in linked_])
 
-            media_list = [x for x in media_list if x not in link_success]
-            return media_list
+        if link_fail and prompt_rerender:
+
+            if Confirm.ask(
+                f"[yellow]Couldn't link proxies. Would you like to re-render them?"
+            ):
+                # Remove offline status, redefine media list
+                for x in jobs:
+                    if x in reversed(link_fail):
+                        x["proxy_status"] = "None"
+                        link_fail.remove(x)
 
     # Queue only those that remain
-    media_list = [
-        x for x in media_list if all([x not in link_success, x not in link_fail])
+    remaining_jobs = [
+        x for x in jobs if all([x not in link_success, x not in link_fail])
     ]
 
-    logger.debug(f"[magenta]Remaining unlinked media: {media_list}")
-    return media_list
+    logger.debug(f"[magenta]Remaining unlinked jobs:\n{remaining_jobs}")
+    return remaining_jobs
 
 
 def main():
@@ -310,7 +341,7 @@ def main():
         proxy_files = filter_files(
             all_files, settings["filters"]["extension_whitelist"]
         )
-        linked = find_and_link_proxies(r_.project, proxy_files)
+        linked, failed = find_and_link_proxies(r_.project, proxy_files)
 
     except Exception as e:
         pprint("ERROR - " + str(e))
