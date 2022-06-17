@@ -11,6 +11,7 @@ from rich.prompt import Confirm, Prompt
 
 from ..app.utils import core
 from ..settings.manager import SettingsManager
+from .resolve import ResolveObjects
 
 console = Console()
 settings = SettingsManager()
@@ -226,7 +227,10 @@ def find_and_link_proxies(project, proxy_files) -> Tuple[list, list]:
 
 
 def link_proxies_with_mpi(
-    jobs, linkable_types: list = ["Offline", "None"], prompt_rerender=False
+    jobs,
+    linkable_types: list = ["Offline", "None"],
+    prompt_reiterate=True,
+    prompt_rerender=False,
 ):
     """
     Iterate through media list and link each finished proxy with its media pool item.
@@ -234,6 +238,8 @@ def link_proxies_with_mpi(
     Args:
         jobs (list of dicts): queuable jobs with project, timeline and setting metadata
         linkable_types (list, optional): List of job `proxy_status` values to attempt link on. Defaults to ["Offline", "None"].
+        prompt_reiterate(bool, optional): If any links fail, prompt the user to fetch media pool items again by reiterating timelines.
+        If prompt_rerender is enabled, prompt_reiterate runs first.
         prompt_rerender (bool, optional): If any links fail, prompt the user to re-queue them. Defaults to False.
 
     Returns:
@@ -276,19 +282,34 @@ def link_proxies_with_mpi(
     if link_success:
         logger.debug(f"[magenta]Total link success:[/] {len(link_success)}")
 
-    if link_fail and prompt_rerender:
+    if link_fail:
+        logger.error(f"[red]{len(link_fail)} proxies failed to link!")
 
-        logger.error(f"[red]Total link fail:[/] {len(link_fail)}")
-        if Confirm.ask(
-            f"[yellow]{len(link_fail)} proxies failed to link. Would you like to re-render them?"
-        ):
-            # Remove offline status, redefine media list
-            for x in jobs:
-                if x in link_fail:
-                    x["proxy_status"] = "None"
+        if prompt_reiterate:
 
-            remaining_jobs = [x for x in jobs if x not in link_success]
-            return remaining_jobs
+            if Confirm.ask(
+                f"[yellow]If you've changed projects since queuing\n"
+                "you'll have to run a comprehensive search. Run now?"
+            ):
+
+                r_ = ResolveObjects()
+                find_and_link_proxies(r_.project, [x["proxy_media_path"] for x in jobs])
+
+                remaining_jobs = [x for x in jobs if x not in link_success]
+                return remaining_jobs
+
+        if prompt_rerender:
+
+            if Confirm.ask(
+                f"[yellow]Couldn't link proxies. Would you like to re-render them?"
+            ):
+                # Remove offline status, redefine media list
+                for x in jobs:
+                    if x in link_fail:
+                        x["proxy_status"] = "None"
+
+                remaining_jobs = [x for x in jobs if x not in link_success]
+                return remaining_jobs
 
     # Queue only those that remain
     remaining_jobs = [
