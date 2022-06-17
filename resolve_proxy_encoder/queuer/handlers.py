@@ -8,8 +8,6 @@ from typing import Union
 from rich import print as pprint
 from rich.prompt import Confirm, Prompt
 
-from resolve_proxy_encoder.queuer.resolve import ResolveObjects
-
 from ..app.utils import core
 from ..settings.manager import SettingsManager
 from ..worker.celery import app
@@ -296,8 +294,6 @@ def handle_existing_unlinked(
         global SOME_ACTION_TAKEN
         SOME_ACTION_TAKEN = True
 
-        r_ = ResolveObjects()
-
         logger.info(f"[yellow]Found {len(existing_unlinked)} unlinked[/]")
 
         if Confirm.ask(
@@ -307,15 +303,11 @@ def handle_existing_unlinked(
 
             print()
 
-            media_list_linkable_now = []
-            # Reverse list to prevent skipping iterations
-            for x in reversed(media_list):
-                if x["proxy_media_path"] in existing_unlinked:
-                    media_list_linkable_now.append(x)
-                    media_list.remove(x)
-
+            media_list = [
+                x for x in media_list if x["proxy_media_path"] not in existing_unlinked
+            ]
             remaining = link.link_proxies_with_mpi(
-                media_list_linkable_now,
+                media_list,
                 linkable_types=["Offline", "None"],
                 prompt_rerender=True,
             )
