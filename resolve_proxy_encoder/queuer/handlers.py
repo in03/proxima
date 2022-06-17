@@ -303,11 +303,15 @@ def handle_existing_unlinked(
 
             print()
 
-            media_list = [
-                x for x in media_list if x["proxy_media_path"] not in existing_unlinked
-            ]
+            linkable_now = []
+            # Reverse to prevent skipping elements
+            for x in reversed(media_list):
+                if x["proxy_media_path"] in existing_unlinked:
+                    linkable_now.append(x)
+                    media_list.remove(x)
+
             remaining = link.link_proxies_with_mpi(
-                media_list,
+                linkable_now,
                 linkable_types=["Offline", "None"],
                 prompt_rerender=True,
             )
