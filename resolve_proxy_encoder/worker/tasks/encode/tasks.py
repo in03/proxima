@@ -100,7 +100,7 @@ def encode_proxy(self, job):
     logger.info("[yellow]Encoding...[/]")
 
     try:
-        process.run(logfile=logfile_path)
+        process.run(task_id=self.request.id, logfile=logfile_path)
 
     except Exception as e:
         logger.exception(f"[red] :warning: Couldn't encode proxy.[/]\n{e}")

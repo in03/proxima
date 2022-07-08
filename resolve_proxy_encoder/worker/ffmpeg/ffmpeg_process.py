@@ -16,6 +16,7 @@ from ffmpeg import probe
 
 from ...app.utils import core
 from ...settings.manager import SettingsManager
+from ...app.broker import TaskTracker
 
 settings = SettingsManager()
 
@@ -33,6 +34,8 @@ class FfmpegProcess:
         index_of_filepath = command.index("-i") + 1
         self._filepath = command[index_of_filepath]
         self._output_filepath = command[-1]
+
+        self.task_tracker = TaskTracker(settings)
 
         dirname = os.path.dirname(self._output_filepath)
 
@@ -54,10 +57,11 @@ class FfmpegProcess:
             # pipe:1 sends the progress to stdout. See https://stackoverflow.com/a/54386052/13231825
             self._ffmpeg_args += ["-progress", "pipe:1", "-nostats"]
 
-    def run(self, logfile):
+    def run(self, task_id=None, logfile=None):
 
-        with open(logfile, "w") as f:
-            pass
+        if logfile:
+            with open(logfile, "w") as f:
+                pass
 
         if "-y" not in self._ffmpeg_args and self._output_filepath in self._dir_files:
             if not Confirm.ask(
@@ -68,10 +72,12 @@ class FfmpegProcess:
         self._ffmpeg_args += ["-y"]
 
         if self._can_get_duration:
-            with open(logfile, "a") as f:
-                process = subprocess.Popen(
-                    self._ffmpeg_args, stdout=subprocess.PIPE, stderr=f
-                )
+
+            if logfile:
+                with open(logfile, "a") as f:
+                    process = subprocess.Popen(
+                        self._ffmpeg_args, stdout=subprocess.PIPE, stderr=f
+                    )
 
             console = Console(record=True)
 
@@ -119,10 +125,18 @@ class FfmpegProcess:
                                 seconds_processed - previous_seconds_processed
                             )
 
+                            # Update worker stdout progress bar
                             progress_bar.update(
                                 task_id=encoding_task,
                                 advance=seconds_increase,
                             )
+
+                            # Update redis task progress
+                            if task_id:
+
+                                self.task_tracker.set_task_progress(
+                                    task_id, seconds_processed, self._duration_secs
+                                )
 
                             previous_seconds_processed = seconds_processed
 
