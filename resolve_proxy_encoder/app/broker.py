@@ -46,7 +46,7 @@ class TaskTracker:
         )  # See https://github.com/redis/redis-py#publish--subscribe
         self.subscription = p
 
-    def get_progress(self, group_id):
+    def get_data(self, group_id):
 
         message = self.subscription.get_message()
         if message:
@@ -60,8 +60,11 @@ class TaskTracker:
 
                 if group_id == remote_group_id:
                     self.matched_task_ids.append(data["task_id"])
+                    return {"task-event": data}
 
             # If one of the tasks we queued, print
             if message["pattern"] == "task-progress*":
                 if data["task_id"] in self.matched_task_ids:
-                    return data
+                    return {"task-progress": data}
+
+        return None

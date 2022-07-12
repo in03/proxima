@@ -7,7 +7,7 @@ import time
 
 from celery import group
 from rich import print
-from rich.console import Console
+from rich.console import Console, Group
 from rich.progress import (
     BarColumn,
     Progress,
@@ -15,6 +15,8 @@ from rich.progress import (
     TextColumn,
     TimeRemainingColumn,
 )
+from rich.panel import Panel
+from rich.live import Live
 
 from ..app.broker import TaskTracker
 from ..app.utils import core
@@ -51,23 +53,6 @@ def add_queuer_data(jobs, **kwargs):
     return jobs
 
 
-def get_queuer_progress_bar(console):
-
-    return Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        # TextColumn("[progress.completed]{task.completed:>3.0f} of"),
-        # TextColumn("[progress.total]{task.total:>3.0f} secs"),
-        TextColumn("[yellow]ETA:[/]"),
-        TimeRemainingColumn(),
-        # TimeElapsedColumn(),
-        console=console,
-        transient=True,
-    )
-
-
 def queue_tasks(tasks):
     """Block until all queued tasks finish, notify results."""
 
@@ -86,45 +71,105 @@ def queue_tasks(tasks):
     results = task_group.apply_async()
     logger.debug(f"[cyan]Queued tasks {results}[/]")
 
-    return tt, results
+    return tt, callable_tasks, results
 
 
-def report_progress(tt, results):
+def report_progress(tt, callable_tasks, results):
 
-    # Get progress bar
-    console = Console(record=True)
-    progress_bar_main = get_queuer_progress_bar(console)
+    # Definie various progress bar formats
+    task_progress = Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TextColumn("[yellow]ETA:[/]"),
+        TimeRemainingColumn(),
+    )
+
+    overall_progress = Progress(
+        TextColumn("{task.description}"),
+        BarColumn(),
+        TextColumn("({task.fields[last_finished]} - "),
+        TextColumn("{task.completed} of {task.total})"),
+    )
+
+    # Create group of renderables
+    progress_group = Group(
+        task_progress,
+        overall_progress,
+    )
+
+    overall_id = overall_progress.add_task(
+        description="[bold green]Total task progress",
+        last_finished="",
+        total=len(callable_tasks),
+    )
 
     # If not finished, report progress
     mini_bars = {}
-    while not results.ready():
 
-        progress_bar_main.start()
-        progress = tt.get_progress(group_id=results.id)
-        # Let's not poll the server too hard
-        time.sleep(0.001)
+    with Live(progress_group):
 
-        if progress:
+        while True:
 
-            # is this progress data from a new task?
-            if progress["task_id"] not in mini_bars:
+            # Update overall progress
+            tt_data = tt.get_data(group_id=results.id)
+            if tt_data:
 
-                # Define new mini bar for new task
-                mini_bar = progress_bar_main.add_task(
-                    description=f"[yellow]Encoding {progress['task_id']}[/]",
-                    total=100,
-                )
-                # Add it to the list of existing mini bars
-                mini_bars.update({progress["task_id"]: mini_bar})
+                task_event = tt_data.get("task-event")
 
-            # Update the correct mini bar
-            progress_bar_main.update(
-                task_id=mini_bars[progress["task_id"]],
-                advance=progress["seconds_increase"],
-                total=progress["duration_seconds"],
-            )
+                if task_event:
+                    if task_event["status"] != "STARTED":
 
-    progress_bar_main.stop()
+                        # Get last finished filename
+                        file_name = ""
+                        for x in task_event["args"]:
+                            file_name = x.get("clip_name")
+                            if file_name:
+                                break
+
+                        overall_progress.update(
+                            task_id=overall_id,
+                            last_finished=file_name,
+                            advance=1,
+                        )
+
+                    # print(task_event)
+                    # print(f"Matched tasks: {tt.matched_task_ids}")
+
+                # Get task progress
+                progress = tt_data.get("task-progress")
+
+                if progress:
+
+                    # is this progress data from a new task?
+                    if progress["task_id"] not in mini_bars:
+
+                        # Define new mini bar for new task
+                        mini_bar = task_progress.add_task(
+                            description=f"[yellow]Encoding {progress['task_id']}[/]",
+                            total=100,
+                        )
+                        # Add it to the list of existing mini bars
+                        mini_bars.update({progress["task_id"]: mini_bar})
+
+                    # Update the correct mini bar
+                    task_progress.update(
+                        task_id=mini_bars[progress["task_id"]],
+                        advance=progress["seconds_increase"],
+                        total=progress["duration_seconds"],
+                    )
+
+            # Bit of delay between loops to be nice to the server
+            time.sleep(0.001)
+
+            # If we put this in the while loop,
+            # we miss the last task success event
+            if results.ready():
+                for v in mini_bars.values():
+                    task_progress.update(task_id=v, visible=False)
+                overall_progress.update(task_id=overall_id, visible=False)
+                break
 
     # Notify failed
     if results.failed():
@@ -216,8 +261,9 @@ def main():
     core.notify(f"Started encoding job '{project_name} - {timeline_name}'")
     # print(f"[yellow]Waiting for job to finish. Feel free to minimize.[/]")
 
-    task_tracker, results = queue_tasks(tasks)
-    final_results = report_progress(task_tracker, results)
+    # Queue tasks to workers and track task progress
+    task_tracker, callable_tasks, results = queue_tasks(tasks)
+    final_results = report_progress(task_tracker, callable_tasks, results)
 
     # Get media pool items back
     logger.debug(f"[magenta]Restoring media-pool-items[/]")
