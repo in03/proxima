@@ -1,11 +1,22 @@
 #!/usr/bin/env python3.6
 
+import json
 import logging
 import os
+import time
 
 from celery import group
-from rich import print as print
+from rich import print
+from rich.console import Console
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeRemainingColumn,
+)
 
+from ..app.broker import TaskTracker
 from ..app.utils import core
 from ..settings.manager import SettingsManager
 from ..worker.tasks.encode.tasks import encode_proxy
@@ -40,30 +51,83 @@ def add_queuer_data(jobs, **kwargs):
     return jobs
 
 
-def queue_jobs(jobs):
-    """Send jobs as a Celery 'group'"""
+def get_queuer_progress_bar(console):
 
-    # Wrap job objects in Celery task function
-    callable_tasks = [encode_proxy.s(x) for x in jobs]
+    return Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        # TextColumn("[progress.completed]{task.completed:>3.0f} of"),
+        # TextColumn("[progress.total]{task.total:>3.0f} secs"),
+        TextColumn("[yellow]ETA:[/]"),
+        TimeRemainingColumn(),
+        # TimeElapsedColumn(),
+        console=console,
+        transient=True,
+    )
+
+
+def queue_tasks(tasks):
+    """Block until all queued tasks finish, notify results."""
+
+    # Wrap task objects in Celery task function
+    callable_tasks = [encode_proxy.s(x) for x in tasks]
     logger.debug(f"[magenta]callable_tasks:[/] {callable_tasks}")
 
-    # Create job group to retrieve job results as batch
+    # Create task group to retrieve job results as batch
     task_group = group(callable_tasks)
 
+    # Subscribe to progress channel
+    tt = TaskTracker(settings)
+    tt.subscribe()
+
     # Queue job
-    queued_group = task_group.apply_async()
-    logger.debug(f"[cyan]Queued tasks {queued_group}[/]")
+    results = task_group.apply_async()
+    logger.debug(f"[cyan]Queued tasks {results}[/]")
 
-    return queued_group
+    return tt, results
 
 
-def wait_jobs(jobs):
-    """Block until all queued jobs finish, notify results."""
+def report_progress(tt, results):
 
-    result = jobs.join()
+    # Get progress bar
+    console = Console(record=True)
+    progress_bar_main = get_queuer_progress_bar(console)
+
+    # If not finished, report progress
+    mini_bars = {}
+    while not results.ready():
+
+        progress_bar_main.start()
+        progress = tt.get_progress(group_id=results.id)
+        # Let's not poll the server too hard
+        time.sleep(0.001)
+
+        if progress:
+
+            # is this progress data from a new task?
+            if progress["task_id"] not in mini_bars:
+
+                # Define new mini bar for new task
+                mini_bar = progress_bar_main.add_task(
+                    description=f"[yellow]Encoding {progress['task_id']}[/]",
+                    total=100,
+                )
+                # Add it to the list of existing mini bars
+                mini_bars.update({progress["task_id"]: mini_bar})
+
+            # Update the correct mini bar
+            progress_bar_main.update(
+                task_id=mini_bars[progress["task_id"]],
+                advance=progress["seconds_increase"],
+                total=progress["duration_seconds"],
+            )
+
+    progress_bar_main.stop()
 
     # Notify failed
-    if jobs.failed():
+    if results.failed():
         fail_message = (
             "Some videos failed to encode!"
             + f"Check flower dashboard at address: {settings['celery']['flower_url']}."
@@ -72,13 +136,14 @@ def wait_jobs(jobs):
         core.notify(fail_message)
 
     # Notify complete
-    complete_message = f"Completed encoding {jobs.completed_count()} proxies."
+    complete_message = f"Completed encoding {results.completed_count()} proxies."
     print(f"[green]{complete_message}[/]")
     print("\n")
 
     core.notify(complete_message)
 
-    return result
+    joined_results = results.join()
+    return joined_results
 
 
 def main():
@@ -148,11 +213,11 @@ def main():
 
     print("\n")
 
-    job_group = queue_jobs(tasks)
-
     core.notify(f"Started encoding job '{project_name} - {timeline_name}'")
-    print(f"[yellow]Waiting for job to finish. Feel free to minimize.[/]")
-    wait_jobs(job_group)
+    # print(f"[yellow]Waiting for job to finish. Feel free to minimize.[/]")
+
+    task_tracker, results = queue_tasks(tasks)
+    final_results = report_progress(task_tracker, results)
 
     # Get media pool items back
     logger.debug(f"[magenta]Restoring media-pool-items[/]")

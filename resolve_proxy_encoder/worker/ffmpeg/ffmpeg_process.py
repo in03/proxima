@@ -47,7 +47,7 @@ class FfmpegProcess:
         self._can_get_duration = True
 
         try:
-            self._duration_secs = float(probe(self._filepath)["format"]["duration"])
+            self._duration_seconds = float(probe(self._filepath)["format"]["duration"])
         except Exception:
             self._can_get_duration = False
 
@@ -59,10 +59,29 @@ class FfmpegProcess:
 
     def run(self, task_id=None, logfile=None):
 
+        # Get progress bar
+        console = Console(record=True)
+        progress_bar = Progress(
+            TextColumn("                   "),  # Spacer to match logging
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            # TextColumn("[progress.completed]{task.completed:>3.0f} of"),
+            # TextColumn("[progress.total]{task.total:>3.0f} secs"),
+            TextColumn("[yellow]ETA:[/]"),
+            TimeRemainingColumn(),
+            # TimeElapsedColumn(),
+            console=console,
+            transient=True,
+        )
+
+        # Open the logfile for logging if enabled
         if logfile:
             with open(logfile, "w") as f:
                 pass
 
+        # Catch the ffmpeg overwrite prompt
         if "-y" not in self._ffmpeg_args and self._output_filepath in self._dir_files:
             if not Confirm.ask(
                 f"[yellow]'{self._output_filepath}' already exists. Overwrite?[/]"
@@ -71,38 +90,32 @@ class FfmpegProcess:
 
         self._ffmpeg_args += ["-y"]
 
+        # If we sucessfully got file duration, start the process
         if self._can_get_duration:
+
+            process = None
 
             if logfile:
                 with open(logfile, "a") as f:
                     process = subprocess.Popen(
                         self._ffmpeg_args, stdout=subprocess.PIPE, stderr=f
                     )
+        else:
+            logger.critical(f"[red]Couldn't get duration of '{self._filepath}'[/]")
+            core.app_exit(1, -1)
 
-            console = Console(record=True)
+        previous_seconds_processed = 0
+        seconds_processed = 0
 
-            progress_bar = Progress(
-                TextColumn("                   "),  # Spacer to match logging
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                # TextColumn("[progress.completed]{task.completed:>3.0f} of"),
-                # TextColumn("[progress.total]{task.total:>3.0f} secs"),
-                TextColumn("[yellow]ETA:[/]"),
-                TimeRemainingColumn(),
-                # TimeElapsedColumn(),
-                console=console,
-                transient=True,
-            )
+        encoding_task = progress_bar.add_task(
+            description="[yellow]Encode[/]",
+            total=self._duration_seconds,
+        )
 
-            previous_seconds_processed = 0
-            seconds_processed = 0
-
-            encoding_task = progress_bar.add_task(
-                description="[yellow]Encode[/]",
-                total=self._duration_secs,
-            )
+        # Don't continue if we don't have the process
+        if not process:
+            logger.critical(f"Couldn't start ffmpeg process!")
+            core.app_exit(1, -1)
 
         try:
 
@@ -135,7 +148,7 @@ class FfmpegProcess:
                             if task_id:
 
                                 self.task_tracker.set_task_progress(
-                                    task_id, seconds_processed, self._duration_secs
+                                    task_id, seconds_increase, self._duration_seconds
                                 )
 
                             previous_seconds_processed = seconds_processed
