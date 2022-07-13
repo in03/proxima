@@ -57,7 +57,7 @@ class FfmpegProcess:
             # pipe:1 sends the progress to stdout. See https://stackoverflow.com/a/54386052/13231825
             self._ffmpeg_args += ["-progress", "pipe:1", "-nostats"]
 
-    def run(self, task_id=None, logfile=None):
+    def run(self, task_id=None, worker_name=None, logfile=None):
 
         # Get progress bar
         console = Console(record=True)
@@ -148,7 +148,13 @@ class FfmpegProcess:
                             if task_id:
 
                                 self.task_tracker.set_task_progress(
-                                    task_id, seconds_increase, self._duration_seconds
+                                    task_id=task_id,
+                                    worker_name=worker_name,
+                                    output_filename=os.path.basename(
+                                        self._output_filepath
+                                    ),
+                                    seconds_increase=seconds_increase,
+                                    duration_seconds=self._duration_seconds,
                                 )
 
                             previous_seconds_processed = seconds_processed

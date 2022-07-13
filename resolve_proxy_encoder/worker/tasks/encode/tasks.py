@@ -25,6 +25,7 @@ logger.setLevel(settings["worker"]["loglevel"])
     track_started=True,
     prefetch_limit=1,
     soft_time_limit=60,
+    reject_on_worker_lost=True,
     queue=utils.get_queue(),
 )
 def encode_proxy(self, job):
@@ -100,7 +101,11 @@ def encode_proxy(self, job):
     logger.info("[yellow]Encoding...[/]")
 
     try:
-        process.run(task_id=self.request.id, logfile=logfile_path)
+        process.run(
+            task_id=self.request.id,
+            worker_name="",
+            logfile=logfile_path,
+        )
 
     except Exception as e:
         logger.exception(f"[red] :warning: Couldn't encode proxy.[/]\n{e}")

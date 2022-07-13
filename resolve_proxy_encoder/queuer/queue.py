@@ -22,6 +22,7 @@ from ..app.broker import TaskTracker
 from ..app.utils import core
 from ..settings.manager import SettingsManager
 from ..worker.tasks.encode.tasks import encode_proxy
+from ..worker.celery import app as celery_app
 from . import handlers, link, resolve
 
 settings = SettingsManager()
@@ -76,9 +77,15 @@ def queue_tasks(tasks):
 
 def report_progress(tt, callable_tasks, results):
 
-    # Definie various progress bar formats
-    task_progress = Progress(
+    # Define various progress bar formats
+    worker_spinner = Progress(
         SpinnerColumn(),
+        # TODO: Get individual worker names instead of host machines
+        # labels: enhancement
+        TextColumn("[cyan]Using {task.fields[worker_count]} host-machines"),
+    )
+
+    task_progress = Progress(
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
         TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
@@ -87,59 +94,59 @@ def report_progress(tt, callable_tasks, results):
     )
 
     overall_progress = Progress(
-        TextColumn("{task.description}"),
+        TextColumn("[cyan]{task.description}"),
+        # TODO: Fix bar column not lining up with task_progress bars
+        # Maybe we can make a spacer text column for all the bars and truncate long filenames with [...]?
+        # labels: bug
         BarColumn(),
-        TextColumn("({task.fields[last_finished]} - "),
-        TextColumn("{task.completed} of {task.total})"),
+        TextColumn("[cyan]({task.completed} of {task.total})"),
     )
 
     # Create group of renderables
     progress_group = Group(
+        worker_spinner,
         task_progress,
         overall_progress,
     )
 
     overall_id = overall_progress.add_task(
-        description="[bold green]Total task progress",
-        last_finished="",
+        description="Total task progress",
         total=len(callable_tasks),
+    )
+
+    worker_id = worker_spinner.add_task(
+        description="Active worker count", worker_count=0
     )
 
     # If not finished, report progress
     mini_bars = {}
+    active_workers = []
+    completed_tasks = 0
 
     with Live(progress_group):
 
-        while True:
+        while not results.ready():
 
             # Update overall progress
             tt_data = tt.get_data(group_id=results.id)
             if tt_data:
 
+                # Update overall task progress
                 task_event = tt_data.get("task-event")
-
                 if task_event:
-                    if task_event["status"] != "STARTED":
 
-                        # Get last finished filename
-                        file_name = ""
-                        for x in task_event["args"]:
-                            file_name = x.get("clip_name")
-                            if file_name:
-                                break
+                    # Finished a task, update completed
+                    if task_event["status"] in ["SUCCESS", "FAILURE"]:
 
+                        completed_tasks = completed_tasks + 1
                         overall_progress.update(
                             task_id=overall_id,
-                            last_finished=file_name,
-                            advance=1,
+                            completed=completed_tasks,
+                            total=len(callable_tasks),
                         )
 
-                    # print(task_event)
-                    # print(f"Matched tasks: {tt.matched_task_ids}")
-
-                # Get task progress
+                # If we've got task progress update
                 progress = tt_data.get("task-progress")
-
                 if progress:
 
                     # is this progress data from a new task?
@@ -147,11 +154,21 @@ def report_progress(tt, callable_tasks, results):
 
                         # Define new mini bar for new task
                         mini_bar = task_progress.add_task(
-                            description=f"[yellow]Encoding {progress['task_id']}[/]",
+                            description=f"[yellow bold]Encoding '{progress['output_filename']}'[/]",
                             total=100,
                         )
                         # Add it to the list of existing mini bars
                         mini_bars.update({progress["task_id"]: mini_bar})
+
+                    # Add new workers
+                    if progress["worker_name"] not in active_workers:
+                        active_workers.append(progress["worker_name"])
+
+                        # Update worker spinner
+                        worker_spinner.update(
+                            task_id=worker_id,
+                            worker_count=len(active_workers),
+                        )
 
                     # Update the correct mini bar
                     task_progress.update(
@@ -160,16 +177,11 @@ def report_progress(tt, callable_tasks, results):
                         total=progress["duration_seconds"],
                     )
 
-            # Bit of delay between loops to be nice to the server
-            time.sleep(0.001)
-
-            # If we put this in the while loop,
-            # we miss the last task success event
-            if results.ready():
-                for v in mini_bars.values():
-                    task_progress.update(task_id=v, visible=False)
-                overall_progress.update(task_id=overall_id, visible=False)
-                break
+        # Hide the progress bars after finish
+        worker_spinner.update(task_id=worker_id, visible=False)
+        overall_progress.update(task_id=overall_id, visible=False)
+        for v in mini_bars.values():
+            task_progress.update(task_id=v, visible=False)
 
     # Notify failed
     if results.failed():

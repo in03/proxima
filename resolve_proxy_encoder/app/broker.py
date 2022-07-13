@@ -24,7 +24,9 @@ class TaskTracker:
             host=self._host, port=self._port, db=self._db, decode_responses=True
         )
 
-    def set_task_progress(self, task_id, seconds_increase, duration_seconds):
+    def set_task_progress(
+        self, task_id, worker_name, seconds_increase, duration_seconds, output_filename
+    ):
 
         channel = f"{self.channel_pattern}:{task_id}"
         self.r.publish(
@@ -32,8 +34,10 @@ class TaskTracker:
             json.dumps(
                 {
                     "task_id": task_id,
+                    "worker_name": worker_name,
                     "seconds_increase": seconds_increase,
                     "duration_seconds": duration_seconds,
+                    "output_filename": output_filename,
                 }
             ),
         )
