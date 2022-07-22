@@ -163,13 +163,13 @@ def report_progress(tt, callable_tasks, results):
                     # Get up-to-date average
                     prog_list = list(progress_vals.values())
                     prog_sum = sum(prog_list)
-                    avg_progress = (prog_sum / callable_tasks)
+                    avg_progress = prog_sum / callable_tasks
 
                     # Update average progress bar
                     average_progress.update(
-                            task_id=average_id,
-                            completed=avg_progress,
-                        )
+                        task_id=average_id,
+                        completed=avg_progress,
+                    )
 
                     # Add new workers
                     if progress["worker_name"] not in active_workers:
