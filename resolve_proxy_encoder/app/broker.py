@@ -25,7 +25,7 @@ class TaskTracker:
         )
 
     def set_task_progress(
-        self, task_id, worker_name, seconds_increase, duration_seconds, output_filename
+        self, task_id, worker_name, advance, completed, total, output_filename
     ):
 
         channel = f"{self.channel_pattern}:{task_id}"
@@ -35,8 +35,9 @@ class TaskTracker:
                 {
                     "task_id": task_id,
                     "worker_name": worker_name,
-                    "seconds_increase": seconds_increase,
-                    "duration_seconds": duration_seconds,
+                    "advance": advance,
+                    "completed": completed,
+                    "total": total,
                     "output_filename": output_filename,
                 }
             ),

@@ -85,7 +85,7 @@ def report_progress(tt, callable_tasks, results):
         TextColumn("[cyan]Using {task.fields[worker_count]} host-machines"),
     )
 
-    task_progress = Progress(
+    average_progress = Progress(
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
         TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
@@ -105,8 +105,17 @@ def report_progress(tt, callable_tasks, results):
     # Create group of renderables
     progress_group = Group(
         worker_spinner,
-        task_progress,
+        average_progress,
         overall_progress,
+    )
+
+    worker_id = worker_spinner.add_task(
+        description="Active worker count", worker_count=0
+    )
+
+    average_id = average_progress.add_task(
+        description="Average task progress",
+        total=len(callable_tasks),
     )
 
     overall_id = overall_progress.add_task(
@@ -114,12 +123,8 @@ def report_progress(tt, callable_tasks, results):
         total=len(callable_tasks),
     )
 
-    worker_id = worker_spinner.add_task(
-        description="Active worker count", worker_count=0
-    )
-
     # If not finished, report progress
-    mini_bars = {}
+    progress_vals = {}
     active_workers = []
     completed_tasks = 0
 
@@ -145,20 +150,26 @@ def report_progress(tt, callable_tasks, results):
                             total=len(callable_tasks),
                         )
 
-                # If we've got task progress update
+                # TODO: Check this works!
+                # Also, rework the redis pub/sub to use callbacks
+
+                # If we've got task progress, update
                 progress = tt_data.get("task-progress")
                 if progress:
 
-                    # is this progress data from a new task?
-                    if progress["task_id"] not in mini_bars:
+                    # Update progress for correct task
+                    progress_vals.update({progress.task_id: progress.seconds_processed})
 
-                        # Define new mini bar for new task
-                        mini_bar = task_progress.add_task(
-                            description=f"[yellow bold]Encoding '{progress['output_filename']}'[/]",
-                            total=100,
+                    # Get up-to-date average
+                    prog_list = list(progress_vals.values())
+                    prog_sum = sum(prog_list)
+                    avg_progress = (prog_sum / callable_tasks)
+
+                    # Update average progress bar
+                    average_progress.update(
+                            task_id=average_id,
+                            completed=avg_progress,
                         )
-                        # Add it to the list of existing mini bars
-                        mini_bars.update({progress["task_id"]: mini_bar})
 
                     # Add new workers
                     if progress["worker_name"] not in active_workers:
@@ -170,18 +181,10 @@ def report_progress(tt, callable_tasks, results):
                             worker_count=len(active_workers),
                         )
 
-                    # Update the correct mini bar
-                    task_progress.update(
-                        task_id=mini_bars[progress["task_id"]],
-                        advance=progress["seconds_increase"],
-                        total=progress["duration_seconds"],
-                    )
-
         # Hide the progress bars after finish
         worker_spinner.update(task_id=worker_id, visible=False)
-        overall_progress.update(task_id=overall_id, visible=False)
-        for v in mini_bars.values():
-            task_progress.update(task_id=v, visible=False)
+        # average_progress.update(task_id=average_id, visible=False)
+        # overall_progress.update(task_id=overall_id, visible=False)
 
     # Notify failed
     if results.failed():

@@ -153,8 +153,9 @@ class FfmpegProcess:
                                     output_filename=os.path.basename(
                                         self._output_filepath
                                     ),
-                                    seconds_increase=seconds_increase,
-                                    duration_seconds=self._duration_seconds,
+                                    advance=seconds_increase,
+                                    completed=seconds_processed,
+                                    total=self._duration_seconds,
                                 )
 
                             previous_seconds_processed = seconds_processed
