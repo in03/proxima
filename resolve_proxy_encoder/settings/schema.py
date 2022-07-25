@@ -53,9 +53,6 @@ settings_schema = Schema(
         "worker": {
             "loglevel": lambda s: s
             in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-            "concurrency": int,
-            "prefetch_multiplier": int,
-            "max_tasks_per_child": int,
             "terminal_args": list,
             "celery_args": list,
         },

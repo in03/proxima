@@ -37,8 +37,5 @@ broker:
 
 worker:
   loglevel: INFO
-  concurrency: 1
-  prefetch_multiplier: 1
-  max_tasks_per_child: 1
   terminal_args: [] # use alternate shell? Recommend windows terminal ("wt") on Windows.
   celery_args: [-l, INFO, -P, solo, --without-mingle, --without-gossip]
