@@ -69,7 +69,7 @@ def queue_tasks(tasks):
     tt.subscribe()
 
     # Queue job
-    results = task_group.apply_async()
+    results = task_group.apply_async(expires=settings['celery']['job_expires'])
     logger.debug(f"[cyan]Queued tasks {results}[/]")
 
     return tt, callable_tasks, results

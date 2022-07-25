@@ -49,7 +49,9 @@ settings_schema = Schema(
             "broker_url": str,
             "flower_url": str,
             "result_backend": str,
+            "job_expires": int,
             "result_expires": int,
+            
         },
         "worker": {
             "loglevel": lambda s: s

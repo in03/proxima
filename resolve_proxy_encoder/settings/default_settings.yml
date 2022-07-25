@@ -35,7 +35,8 @@ celery:
   broker_url:  redis://192.168.1.19:6379/0
   flower_url: http://192.168.1.19:5555
   result_backend: redis://192.168.1.19:6379/0
-  result_expires: 60 # 10 mins
+  job_expires: 3600 # 1 hour
+  result_expires: 86400 # 1 day
 
 worker:
   loglevel: INFO
