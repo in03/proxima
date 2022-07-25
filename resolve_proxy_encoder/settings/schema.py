@@ -44,11 +44,8 @@ settings_schema = Schema(
             ),
             "framerate_whitelist": And(list, lambda l: all(map(lambda s: int(s), l))),
         },
-        "celery": {
-            "host_address": str,
-            "broker_url": str,
-            "flower_url": str,
-            "result_backend": str,
+        "broker": {
+            "url": str,
             "job_expires": int,
             "result_expires": int,
             
