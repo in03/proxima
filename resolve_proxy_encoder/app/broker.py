@@ -15,7 +15,7 @@ class TaskTracker:
         self.channel_pattern = "task-progress"
         self.matched_task_ids = []
 
-        broker_url = str(settings["celery"]["broker_url"])
+        broker_url = str(settings["broker"]["url"])
         self._host = str(broker_url.split("redis://")[1].split(":")[0])
         self._port = int(broker_url.split(":")[2].split("/")[0])
         self._db = int(broker_url[-1::])

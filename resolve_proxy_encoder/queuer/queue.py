@@ -69,7 +69,7 @@ def queue_tasks(tasks):
     tt.subscribe()
 
     # Queue job
-    results = task_group.apply_async(expires=settings['celery']['job_expires'])
+    results = task_group.apply_async(expires=settings['broker']['job_expires'])
     logger.debug(f"[cyan]Queued tasks {results}[/]")
 
     return tt, callable_tasks, results
@@ -188,10 +188,7 @@ def report_progress(tt, callable_tasks, results):
 
     # Notify failed
     if results.failed():
-        fail_message = (
-            "Some videos failed to encode!"
-            + f"Check flower dashboard at address: {settings['celery']['flower_url']}."
-        )
+        fail_message = ("Some videos failed to encode!")
         print("[red]fail_message[/]")
         core.notify(fail_message)
 

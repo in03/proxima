@@ -210,27 +210,6 @@ def purge():
 
 
 @cli_app.command()
-def mon():
-    """
-    Launch Flower Celery monitor in default browser new window
-    """
-
-    # Init
-    from ..settings.manager import SettingsManager
-
-    settings = SettingsManager()
-    # End init
-
-    print("\n")
-    console.rule(
-        f"[green bold]Start Flower Celery monitor[/] :sunflower:", align="left"
-    )
-    print("\n")
-
-    webbrowser.open_new(settings["celery"]["flower_url"])
-
-
-@cli_app.command()
 def config():
     """Open user settings configuration file for editing"""
 
