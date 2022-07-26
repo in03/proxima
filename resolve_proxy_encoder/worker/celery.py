@@ -24,8 +24,15 @@ app.autodiscover_tasks(
     ]
 )
 
+# Remap terms
+broker_settings = {
+    "broker_url": settings["broker"]["url"],
+    "result_backend": settings["broker"]["url"],
+    "result_expires": settings["broker"]["result_expires"], 
+}
+
 try:
-    app.config_from_object(settings["broker"])
+    app.config_from_object(broker_settings)
 except Exception as e:
     logger.error(f"[red]Couldn't load settings from YAML![/]\n{e}")
 
