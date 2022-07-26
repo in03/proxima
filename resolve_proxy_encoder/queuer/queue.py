@@ -1,24 +1,13 @@
 #!/usr/bin/env python3.6
 
-import json
 import logging
 import os
-import time
 
 from celery import group
 from rich import print
-from rich.console import Console, Group
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeRemainingColumn,
-)
-from rich.panel import Panel
-from rich.live import Live
 
-from ..app.broker import TaskTracker
+
+from ..app import broker
 from ..app.utils import core
 from ..settings.manager import SettingsManager
 from ..worker.tasks.encode.tasks import encode_proxy
@@ -63,145 +52,16 @@ def queue_tasks(tasks):
 
     # Create task group to retrieve job results as batch
     task_group = group(callable_tasks)
-
-    # Subscribe to progress channel
-    tt = TaskTracker(settings)
-    tt.subscribe()
+    
+    progress = broker.ProgressTracker(settings, callable_tasks)
 
     # Queue job
     results = task_group.apply_async(expires=settings['broker']['job_expires'])
     logger.debug(f"[cyan]Queued tasks {results}[/]")
 
-    return tt, callable_tasks, results
-
-
-def report_progress(tt, callable_tasks, results):
-
-    # Define various progress bar formats
-    worker_spinner = Progress(
-        SpinnerColumn(),
-        # TODO: Get individual worker names instead of host machines
-        # labels: enhancement
-        TextColumn("[cyan]Using {task.fields[worker_count]} host-machines"),
-    )
-
-    average_progress = Progress(
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        TextColumn("[yellow]ETA:[/]"),
-        TimeRemainingColumn(),
-    )
-
-    overall_progress = Progress(
-        TextColumn("[cyan]{task.description}"),
-        # TODO: Fix bar column not lining up with task_progress bars
-        # Maybe we can make a spacer text column for all the bars and truncate long filenames with [...]?
-        # labels: bug
-        BarColumn(),
-        TextColumn("[cyan]({task.completed} of {task.total})"),
-    )
-
-    # Create group of renderables
-    progress_group = Group(
-        worker_spinner,
-        average_progress,
-        overall_progress,
-    )
-
-    worker_id = worker_spinner.add_task(
-        description="Active worker count", worker_count=0
-    )
-
-    average_id = average_progress.add_task(
-        description="Average task progress",
-        total=len(callable_tasks),
-    )
-
-    overall_id = overall_progress.add_task(
-        description="Total task progress",
-        total=len(callable_tasks),
-    )
-
-    # If not finished, report progress
-    progress_vals = {}
-    active_workers = []
-    completed_tasks = 0
-
-    with Live(progress_group):
-
-        while not results.ready():
-
-            # Update overall progress
-            tt_data = tt.get_data(group_id=results.id)
-            if tt_data:
-
-                # Update overall task progress
-                task_event = tt_data.get("task-event")
-                if task_event:
-
-                    # Finished a task, update completed
-                    if task_event["status"] in ["SUCCESS", "FAILURE"]:
-
-                        completed_tasks = completed_tasks + 1
-                        overall_progress.update(
-                            task_id=overall_id,
-                            completed=completed_tasks,
-                            total=len(callable_tasks),
-                        )
-
-                # TODO: Check this works!
-                # Also, rework the redis pub/sub to use callbacks
-
-                # If we've got task progress, update
-                progress = tt_data.get("task-progress")
-                if progress:
-
-                    # Update progress for correct task
-                    progress_vals.update({progress.task_id: progress.seconds_processed})
-
-                    # Get up-to-date average
-                    prog_list = list(progress_vals.values())
-                    prog_sum = sum(prog_list)
-                    avg_progress = (prog_sum / callable_tasks)
-
-                    # Update average progress bar
-                    average_progress.update(
-                            task_id=average_id,
-                            completed=avg_progress,
-                        )
-
-                    # Add new workers
-                    if progress["worker_name"] not in active_workers:
-                        active_workers.append(progress["worker_name"])
-
-                        # Update worker spinner
-                        worker_spinner.update(
-                            task_id=worker_id,
-                            worker_count=len(active_workers),
-                        )
-
-        # Hide the progress bars after finish
-        worker_spinner.update(task_id=worker_id, visible=False)
-        # average_progress.update(task_id=average_id, visible=False)
-        # overall_progress.update(task_id=overall_id, visible=False)
-
-    # Notify failed
-    if results.failed():
-        fail_message = ("Some videos failed to encode!")
-        print("[red]fail_message[/]")
-        core.notify(fail_message)
-
-    # Notify complete
-    complete_message = f"Completed encoding {results.completed_count()} proxies."
-    print(f"[green]{complete_message}[/]")
-    print("\n")
-
-    core.notify(complete_message)
-
-    joined_results = results.join()
-    return joined_results
-
+    # report progress is blocking!
+    final_results = progress.report_progress(results)
+    return final_results
 
 def main():
     """Main function"""
@@ -274,8 +134,22 @@ def main():
     # print(f"[yellow]Waiting for job to finish. Feel free to minimize.[/]")
 
     # Queue tasks to workers and track task progress
-    task_tracker, callable_tasks, results = queue_tasks(tasks)
-    final_results = report_progress(task_tracker, callable_tasks, results)
+    results = queue_tasks(tasks)
+    
+    if results.failed():
+        fail_message = ("Some videos failed to encode!")
+        print("[red]fail_message[/]")
+        core.notify(fail_message)
+
+    # Notify complete
+    complete_message = f"Completed encoding {results.completed_count()} proxies."
+    print(f"[green]{complete_message}[/]")
+    print("\n")
+
+    core.notify(complete_message)
+
+    _ = results.join() # Must always call join, or results don't expire
+
 
     # Get media pool items back
     logger.debug(f"[magenta]Restoring media-pool-items[/]")

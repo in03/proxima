@@ -4,13 +4,12 @@ import logging
 import subprocess
 import webbrowser
 from pathlib import Path
-from typing import Optional, Union, List
+from typing import Optional, List
 
 import typer
 from pyfiglet import Figlet
 from rich import print
 from rich.console import Console
-from rich.prompt import Confirm
 from rich.rule import Rule
 
 from .utils import pkg_info
@@ -207,11 +206,11 @@ def purge():
 # This command could serve as a gateway to all Celery commands,
 # but typer parses 'f' in 'broker purge -f' as an undefined option
 @cli_app.command()
-def broker(command: List[str]):
-    """Report all tasks from Celery."""
+def celery(command: List[str]):
+    """Pass celery commands to Celery buried within venv"""
 
     print("\n")
-    console.rule(f"[red bold]Report all tasks :memo:", align="left")
+    console.rule(f"[cyan bold]Celery command :memo:", align="left")
     print("\n")
 
     subprocess.run(["celery", "-A", "resolve_proxy_encoder.worker", command])

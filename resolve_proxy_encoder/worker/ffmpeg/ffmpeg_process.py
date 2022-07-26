@@ -1,6 +1,7 @@
 import logging
 import os
 import subprocess
+import json
 
 from rich.console import Console
 from rich.progress import (
@@ -16,7 +17,7 @@ from ffmpeg import probe
 
 from ...app.utils import core
 from ...settings.manager import SettingsManager
-from ...app.broker import TaskTracker
+from ...app.broker import PubSub
 
 settings = SettingsManager()
 
@@ -35,7 +36,7 @@ class FfmpegProcess:
         self._filepath = command[index_of_filepath]
         self._output_filepath = command[-1]
 
-        self.task_tracker = TaskTracker(settings)
+        self.pubsub = PubSub(settings)
 
         dirname = os.path.dirname(self._output_filepath)
 
@@ -56,6 +57,14 @@ class FfmpegProcess:
         if self._can_get_duration:
             # pipe:1 sends the progress to stdout. See https://stackoverflow.com/a/54386052/13231825
             self._ffmpeg_args += ["-progress", "pipe:1", "-nostats"]
+
+    def update_progress(self, **kwargs):
+        
+        channel = f"task-progress:{kwargs['task_id']}"
+        self.pubsub.publish(
+            channel,
+            **kwargs,
+        )
 
     def run(self, task_id=None, worker_name=None, logfile=None):
 
@@ -144,10 +153,10 @@ class FfmpegProcess:
                                 advance=seconds_increase,
                             )
 
-                            # Update redis task progress
+                            # Publish task progress
                             if task_id:
 
-                                self.task_tracker.set_task_progress(
+                                self.update_progress(
                                     task_id=task_id,
                                     worker_name=worker_name,
                                     output_filename=os.path.basename(
