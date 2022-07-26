@@ -52,16 +52,17 @@ def queue_tasks(tasks):
 
     # Create task group to retrieve job results as batch
     task_group = group(callable_tasks)
-    
+
     progress = broker.ProgressTracker(settings, callable_tasks)
 
     # Queue job
-    results = task_group.apply_async(expires=settings['broker']['job_expires'])
+    results = task_group.apply_async(expires=settings["broker"]["job_expires"])
     logger.debug(f"[cyan]Queued tasks {results}[/]")
 
     # report progress is blocking!
     final_results = progress.report_progress(results)
     return final_results
+
 
 def main():
     """Main function"""
@@ -135,9 +136,9 @@ def main():
 
     # Queue tasks to workers and track task progress
     results = queue_tasks(tasks)
-    
+
     if results.failed():
-        fail_message = ("Some videos failed to encode!")
+        fail_message = "Some videos failed to encode!"
         print("[red]fail_message[/]")
         core.notify(fail_message)
 
@@ -148,8 +149,7 @@ def main():
 
     core.notify(complete_message)
 
-    _ = results.join() # Must always call join, or results don't expire
-
+    _ = results.join()  # Must always call join, or results don't expire
 
     # Get media pool items back
     logger.debug(f"[magenta]Restoring media-pool-items[/]")

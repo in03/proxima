@@ -59,7 +59,7 @@ class FfmpegProcess:
             self._ffmpeg_args += ["-progress", "pipe:1", "-nostats"]
 
     def update_progress(self, **kwargs):
-        
+
         channel = f"task-progress:{kwargs['task_id']}"
         self.pubsub.publish(
             channel,

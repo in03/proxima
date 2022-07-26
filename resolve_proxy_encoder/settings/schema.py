@@ -48,7 +48,6 @@ settings_schema = Schema(
             "url": str,
             "job_expires": int,
             "result_expires": int,
-            
         },
         "worker": {
             "loglevel": lambda s: s

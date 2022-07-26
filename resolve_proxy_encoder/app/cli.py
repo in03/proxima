@@ -200,7 +200,10 @@ def purge():
     console.rule(f"[red bold]Purge all tasks! :fire:", align="left")
     print("\n")
 
-    subprocess.run(["celery", "-A", "resolve_proxy_encoder.worker", "purge", "-Q", VC_KEY])
+    subprocess.run(
+        ["celery", "-A", "resolve_proxy_encoder.worker", "purge", "-Q", VC_KEY]
+    )
+
 
 # TODO: Would be great if we can pass options unparsed by Typer
 # This command could serve as a gateway to all Celery commands,
@@ -214,7 +217,7 @@ def celery(command: List[str]):
     print("\n")
 
     subprocess.run(["celery", "-A", "resolve_proxy_encoder.worker", command])
-    
+
 
 @cli_app.command()
 def config():

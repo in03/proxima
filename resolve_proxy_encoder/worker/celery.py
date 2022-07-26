@@ -28,7 +28,7 @@ app.autodiscover_tasks(
 broker_settings = {
     "broker_url": settings["broker"]["url"],
     "result_backend": settings["broker"]["url"],
-    "result_expires": settings["broker"]["result_expires"], 
+    "result_expires": settings["broker"]["result_expires"],
 }
 
 try:
@@ -47,7 +47,6 @@ app.conf.update(
     worker_cancel_long_running_tasks_on_connection_loss=True,
     worker_hijack_root_logger=False,
     worker_redirect_stdouts=False,
-
     # 1 task per process at a time
     worker_concurrency=1,
     worker_prefetch_multiplier=1,
