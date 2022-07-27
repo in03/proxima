@@ -43,7 +43,7 @@ app.conf.update(
     result_extended=True,  # Allows us to get task args after task completion
     acks_late=True,
     worker_pool_restarts=True,
-    worker_send_task_events=True,
+    # worker_send_task_events=True,
     worker_cancel_long_running_tasks_on_connection_loss=True,
     worker_hijack_root_logger=False,
     worker_redirect_stdouts=False,
