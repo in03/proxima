@@ -68,7 +68,7 @@ class ProgressTracker:
         self.progress_latest_data = {}
         self.prog_percentages = {}
         self.last_task_average = 0
-        
+
         self.active_workers = []
         self.completed_tasks = 0
         self.group_id = None
@@ -79,7 +79,7 @@ class ProgressTracker:
         self.redis.subscribe("task-progress", self.handle_task_progress)
 
     def _define_progress_bars(self):
-        
+
         self.last_status = Progress(
             TextColumn("{task.fields[last_status]}"),
         )
@@ -111,7 +111,7 @@ class ProgressTracker:
         # Create group of renderables
         self.progress_group = Group(
             self.last_status,
-            "", # This actually works as a spacer lol
+            "",  # This actually works as a spacer lol
             self.worker_spinner,
             self.average_progress,
             self.overall_progress,
@@ -120,18 +120,18 @@ class ProgressTracker:
     def _init_progress_bars(self):
 
         self.worker_id = self.last_status.add_task(
-            description="Last task event status", 
+            description="Last task event status",
             last_status="",
         )
         self.last_status_id = self.worker_spinner.add_task(
-            description="Active worker count", 
-            worker_count=0, 
+            description="Active worker count",
+            worker_count=0,
             last_status="",
         )
 
         self.average_id = self.average_progress.add_task(
             description="Average task progress",
-            total=100, # percentage
+            total=100,  # percentage
         )
 
         self.overall_id = self.overall_progress.add_task(
@@ -166,20 +166,20 @@ class ProgressTracker:
                 "FAILURE": f"[bold red] :red_circle: {worker}[/] -> [red]failed '{file_name}'",
                 "STARTED": f"[bold cyan] :blue_circle: {worker}[/] -> picked up '{file_name}'",
             }
-            
+
             self.status = switch[data["status"]]
-            
+
             # TODO: Fix status update
             # It's only showing picked up status?
             # If I replace this with a print, it works fine.
             # labels: bug
-            
+
             # Update spinner last status
             self.last_status.update(
                 task_id=self.last_status_id,
-                last_status=switch[data['status']],
+                last_status=switch[data["status"]],
             )
-            
+
     def handle_task_progress(self, message):
 
         # If task is registered, track it
@@ -192,15 +192,23 @@ class ProgressTracker:
             )
             # Get up-to-date average
             progress_data = self.progress_latest_data[data["task_id"]]
-            percentage = round(progress_data[0] / progress_data[1] * 100)     
+            percentage = round(progress_data[0] / progress_data[1] * 100)
             self.prog_percentages.update({data["task_id"]: percentage})
-            active_task_average = round(sum(self.prog_percentages.values()) / len(self.prog_percentages))
-            total_task_average = round(active_task_average / (len(self.callable_tasks) - self.completed_tasks))
-            
+            active_task_average = round(
+                sum(self.prog_percentages.values()) / len(self.prog_percentages)
+            )
+            total_task_average = round(
+                active_task_average / (len(self.callable_tasks) - self.completed_tasks)
+            )
+
             # Log debug
             self.logger.debug(f"[magenta]Current task percentage: {percentage}")
-            self.logger.debug(f"[magenta]Active tasks average percentage: {active_task_average}")
-            self.logger.debug(f"[magenta]Total tasks average percentage: {total_task_average}\n")
+            self.logger.debug(
+                f"[magenta]Active tasks average percentage: {active_task_average}"
+            )
+            self.logger.debug(
+                f"[magenta]Total tasks average percentage: {total_task_average}\n"
+            )
 
             # TODO: Better way to prevent progress going backward on task pickup?
             # Not sure why the task progress is going backwards.
@@ -208,7 +216,7 @@ class ProgressTracker:
             # It doesn't seem to be off by much though.
             # labels: enhancement
             if total_task_average > self.last_task_average:
-                
+
                 # Update average progress bar
                 self.average_progress.update(
                     task_id=self.average_id,
@@ -239,7 +247,7 @@ class ProgressTracker:
         with Live(self.progress_group):
 
             while not results.ready():
-                
+
                 # Handlers will be called implicitly
                 # get_message itself will always return None
                 _ = self.pubsub.get_message(timeout=timeout)
