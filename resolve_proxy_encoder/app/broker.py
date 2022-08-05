@@ -15,7 +15,7 @@ from rich.live import Live
 from resolve_proxy_encoder.settings.manager import SettingsManager
 
 
-class PubSub:
+class RedisConnection:
     def __init__(self, settings):
         """
         Initialise Redis connection
@@ -29,22 +29,16 @@ class PubSub:
         self._port = int(broker_url.split(":")[2].split("/")[0])
         self._db = int(broker_url[-1::])
 
-        self.redis = redis.Redis(
+        self.connection = redis.Redis(
             host=self._host, port=self._port, db=self._db, decode_responses=True
         )
-        self.pubsub = self.redis.pubsub(ignore_subscribe_messages=True)
 
     def publish(self, channel_pattern, **kwargs):
 
-        self.redis.publish(
+        self.connection.publish(
             channel_pattern,
             json.dumps(kwargs),
         )
-
-    def subscribe(self, channel_pattern, handler):
-
-        self.pubsub.psubscribe(**{f"{channel_pattern}*": handler})
-        return self.pubsub
 
 
 class ProgressTracker:
@@ -60,8 +54,7 @@ class ProgressTracker:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(settings["app"]["loglevel"])
 
-        self.redis = PubSub(settings)
-        self.pubsub = self.redis.pubsub
+        self.connection = RedisConnection(settings)
         self.callable_tasks = callable_tasks
 
         self.matched_task_ids = []
@@ -72,11 +65,6 @@ class ProgressTracker:
         self.active_workers = []
         self.completed_tasks = 0
         self.group_id = None
-
-    def _init_handlers(self):
-
-        self.redis.subscribe("celery-task-meta", self.handle_task_event)
-        self.redis.subscribe("task-progress", self.handle_task_progress)
 
     def _define_progress_bars(self):
 
@@ -233,7 +221,7 @@ class ProgressTracker:
                     worker_count=len(self.active_workers),
                 )
 
-    def report_progress(self, results, loop_delay=0.001, timeout=0.05):
+    def report_progress(self, results, loop_delay=1, timeout=0.05):
 
         # I figure timeout should be shorter than loop delay,
         # that way we know we're not outpacing ourselves
@@ -242,15 +230,19 @@ class ProgressTracker:
 
         self._define_progress_bars()
         self._init_progress_bars()
-        self._init_handlers()
 
         with Live(self.progress_group):
 
             while not results.ready():
 
-                # Handlers will be called implicitly
-                # get_message itself will always return None
-                _ = self.pubsub.get_message(timeout=timeout)
+                task_events = self.connection.scan_iter("celery-task-meta*")
+                progress_events = self.connection.scan_iter("task-progress*")
+
+                for te in task_events:
+                    self.handle_task_event(te)
+
+                for pe in progress_events:
+                    self.handle_task_event(pe)
 
                 # Let's be nice to the server ;)
                 time.sleep(loop_delay)

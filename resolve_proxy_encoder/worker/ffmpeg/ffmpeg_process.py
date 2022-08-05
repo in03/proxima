@@ -17,7 +17,7 @@ from ffmpeg import probe
 
 from ...app.utils import core
 from ...settings.manager import SettingsManager
-from ...app.broker import PubSub
+from ...app.broker import RedisConnection
 
 settings = SettingsManager()
 
@@ -36,7 +36,7 @@ class FfmpegProcess:
         self._filepath = command[index_of_filepath]
         self._output_filepath = command[-1]
 
-        self.pubsub = PubSub(settings)
+        self.conn = RedisConnection(settings)
 
         dirname = os.path.dirname(self._output_filepath)
 
@@ -61,7 +61,7 @@ class FfmpegProcess:
     def update_progress(self, **kwargs):
 
         channel = f"task-progress:{kwargs['task_id']}"
-        self.pubsub.publish(
+        self.redis.publish(
             channel,
             **kwargs,
         )
