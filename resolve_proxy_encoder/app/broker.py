@@ -1,7 +1,9 @@
+from typing import Union
 import logging
 import json
 import redis
 import time
+from rich import print
 from rich.console import Console, Group
 from rich.progress import (
     BarColumn,
@@ -16,29 +18,35 @@ from resolve_proxy_encoder.settings.manager import SettingsManager
 
 
 class RedisConnection:
-    def __init__(self, settings):
+
+    """
+    Redis connection class.
+
+    Pulls connection settings from config into new Redis connection instance.
+
+    Attributes:
+        connection (Redis, None): Connection object used to interface with Redis.
+        settings (SettingsManager): Configuration used for connection.
+    """
+
+    def __init__(self, settings: SettingsManager):
+        self.connection: Union[redis.Redis, None] = None
+        self.settings = settings
+
+    def get_connection(self):
         """
-        Initialise Redis connection
+        Initialise Redis connection.
 
-        Args:
-            settings (SettingsManager instance)
+        Returns:
+            connection(Redis, None): Connection object used to interface with Redis.
         """
 
-        broker_url = str(settings["broker"]["url"])
-        self._host = str(broker_url.split("redis://")[1].split(":")[0])
-        self._port = int(broker_url.split(":")[2].split("/")[0])
-        self._db = int(broker_url[-1::])
+        broker_url = str(self.settings["broker"]["url"])
+        host = str(broker_url.split("redis://")[1].split(":")[0])
+        port = int(broker_url.split(":")[2].split("/")[0])
 
-        self.connection = redis.Redis(
-            host=self._host, port=self._port, db=self._db, decode_responses=True
-        )
-
-    def publish(self, channel_pattern, **kwargs):
-
-        self.connection.publish(
-            channel_pattern,
-            json.dumps(kwargs),
-        )
+        self.connection = redis.Redis(host=host, port=port, decode_responses=False)
+        return self.connection
 
 
 class ProgressTracker:
@@ -51,10 +59,13 @@ class ProgressTracker:
         for accurate progress bar rendering
 
         """
+
+        redis = RedisConnection(settings)
+        self.redis = redis.get_connection()
+
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(settings["app"]["loglevel"])
 
-        self.connection = RedisConnection(settings)
         self.callable_tasks = callable_tasks
 
         self.matched_task_ids = []
@@ -66,7 +77,9 @@ class ProgressTracker:
         self.completed_tasks = 0
         self.group_id = None
 
-    def _define_progress_bars(self):
+        self.prior_data = list()
+
+    def __define_progress_bars(self):
 
         self.last_status = Progress(
             TextColumn("{task.fields[last_status]}"),
@@ -105,7 +118,7 @@ class ProgressTracker:
             self.overall_progress,
         )
 
-    def _init_progress_bars(self):
+    def __init_progress_bars(self):
 
         self.worker_id = self.last_status.add_task(
             description="Last task event status",
@@ -127,9 +140,48 @@ class ProgressTracker:
             total=len(self.callable_tasks),
         )
 
-    def handle_task_event(self, message):
+    def get_new_data(self, key):
 
-        data = json.loads(message["data"])
+        data = self.redis.get(key)
+        if data is None:
+            self.logger.debug(f"[yellow]Could not get value from key: '{key}'")
+            return None
+
+        # TODO: This shouldn't be returning invalid JSON?
+        # Not sure why but every 8th poll returns a value that isn't None, but isn't JSON.
+        # Also, JSONDecodeError is actually thrown as ValueError. Which is weird
+        # labels: Enhancement
+
+        try:
+            data = json.loads(data)
+        except ValueError:
+            self.logger.debug(f"[yellow]Could not decode value from key {key}")
+            return None
+
+        if not self.__data_is_new(data):
+            self.logger.debug(
+                f"Fetching redis key: '{key}' returned stale data:\n{data}"
+            )
+            return None
+
+        return data
+
+    def __data_is_new(self, data):
+
+        # TODO: There has got to be a better way!
+        # We're storing all the values of every key, once a second in memory.
+
+        if data in self.prior_data:
+            return False
+        else:
+            self.prior_data.append(data)
+            return True
+
+    def handle_task_event(self, key):
+
+        data = self.get_new_data(key)
+        if data == None:
+            return
 
         # Is this one of our tasks, or another queuers?
         if self.group_id == data["group_id"]:
@@ -168,10 +220,14 @@ class ProgressTracker:
                 last_status=switch[data["status"]],
             )
 
-    def handle_task_progress(self, message):
+    def handle_task_progress(self, key):
+
+        data = self.get_new_data(key)
+        if not data:
+            self.logger.debug(f"[magenta]Progress data: {data}")
+            return
 
         # If task is registered, track it
-        data = json.loads(message["data"])
         if data["task_id"] in self.matched_task_ids:
 
             # Store all vals for future purposes maybe?
@@ -228,21 +284,27 @@ class ProgressTracker:
 
         self.group_id = results.id
 
-        self._define_progress_bars()
-        self._init_progress_bars()
+        self.__define_progress_bars()
+        self.__init_progress_bars()
 
         with Live(self.progress_group):
 
             while not results.ready():
 
-                task_events = self.connection.scan_iter("celery-task-meta*")
-                progress_events = self.connection.scan_iter("task-progress*")
+                task_events = [
+                    x
+                    for x in self.redis.scan_iter("celery-task-meta*")
+                    if x is not None
+                ]
+                progress_events = [
+                    x for x in self.redis.scan_iter("task-progress*") if x is not None
+                ]
 
                 for te in task_events:
                     self.handle_task_event(te)
 
                 for pe in progress_events:
-                    self.handle_task_event(pe)
+                    self.handle_task_progress(pe)
 
                 # Let's be nice to the server ;)
                 time.sleep(loop_delay)

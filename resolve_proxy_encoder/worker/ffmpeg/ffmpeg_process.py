@@ -1,3 +1,4 @@
+from datetime import timedelta
 import logging
 import os
 import subprocess
@@ -36,7 +37,8 @@ class FfmpegProcess:
         self._filepath = command[index_of_filepath]
         self._output_filepath = command[-1]
 
-        self.conn = RedisConnection(settings)
+        redis = RedisConnection(settings)
+        self.redis = redis.get_connection()
 
         dirname = os.path.dirname(self._output_filepath)
 
@@ -60,10 +62,10 @@ class FfmpegProcess:
 
     def update_progress(self, **kwargs):
 
-        channel = f"task-progress:{kwargs['task_id']}"
-        self.redis.publish(
-            channel,
-            **kwargs,
+        self.redis.setex(
+            name=str(f"task-progress:{kwargs['task_id']}"),
+            time=timedelta(settings["broker"]["result_expires"]),
+            value=json.dumps(dict(**kwargs)),
         )
 
     def run(self, task_id=None, worker_name=None, logfile=None):
