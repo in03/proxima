@@ -1,3 +1,4 @@
+from decimal import DivisionByZero
 from typing import Union
 import logging
 import json
@@ -251,9 +252,13 @@ class ProgressTracker:
             active_task_average = round(
                 sum(self.prog_percentages.values()) / len(self.prog_percentages)
             )
-            total_task_average = round(
-                active_task_average / (len(self.callable_tasks) - self.completed_tasks)
-            )
+            try:
+                total_task_average = round(
+                    active_task_average
+                    / (len(self.callable_tasks) - self.completed_tasks)
+                )
+            except DivisionByZero:
+                total_task_average = 0
 
             # Log debug
             self.logger.debug(f"[magenta]Current task percentage: {percentage}")
