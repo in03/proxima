@@ -271,7 +271,8 @@ def link_proxies_with_mpi(
         try:
 
             linked = job["media_pool_item"].LinkProxyMedia(job["proxy_media_path"])
-            assert linked
+            if not linked:
+                link_fail.append(job)
 
             logger.info(f"[green bold]:heavy_check_mark: Linked\n")
             link_success.append(job)
