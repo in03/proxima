@@ -12,6 +12,7 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 from rich.live import Live
+from cryptohash import sha1
 
 from resolve_proxy_encoder.settings.manager import SettingsManager
 
@@ -76,7 +77,7 @@ class ProgressTracker:
         self.completed_tasks = 0
         self.group_id = None
 
-        self.prior_data = list()
+        self.data_checksums = list()
 
     def __define_progress_bars(self):
 
@@ -167,13 +168,18 @@ class ProgressTracker:
 
     def __data_is_new(self, data):
 
-        # TODO: There has got to be a better way!
-        # We're storing all the values of every key, once a second in memory.
+        checksum = sha1(str(data))
 
-        if data in self.prior_data:
+        # Not sure what's better practice.
+        # Converting everything into checksums, or storing all
+        # values of all keys in a `prior_data` variable so
+        # we know if we've seen data before...
+        # Maybe there's a better way?
+
+        if data in self.data_checksums:
             return False
         else:
-            self.prior_data.append(data)
+            self.data_checksums.append(checksum)
             return True
 
     def handle_task_event(self, key):

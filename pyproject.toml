@@ -26,6 +26,7 @@ shortuuid = "^1.0.8"
 yaspin = "^2.1.0"
 ffmpeg-python = "^0.2.0"
 asciimatics = "^1.14.0"
+cryptohash = "^1.0.5"
 
 [tool.poetry.dev-dependencies]
 mkdocs-material = "^7.3.6"

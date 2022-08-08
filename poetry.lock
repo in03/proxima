@@ -281,6 +281,14 @@ python-versions = "*"
 immutables = ">=0.9"
 
 [[package]]
+name = "cryptohash"
+version = "1.0.5"
+description = "Tiny hashing module that uses the native crypto API in Python"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "dataclasses"
 version = "0.8"
 description = "A backport of the dataclasses module for Python 3.6"
@@ -1075,7 +1083,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.6.2,<3.7.*"
-content-hash = "3f7f9ebc1edcc5f05374334b8e1d9bea5bad1d4d8accd4b35fa78ae116888db2"
+content-hash = "72dcc2ae872a638e227914c726307e3ad0bf39a81754d4f02d769a1e75999114"
 
 [metadata.files]
 aiocontextvars = [
@@ -1160,6 +1168,7 @@ contextlib2 = [
 contextvars = [
     {file = "contextvars-2.4.tar.gz", hash = "sha256:f38c908aaa59c14335eeea12abea5f443646216c4e29380d7bf34d2018e2c39e"},
 ]
+cryptohash = []
 dataclasses = [
     {file = "dataclasses-0.8-py3-none-any.whl", hash = "sha256:0201d89fa866f68c8ebd9d08ee6ff50c0b255f8ec63a71c16fda7af82bb887bf"},
     {file = "dataclasses-0.8.tar.gz", hash = "sha256:8479067f342acf957dc82ec415d355ab5edb7e7646b90dc6e2fd1d96ad084c97"},
