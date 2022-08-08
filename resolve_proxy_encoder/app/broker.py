@@ -212,11 +212,6 @@ class ProgressTracker:
 
             self.status = switch[data["status"]]
 
-            # TODO: Fix status update
-            # It's only showing picked up status?
-            # If I replace this with a print, it works fine.
-            # labels: bug
-
             # Update spinner last status
             self.last_status.update(
                 task_id=self.last_status_id,
@@ -276,7 +271,7 @@ class ProgressTracker:
                     completed=total_task_average,
                 )
 
-    def report_progress(self, results, loop_delay=1, timeout=0.05):
+    def report_progress(self, results, loop_delay=1):
 
         # I figure timeout should be shorter than loop delay,
         # that way we know we're not outpacing ourselves
