@@ -3,8 +3,7 @@ import logging
 import json
 import redis
 import time
-from rich import print
-from rich.console import Console, Group
+from rich.console import Group
 from rich.progress import (
     BarColumn,
     Progress,
@@ -73,7 +72,7 @@ class ProgressTracker:
         self.prog_percentages = {}
         self.last_task_average = 0
 
-        self.active_workers = []
+        self.active_workers = list()
         self.completed_tasks = 0
         self.group_id = None
 
@@ -89,7 +88,7 @@ class ProgressTracker:
             SpinnerColumn(),
             # TODO: Get individual worker names instead of host machines
             # labels: enhancement
-            TextColumn("[cyan]Using {task.fields[worker_count]} workers"),
+            TextColumn("[cyan]Using {task.fields[active_workers]} workers"),
         )
 
         self.average_progress = Progress(
@@ -126,7 +125,7 @@ class ProgressTracker:
         )
         self.last_status_id = self.worker_spinner.add_task(
             description="Active worker count",
-            worker_count=0,
+            active_workers=0,
             last_status="",
         )
 
@@ -185,7 +184,11 @@ class ProgressTracker:
 
         # Is this one of our tasks, or another queuers?
         if self.group_id == data["group_id"]:
+
+            # Update worker count
             self.matched_task_ids.append(data["task_id"])
+            if data["worker"] not in self.active_workers:
+                self.active_workers.append(data["worker"])
 
             # Update discrete task progress
             if data["status"] in ["SUCCESS", "FAILURE"]:
@@ -218,6 +221,12 @@ class ProgressTracker:
             self.last_status.update(
                 task_id=self.last_status_id,
                 last_status=switch[data["status"]],
+            )
+
+            # Update worker spinner
+            self.worker_spinner.update(
+                task_id=self.worker_id,
+                active_workers=len(self.active_workers),
             )
 
     def handle_task_progress(self, key):
@@ -265,16 +274,6 @@ class ProgressTracker:
                 self.average_progress.update(
                     task_id=self.average_id,
                     completed=total_task_average,
-                )
-
-            # Add new workers
-            if data["worker_name"] not in self.active_workers:
-                self.active_workers.append(data["worker_name"])
-
-                # Update worker spinner
-                self.worker_spinner.update(
-                    task_id=self.worker_id,
-                    worker_count=len(self.active_workers),
                 )
 
     def report_progress(self, results, loop_delay=1, timeout=0.05):

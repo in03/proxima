@@ -64,11 +64,11 @@ class FfmpegProcess:
 
         self.redis.setex(
             name=str(f"task-progress:{kwargs['task_id']}"),
-            time=timedelta(settings["broker"]["result_expires"]),
+            time=timedelta(seconds=settings["broker"]["result_expires"]),
             value=json.dumps(dict(**kwargs)),
         )
 
-    def run(self, task_id=None, worker_name=None, logfile=None):
+    def run(self, task_id=None, logfile=None):
 
         # Get progress bar
         console = Console(record=True)
@@ -160,7 +160,6 @@ class FfmpegProcess:
 
                                 self.update_progress(
                                     task_id=task_id,
-                                    worker_name=worker_name,
                                     output_filename=os.path.basename(
                                         self._output_filepath
                                     ),
