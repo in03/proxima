@@ -103,7 +103,6 @@ def encode_proxy(self, job):
     try:
         process.run(
             task_id=self.request.id,
-            worker_name="",
             logfile=logfile_path,
         )
 
