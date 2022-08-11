@@ -171,13 +171,7 @@ class ProgressTracker:
 
         checksum = sha1(str(data))
 
-        # Not sure what's better practice.
-        # Converting everything into checksums, or storing all
-        # values of all keys in a `prior_data` variable so
-        # we know if we've seen data before...
-        # Maybe there's a better way?
-
-        if data in self.data_checksums:
+        if checksum in self.data_checksums:
             return False
         else:
             self.data_checksums.append(checksum)
