@@ -15,6 +15,7 @@ commonmark==0.9.1; python_full_version >= "3.6.2" and python_full_version < "4.0
 commonregex==1.5.3
 contextlib2==21.6.0; python_version >= "3.6"
 contextvars==2.4; python_version >= "3.6" and python_version < "3.7"
+cryptohash==1.0.5
 dataclasses==0.8; python_version >= "3.6" and python_version < "3.7" and python_full_version >= "3.6.2" and python_full_version < "4.0.0"
 deepdiff==5.7.0; python_version >= "3.6"
 ffmpeg-python==0.2.0
