@@ -100,8 +100,8 @@ docker run -d --name some-redis -p 6379:6379 redis-server --append-only yes
 ```
 
 #### Monitor
-An in-house web-app monitor for Proxima jobs is coming, with some really helpful, specific features.
-Until it's ready, if you want to monitor your jobs, it's a good idea to install Flower.
+An in-house web-app monitor for Proxima jobs is coming and will include some really helpful, specific features.
+Until it's ready, if you want to monitor your jobs, it's a good idea to install Flower - an official monitor for Celery tasks and workers.
 Install it with docker alongside your broker:
 ```
 docker run --name flower -e $CELERY_BROKER_URL=redis://192.168.1.171:6379/0 -e FLOWER_PURGE_OFFLINE_WORKERS=300 -d flower
