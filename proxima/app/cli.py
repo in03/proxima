@@ -46,7 +46,7 @@ def draw_banner():
     print(text + "\n")
 
     # Get build info
-    build_info = pkg_info.get_build_info("Resolve-Proxy-Encoder")
+    build_info = pkg_info.get_build_info("proxima")
 
     # Print banner data
     if build_info["build"] == "release":
@@ -80,7 +80,7 @@ def run_checks():
     # Check for any updates and inject version info into user settings.
     version_info = checks.check_for_updates(
         github_url=settings["app"]["update_check_url"],
-        package_name="resolve_proxy_encoder",
+        package_name="proxima",
     )
 
     settings.update({"version_info": version_info})
@@ -205,9 +205,7 @@ def purge():
     console.rule(f"[red bold]Purge all tasks! :fire:", align="left")
     print("\n")
 
-    subprocess.run(
-        ["celery", "-A", "resolve_proxy_encoder.worker", "purge", "-Q", VC_KEY]
-    )
+    subprocess.run(["celery", "-A", "proxima.worker", "purge", "-Q", VC_KEY])
 
 
 @cli_app.command(
@@ -220,7 +218,7 @@ def celery(
     """
     Pass commands to Celery buried in venv.
 
-    Runs `celery -A resolve_proxy_encoder.worker [celery_command]`
+    Runs `celery -A proxima.worker [celery_command]`
     at the absolute location of the package's Celery executable.
     Useful when the celery project is buried in a virtual environment and you want
     to do something a little more custom like purge jobs from a custom queue name.
@@ -234,7 +232,7 @@ def celery(
     console.rule(f"[cyan bold]Celery command :memo:", align="left")
     print("\n")
 
-    subprocess.run(["celery", "-A", "resolve_proxy_encoder.worker", *celery_command])
+    subprocess.run(["celery", "-A", "proxima.worker", *celery_command])
 
 
 @cli_app.command()

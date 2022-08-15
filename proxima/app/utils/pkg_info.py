@@ -67,7 +67,7 @@ def get_build_info(package_name: str) -> dict:
     except subprocess.CalledProcessError as e:
         pass
 
-    release_version = pkg_resources.get_distribution("Resolve-Proxy-Encoder").version
+    release_version = pkg_resources.get_distribution("proxima").version
     return {
         "build": "release",
         "installed": True,

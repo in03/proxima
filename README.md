@@ -1,16 +1,16 @@
-# Resolve Proxy Encoder
+# Proxima
 
-![GitHub](https://img.shields.io/github/license/in03/Resolve-Proxy-Encoder) 
+![GitHub](https://img.shields.io/github/license/in03/proxima) 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-![GitHub branch checks state](https://img.shields.io/github/checks-status/in03/Resolve-Proxy-Encoder/main)
-[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/in03/Resolve-Proxy-Encoder/main.svg)](https://results.pre-commit.ci/latest/github/in03/Resolve-Proxy-Encoder/main)
+![GitHub branch checks state](https://img.shields.io/github/checks-status/in03/proxima/main)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/in03/proxima/main.svg)](https://results.pre-commit.ci/latest/github/in03/proxima/main)
 
-![GitHub last commit](https://img.shields.io/github/last-commit/in03/Resolve-Proxy-Encoder)
-![GitHub Repo stars](https://img.shields.io/github/stars/in03/Resolve-Proxy-Encoder?style=social)
+![GitHub last commit](https://img.shields.io/github/last-commit/in03/proxima)
+![GitHub Repo stars](https://img.shields.io/github/stars/in03/proxima?style=social)
 
-##### Resolve Proxy Encoder makes queuing proxies from DaVinci Resolve a breeze. Launch the worker on as many computers as you have free and it'll pool all the free CPU threads together to encode multiple proxies at once. Only have the one computer? Encoding runs entirely on the CPU, leaving GPU-heavy Resolve with plenty of resources to continue editing while you pump out proxies. Once they're finished, they're automatically linked.
+##### Proxima makes queuing proxies from DaVinci Resolve a breeze. Launch the worker on as many computers as you have free and it'll pool all the free CPU threads together to encode multiple proxies at once. Only have the one computer? Encoding runs entirely on the CPU, leaving GPU-heavy Resolve with plenty of resources to continue editing while you pump out proxies. Once they're finished, they're automatically linked.
 
-![](https://github.com/in03/Resolve-Proxy-Encoder/blob/main/docs/images/rprox_worker-min.gif)
+![](https://github.com/in03/proxima/blob/main/docs/images/rprox_worker-min.gif)
  
 ## Why make proxies? ##
 DaVinci Resolve's greatly benefits from having all-intra media, like ProRes or DNxHD. If you shoot in h.264 or h.265 like many do, you're likely to see great performance improvements using proxies. This application makes queuing, encoding and linking them quick and easy.
@@ -56,12 +56,12 @@ I started this for the company I work for, well before BPG was on the scene. If 
 > Until then, development must continue in 3.6.
 > To mitigate dependency conflicts you can try:
 >
-> - Calling Resolve Proxy Encoder from a Python 3.6 virtual environment.
-> - Install Python 3.6 for Resolve Proxy Encoder and install a newer Python alongside it for your other needs.
+> - Calling Proxima from a Python 3.6 virtual environment.
+> - Install Python 3.6 for Proxima and install a newer Python alongside it for your other needs.
 > - Install a tool like *pipx* that isolates Python CLI tools with their own virtual environments but keeps them on path (recommended)
 
 ### Installation
-Resolve Proxy Encoder is composed of three major parts:
+Proxima is composed of three major parts:
 
 - the 'queuer' responsible for interfacing with DaVinci Resolve and sending tasks to the broker
 - the 'broker' (Redis or RabbitMQ) that distributes jobs to the workers
@@ -71,7 +71,7 @@ Resolve Proxy Encoder is composed of three major parts:
 The 'queuer' and 'worker' are bundled together in the CLI app. They are both installed from the same source, called from the same command and share the same configuration file. As such, any computer that has the CLI app installed can both queue proxies (so long as Resolve is set-up) and run workers. Install it with pipx:
 
 ``` 
-pipx install git+https://github.com/in03/Resolve-Proxy-Encoder
+pipx install git+https://github.com/in03/proxima
 ```
 
 #### Broker
@@ -114,8 +114,8 @@ Commands:
 
 ## Configuration
 On first run, you'll be prompted to alter your settings. The app will copy the default settings to the OS user configuration folder. 
-- **Linux/Mac:** `$XDG_HOME_CONFIG/resolve_proxy_encoder/user_settings.yml` (may not open settings automatically)
-- **Windows:** `%homepath%/resolve_proxy_encoder/user_settings.yml`
+- **Linux/Mac:** `$XDG_HOME_CONFIG/proxima/user_settings.yml` (may not open settings automatically)
+- **Windows:** `%homepath%/proxima/user_settings.yml`
 
 
 ### Some Key Settings
@@ -162,5 +162,5 @@ worker:
 
 
 ## How can I contribute?
-Hey! Thanks! Any help is appreciated. Please check the [Contribution Guide](https://github.com/in03/Resolve-Proxy-Encoder/wiki/Contribution-Guide).
+Hey! Thanks! Any help is appreciated. Please check the [Contribution Guide](https://github.com/in03/proxima/wiki/Contribution-Guide).
 
