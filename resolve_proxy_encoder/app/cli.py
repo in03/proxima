@@ -33,12 +33,17 @@ hide_banner = typer.Option(
 
 
 @cli_app.callback(invoke_without_command=True)
+def run_without_args():
+    draw_banner()
+    print("Run [bold]proxima --help[/] for a list of commands")
+
+
 def draw_banner():
 
     # Print CLI title
-    fig = Figlet()
-    text = fig.renderText("Resolve Proxy Encoder")
-    print(f"[green]{text}\n")
+    fig = Figlet(font="rectangles")
+    text = fig.renderText("proxima")
+    print(text + "\n")
 
     # Get build info
     build_info = pkg_info.get_build_info("Resolve-Proxy-Encoder")
@@ -205,18 +210,31 @@ def purge():
     )
 
 
-# TODO: Would be great if we can pass options unparsed by Typer
-# This command could serve as a gateway to all Celery commands,
-# but typer parses 'f' in 'broker purge -f' as an undefined option
-@cli_app.command()
-def celery(command: List[str]):
-    """Pass celery commands to Celery buried within venv"""
+@cli_app.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+)
+def celery(
+    ctx: typer.Context,
+    celery_command: List[str] = typer.Argument(..., help="A command to pass to Celery"),
+):
+    """
+    Pass commands to Celery buried in venv.
+
+    Runs `celery -A resolve_proxy_encoder.worker [celery_command]`
+    at the absolute location of the package's Celery executable.
+    Useful when the celery project is buried in a virtual environment and you want
+    to do something a little more custom like purge jobs from a custom queue name.
+
+    See https://docs.celeryq.dev/en/latest/reference/cli.html for proper usage.
+    """
+
+    print(ctx.params["celery_command"])
 
     print("\n")
     console.rule(f"[cyan bold]Celery command :memo:", align="left")
     print("\n")
 
-    subprocess.run(["celery", "-A", "resolve_proxy_encoder.worker", command])
+    subprocess.run(["celery", "-A", "resolve_proxy_encoder.worker", *celery_command])
 
 
 @cli_app.command()
