@@ -72,7 +72,7 @@ def app_exit(level: int = 0, timeout: int = 0, cleanup_funcs: list = []):
     sys.exit(level)
 
 
-def notify(message: str, title: str = "Resolve Proxy Encoder"):
+def notify(message: str, title: str = "Proxima"):
     """Cross platform system notification
 
     Args:

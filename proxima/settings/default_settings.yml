@@ -1,4 +1,4 @@
----  # Resolve Proxy Encoder User configuration file
+---  # Proxima User configuration file
 
 # NOTE: 
 # Proxy paths, codecs, resolution, filters, etc are all inherited from the queuer's user configuration.
@@ -7,7 +7,7 @@
 app:
   loglevel: WARNING
   check_for_updates: true
-  update_check_url: "https://github.com/in03/resolve-proxy-encoder" # If you fork the repo, change this to your fork
+  update_check_url: "https://github.com/in03/proxima" # If you fork the repo, change this to your fork
   disable_version_constrain: false # DANGEROUS! Allows any version of worker to take jobs. Must be set on queuer and worker. 
 
 paths:

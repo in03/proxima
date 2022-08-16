@@ -20,7 +20,7 @@ app = Celery("worker")
 
 app.autodiscover_tasks(
     [
-        "resolve_proxy_encoder.worker.tasks.encode.tasks.encode_proxy",
+        "proxima.worker.tasks.encode.tasks.encode_proxy",
     ]
 )
 
