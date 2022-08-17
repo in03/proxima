@@ -82,7 +82,7 @@ def check_for_updates(github_url: str, package_name: str) -> Union[dict, None]:
         logger.warning(
             "[yellow]Update available.\n"
             + "Fully uninstall and reinstall when possible:[/]\n"
-            + '"pip uninstall resolve-proxy-encoder"\n'
+            + '"pip uninstall resolve-proxima"\n'
             + f'"pip install git+{github_url}"\n'
         )
 

@@ -154,7 +154,7 @@ def new_worker(id=None):
         get_new_console(),
         *settings["worker"]["terminal_args"],
         f'"{get_celery_binary_path()}"',
-        "-A resolve_proxy_encoder.worker",
+        "-A proxima.worker",
         "worker",
         get_worker_name(id),
         get_worker_queue(),

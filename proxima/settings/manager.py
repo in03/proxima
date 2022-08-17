@@ -31,7 +31,7 @@ DEFAULT_SETTINGS_FILE = os.path.join(
 USER_SETTINGS_FILE = os.path.join(
     Path.home(),
     ".config",
-    "resolve_proxy_encoder",
+    "proxima",
     "user_settings.yml",
 )
 
