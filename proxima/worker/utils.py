@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ..app.utils import core
 from ..settings.manager import SettingsManager
+from ..worker.ffmpeg.utils import ffprobe
 
 core.install_rich_tracebacks()
 
@@ -66,6 +67,39 @@ def get_queue():
     vc_key_file = Path(__file__).parent.parent.parent.joinpath("version_constraint_key")
     with open(vc_key_file) as file:
         return file.read()
+
+
+def get_input_level(job):
+    """
+    Match Resolve's set data levels ("Auto", "Full" or "Video")
+
+    Uses ffprobe to probe file for levels if Resolve data levels are set to Auto.
+    """
+
+    def probe_for_input_range(job):
+        """
+        Probe file with ffprobe for colour range
+        and map to ffmpeg 'in_range' value ("full" or "limited")
+        """
+
+        input = job["file_path"]
+        info = ffprobe(file=input)["streams"][0]
+        color_data = {k: v for k, v in info.items() if "color" in k}
+        logger.debug(f"[magenta]Probed color data:\n{color_data}")
+
+        switch = {
+            "pc": "in_range=full",
+            "tv": "in_range=limited",
+        }
+        return switch[info["color_range"]]
+
+    switch = {
+        "Auto": probe_for_input_range(job),
+        "Full": "in_range=full",
+        "Video": "in_range=limited",
+    }
+
+    return switch[job["data_level"]]
 
 
 def get_flip(job):

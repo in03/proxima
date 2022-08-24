@@ -52,7 +52,7 @@ def frac_to_dec(fraction: str):
     return float(f)
 
 
-def get_media_info(file):
+def ffprobe(file):
     """Get media info from file using ffprobe"""
 
     cmd = f'ffprobe -v quiet -print_format json -show_format -show_streams "{file}"'

@@ -286,6 +286,7 @@ def get_resolve_proxy_jobs(media_pool_items):
             "file_name": cp["File Name"],
             "file_path": cp["File Path"],
             "duration": cp["Duration"],
+            "data_level": cp["Data Level"],
             "resolution": str(cp["Resolution"]).split("x"),
             "frames": int(cp["Frames"]),
             "fps": float(cp["FPS"]),
