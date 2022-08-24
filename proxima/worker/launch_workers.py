@@ -206,7 +206,7 @@ def main(workers: int = 0):
         launch_workers(prompt_worker_amount(cpu_cores), queue_name)
 
     print(f"[green]Done![/]")
-    core.app_exit(0, 5)
+    core.app_exit(0, 2)
 
 
 if __name__ == "__main__":

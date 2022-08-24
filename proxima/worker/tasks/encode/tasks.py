@@ -62,27 +62,46 @@ def encode_proxy(self, job):
     ps = job["proxy_settings"]
 
     ffmpeg_command = [
+        # INPUT
         "ffmpeg",
         "-y",  # Never prompt!
-        *ps["misc_args"],  # User global settings
+        *ps["misc_args"],
         "-i",
         job["file_path"],
+        # VIDEO
         "-c:v",
         ps["codec"],
         "-profile:v",
         ps["profile"],
         "-vsync",
         "-1",  # Necessary to match VFR
+        # TODO: Format this better
+        # It's hard to format this. Every arg behind the -vf flag
+        # should be separated by a literal comma and NO SPACES to string them together as per ffmpeg syntax.
+        # Any optional args must provide their own literal commas so as not to leave them stray
+        # if disabled... Inline functions here are also confusing and "magical".
+        # But we don't want to run them queuer side, only on final queueables.
+        # labels: enhancement
+        # VIDEO FILTERS
         "-vf",
         f"scale=-2:{int(job['proxy_settings']['vertical_res'])},"
+        f"scale={utils.get_input_level(job)}:out_range=limited, "
         f"{utils.get_flip(job)}"
-        f"format={ps['pix_fmt']}",
+        f"format={ps['pix_fmt']}"
+        if ps["pix_fmt"]
+        else "",
+        # AUDIO
         "-c:a",
         ps["audio_codec"],
         "-ar",
         ps["audio_samplerate"],
+        # TIMECODE
         "-timecode",
         job["start_tc"],
+        # FLAGS
+        "-movflags",
+        "+write_colr",
+        # OUTPUT
         output_path,
     ]
 
