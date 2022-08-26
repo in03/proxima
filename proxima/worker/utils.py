@@ -95,7 +95,6 @@ def get_input_level(job):
 
         color_data = {k: v for k, v in video_info.items() if "color" in k}
         assert "color_range" in video_info.keys()
-        logger.debug(f"[magenta]Probed color data:\n{color_data}")
 
         switch = {
             "pc": "in_range=full",
