@@ -83,15 +83,25 @@ def get_input_level(job):
         """
 
         input = job["file_path"]
-        info = ffprobe(file=input)["streams"][0]
-        color_data = {k: v for k, v in info.items() if "color" in k}
+        streams = ffprobe(file=input)["streams"]
+
+        # Get first valid video stream
+        video_info = None
+        for stream in streams:
+            if stream["codec_type"] == "video":
+                if stream["avg_frame_rate"] != "0/0":
+                    video_info = stream
+        assert video_info != None
+
+        color_data = {k: v for k, v in video_info.items() if "color" in k}
+        assert "color_range" in video_info.keys()
         logger.debug(f"[magenta]Probed color data:\n{color_data}")
 
         switch = {
             "pc": "in_range=full",
             "tv": "in_range=limited",
         }
-        return switch[info["color_range"]]
+        return switch[video_info["color_range"]]
 
     switch = {
         "Auto": probe_for_input_range(job),
