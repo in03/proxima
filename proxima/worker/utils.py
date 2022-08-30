@@ -94,6 +94,8 @@ def get_input_level(job):
         assert video_info != None
 
         color_data = {k: v for k, v in video_info.items() if "color" in k}
+        logger.debug(f"Color data:\n{color_data}")
+
         assert "color_range" in video_info.keys()
 
         switch = {
