@@ -12,6 +12,8 @@ from rich.prompt import Confirm, Prompt
 from ..app.utils import core
 from ..settings.manager import SettingsManager
 from .resolve import ResolveObjects
+from ..app import exceptions
+from proxima import app
 
 console = Console()
 settings = SettingsManager()
@@ -227,8 +229,6 @@ def find_and_link_proxies(project, proxy_files) -> Tuple[list, list]:
 def link_proxies_with_mpi(
     jobs,
     linkable_types: list = ["Offline", "None"],
-    prompt_reiterate=True,
-    prompt_rerender=False,
 ):
     """
     Iterate through media list and link each finished proxy with its media pool item.
@@ -247,7 +247,34 @@ def link_proxies_with_mpi(
     logger.info(f"[cyan]Linking {len(jobs)} proxies[/]")
 
     link_success = []
-    link_fail = []
+    mismatch_fail = []
+
+    # Check we're still good to link to the current project
+    try:
+
+        r_ = ResolveObjects()
+
+    except exceptions.ResolveAPIConnectionError as e:
+        logger.error(
+            "Can't communicate with Resolve. Maybe it's closed?\n"
+            "Run `proxima queue` when you're ready to link your proxies later."
+        )
+        core.app_exit(1, -1)
+
+    except exceptions.ResolveNoCurrentProjectError as e:
+        logger.error(
+            "Can't get current Resolve project. Looks like Resolve may be closed.\n"
+            "Run `proxima queue` when you're ready to link your proxies later."
+        )
+        core.app_exit(1, -1)
+
+    else:
+        if r_.project != jobs[0]["project"]:
+            logger.error(
+                "Looks like you've changed projects. Proxies can't be linked to a closed project.\n"
+                "Run `proxima queue` when you're ready to link your proxies later."
+            )
+            core.app_exit(1, -1)
 
     # Iterate through all available proxies
     for job in jobs:
@@ -269,62 +296,34 @@ def link_proxies_with_mpi(
 
         # Actually link proxies
         try:
+            if not job["media_pool_item"].LinkProxyMedia(job["proxy_media_path"]):
+                raise exceptions.ResolveLinkMismatchError(
+                    proxy_file=job["proxy_media_path"]
+                )
 
-            linked = job["media_pool_item"].LinkProxyMedia(job["proxy_media_path"])
-            if not linked:
-                link_fail.append(job)
+        except exceptions.ResolveLinkMismatchError as e:
+            logger.error(
+                f"[red bold]:x: Failed to link {job['file_name']}'[/]\n" f"[red]{e}"
+            )
+            mismatch_fail.append(job)
 
+        else:
             logger.info(f"[green bold]:heavy_check_mark: Linked\n")
             link_success.append(job)
-
-        except TypeError:
-            # MPI will be 'NoneType' if project change
-            logger.error(f"[red bold]:x: Failed to link {job['file_name']}'\n")
-            link_fail.append(job)
 
     if link_success:
         logger.debug(f"[magenta]Total link success:[/] {len(link_success)}")
 
-    if link_fail:
-        logger.error(f"[red]{len(link_fail)} proxies failed to link!")
+    if mismatch_fail:
+        logger.error(f"[red]{len(mismatch_fail)} proxies failed to link!")
 
-        if prompt_reiterate:
+        if len(mismatch_fail) == len(jobs):
 
-            if Confirm.ask(
-                f"\n[yellow]If you've changed projects since queuing you'll have to run\n"
-                "a comprehensive search. Make sure you're in the correct project!\n[bold]Run now?"
-            ):
-                r_ = ResolveObjects()
-                linked_, _ = find_and_link_proxies(
-                    r_.project, [x["proxy_media_path"] for x in jobs]
-                )
-
-                # Remove from link_fail if retry success
-                for x in reversed(link_fail):
-                    if x["proxy_media_path"] in linked_:
-                        link_fail.remove(x)
-
-                # Move to link_success to prevent requeuing
-                link_success.extend([x for x in jobs if x not in linked_])
-
-        if link_fail and prompt_rerender:
-
-            if Confirm.ask(
-                f"[yellow]Couldn't link proxies. Would you like to re-render them?"
-            ):
-                # Remove offline status, redefine media list
-                for x in jobs:
-                    if x in reversed(link_fail):
-                        x["proxy_status"] = "None"
-                        link_fail.remove(x)
-
-    # Queue only those that remain
-    remaining_jobs = [
-        x for x in jobs if all([x not in link_success, x not in link_fail])
-    ]
-
-    logger.debug(f"[magenta]Remaining unlinked jobs:\n{remaining_jobs}")
-    return remaining_jobs
+            logger.error(
+                "Looks like you've changed projects. Proxies can't be linked to a closed project.\n"
+                "Run `proxima queue` when you're ready to link your proxies later."
+            )
+            core.app_exit(1, -1)
 
 
 def main():
