@@ -75,13 +75,22 @@ def main():
     media_pool_items = resolve.get_media_pool_items(track_items)
     jobs = resolve.get_resolve_proxy_jobs(media_pool_items)
 
+    # Add queuer side data
+    jobs = add_queuer_data(
+        jobs,
+        project=project_name,
+        timeline=timeline_name,
+        proxy_settings=settings["proxy"],
+        paths_settings=settings["paths"],
+    )
+
     # Prompt user for intervention if necessary
     print()
-    jobs = handlers.handle_already_linked(jobs, unlinked_types=["Offline", "None"])
+    jobs = handlers.handle_already_linked(jobs, unlinked_types=("Offline", "None"))
     logger.debug(f"[magenta]Remaining queuable:[/]\n{[x['file_name'] for x in jobs]}")
 
     print()
-    jobs = handlers.handle_existing_unlinked(jobs, unlinked_types=["Offline", "None"])
+    jobs = handlers.handle_existing_unlinked(jobs, unlinked_types=("Offline", "None"))
     logger.debug(f"[magenta]Remaining queuable:[/]\n{[x['file_name'] for x in jobs]}")
 
     print()
@@ -116,14 +125,6 @@ def main():
         jobs_with_mpi.append({str(x["media_pool_item"]): x["media_pool_item"]})
         x.update({"media_pool_item": str(x["media_pool_item"])})
 
-    jobs = add_queuer_data(
-        jobs,
-        project=project_name,
-        timeline=timeline_name,
-        proxy_settings=settings["proxy"],
-        paths_settings=settings["paths"],
-    )
-
     print("\n")
 
     core.notify(f"Started encoding job '{project_name} - {timeline_name}'")
@@ -155,7 +156,7 @@ def main():
             if x["media_pool_item"] == k:
                 x.update({"media_pool_item": v})
 
-    proxy_linker = ProxyLinker(jobs, linkable_types=["None"])
+    proxy_linker = ProxyLinker(jobs, linkable_types=("None",))
 
     try:
         proxy_linker.link()
