@@ -9,14 +9,6 @@ from proxima.settings import SettingsManager
 from proxima.worker import encoding_tasks
 from rich import print
 
-
-from ..app import broker
-from ..app.utils import core
-from ..settings.manager import SettingsManager
-from ..worker.tasks.encode.tasks import encode_proxy
-from . import handlers, resolve
-from .link import ProxyLinker
-
 settings = SettingsManager()
 
 core.install_rich_tracebacks()
