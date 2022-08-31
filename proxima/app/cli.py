@@ -129,33 +129,6 @@ def queue():
 
 
 @cli_app.command()
-def link():
-    """
-    Manually link proxies from directory to
-    source media in open DaVinci Resolve project
-    """
-
-    # Init
-    from ..settings.manager import SettingsManager
-    from .utils.core import setup_rich_logging
-
-    settings = SettingsManager()
-
-    setup_rich_logging()
-    logger = logging.getLogger(__name__)
-    logger.setLevel(settings["app"]["loglevel"])
-    # End init
-
-    from ..queuer import link
-
-    print("\n")
-    console.rule(f"[green bold]Link proxies[/] :link:", align="left")
-    print("\n")
-
-    link.main()
-
-
-@cli_app.command()
 def work(
     hide_banner: bool = hide_banner,
     workers_to_launch: Optional[int] = typer.Argument(
@@ -249,6 +222,8 @@ def config():
     )
     print("\n")
 
+    # TODO: Cross platform alternative to this hack?
+    # labels: enhancement
     webbrowser.open_new(settings.user_file)
 
 
