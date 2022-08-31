@@ -320,12 +320,16 @@ def handle_existing_unlinked(
                     linkable_now.append(x)
                     media_list.remove(x)
 
-            remaining = link.link_proxies_with_mpi(
-                linkable_now,
-                linkable_types=["Offline", "None"],
-                prompt_rerender=True,
-            )
-            media_list.extend(remaining)
+            proxy_linker = link.ProxyLinker(linkable_now)
+            proxy_linker.link()
+
+            # Prompt to requeue if any failures
+            if proxy_linker.mismatch_fail:
+                if Confirm.ask(
+                    f"[yellow]{len(proxy_linker.mismatch_fail)} files failed to link."
+                    "They may be corrupt or incomplete. Re-render them?"
+                ):
+                    media_list.extend(proxy_linker.mismatch_fail)
 
         else:
 
