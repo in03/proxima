@@ -97,7 +97,7 @@ def encode_proxy(self, job):
         ps["audio_samplerate"],
         # TIMECODE
         "-timecode",
-        "10:10:10:10",  # job["start_tc"],
+        job["start_tc"],
         # FLAGS
         "-movflags",
         "+write_colr",
