@@ -11,8 +11,8 @@ from ..app import broker
 from ..app.utils import core
 from ..settings.manager import SettingsManager
 from ..worker.tasks.encode.tasks import encode_proxy
-from ..worker.celery import app as celery_app
-from . import handlers, link, resolve
+from . import handlers, resolve
+from .link import ProxyLinker
 
 settings = SettingsManager()
 
@@ -160,16 +160,16 @@ def main():
             if x["media_pool_item"] == k:
                 x.update({"media_pool_item": v})
 
+    proxy_linker = ProxyLinker(jobs, linkable_types=["None"])
+
     try:
+        proxy_linker.link()
 
-        link.link_proxies_with_mpi(
-            jobs,
-            linkable_types=["None"],
+    except Exception:
+
+        logger.error(
+            f"[red]Couldn't link jobs. Unhandled exception:[/]\n", exc_info=True
         )
-
-    except Exception as e:
-
-        logger.error(f"[red]Couldn't link jobs. Link manually.[/]\nError: {e}")
         core.app_exit(1, -1)
 
     else:
