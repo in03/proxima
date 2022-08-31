@@ -37,7 +37,7 @@ class FfmpegProcess:
         self._filepath = command[index_of_filepath]
         self._output_filepath = command[-1]
 
-        redis = RedisConnection(settings)
+        redis = broker.RedisConnection(settings)
         self.redis = redis.get_connection()
 
         dirname = os.path.dirname(self._output_filepath)
