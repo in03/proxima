@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(settings["worker"]["loglevel"])
 
 
-@app.task(
+@celery_app.task(
     bind=True,
     acks_late=True,
     track_started=True,
