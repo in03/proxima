@@ -63,7 +63,7 @@ class SettingsManager(metaclass=Singleton):
         # but realised testing a path exists is not a good idea for defaults.
         # Instead let's write a build time test for this.
 
-        self._load_default_file()
+        self.__load_default_file()
 
         # Validate user settings
         if logger.getEffectiveLevel() > 2:
@@ -74,10 +74,10 @@ class SettingsManager(metaclass=Singleton):
             )
             self.spinner.start()
 
-        self._ensure_user_file()
-        self._load_user_file()
-        self._ensure_user_keys()
-        self._validate_schema()
+        self.__ensure_user_file()
+        self.__load_user_file()
+        self.__ensure_user_keys()
+        self.__validate_schema()
 
         self.spinner.ok("✅ ")
 
@@ -97,7 +97,7 @@ class SettingsManager(metaclass=Singleton):
 
             raise KeyError(e)
 
-    def _load_default_file(self):
+    def __load_default_file(self):
         """Load default settings from yaml"""
 
         logger.debug(f"Loading default settings from {self.default_file}")
@@ -105,7 +105,7 @@ class SettingsManager(metaclass=Singleton):
         with open(os.path.join(self.default_file)) as file:
             self.default_settings = self.yaml.load(file)
 
-    def _load_user_file(self):
+    def __load_user_file(self):
         """Load user settings from yaml"""
 
         logger.debug(f"Loading user settings from {self.user_file}")
@@ -142,7 +142,7 @@ class SettingsManager(metaclass=Singleton):
 
         return
 
-    def _ensure_user_file(self):
+    def __ensure_user_file(self):
         """Copy default settings to user settings if it doesn't exist
 
         Prompt the user to edit the file afterwards, then exit.
@@ -196,7 +196,7 @@ class SettingsManager(metaclass=Singleton):
 
             core.app_exit(0)
 
-    def _ensure_user_keys(self):
+    def __ensure_user_keys(self):
         """Ensure user settings have all keys in default settings"""
 
         self.spinner.stop()
@@ -217,7 +217,7 @@ class SettingsManager(metaclass=Singleton):
             ]
             print()  # Newline
 
-        def _prompt_setting_substitution(self, setting_name, key_list):
+        def __prompt_setting_substitution(self, setting_name, key_list):
 
             # Get default value
             if len(key_list) > 0:
@@ -291,7 +291,7 @@ class SettingsManager(metaclass=Singleton):
 
                     # Match all keys in diff string
                     key_list = re.findall(r"\['(\w*)'\]", x)
-                    _prompt_setting_substitution(self, x, key_list)
+                    __prompt_setting_substitution(self, x, key_list)
 
             def _catch_empty_setting_section_with_inline_comment(self):
 
@@ -333,7 +333,7 @@ class SettingsManager(metaclass=Singleton):
 
                         single_root_key_list = []
                         single_root_key_list.append(key)
-                        _prompt_setting_substitution(
+                        __prompt_setting_substitution(
                             self, "".join(key), single_root_key_list
                         )
 
@@ -343,7 +343,7 @@ class SettingsManager(metaclass=Singleton):
 
         print()
 
-    def _validate_schema(self):
+    def __validate_schema(self):
         """Validate user settings against schema"""
 
         logger.debug(f"Validating user settings against schema")
