@@ -4,11 +4,12 @@
 import logging
 
 from rich.console import Console
+from typing import Tuple
 
-from ..app import exceptions
-from ..app.utils import core
-from ..settings.manager import SettingsManager
-from .resolve import ResolveObjects
+from proxima import core
+from proxima import exceptions
+from proxima.settings import SettingsManager
+from proxima import resolve
 
 console = Console()
 settings = SettingsManager()
@@ -34,7 +35,7 @@ class ProxyLinker:
         """
         try:
 
-            resolve = ResolveObjects()
+            ro = resolve.ResolveObjects()
 
         except exceptions.ResolveAPIConnectionError:
             logger.error(
@@ -46,7 +47,7 @@ class ProxyLinker:
 
         try:
 
-            current_project = resolve.project.GetName()
+            current_project = ro.project.GetName()
 
         except exceptions.ResolveNoCurrentProjectError:
             logger.error(

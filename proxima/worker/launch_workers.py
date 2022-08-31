@@ -11,9 +11,10 @@ from shutil import which
 
 from rich import print
 
-from ..app.utils import core, pkg_info
-from ..settings.manager import SettingsManager
-from ..worker.utils import get_queue
+from proxima import core
+from proxima.app.utils import pkg_info
+from proxima.settings import SettingsManager
+from proxima.worker.utils import get_queue
 
 core.install_rich_tracebacks()
 

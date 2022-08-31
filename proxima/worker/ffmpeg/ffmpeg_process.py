@@ -16,9 +16,9 @@ from rich.prompt import Confirm
 
 from ffmpeg import probe
 
-from ...app.utils import core
-from ...settings.manager import SettingsManager
-from ...app.broker import RedisConnection
+from proxima import core
+from proxima.settings import SettingsManager
+from proxima import broker
 
 settings = SettingsManager()
 

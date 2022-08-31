@@ -4,6 +4,9 @@ import logging
 import os
 
 from celery import group
+from proxima import ProxyLinker, broker, core, handlers, resolve
+from proxima.settings import SettingsManager
+from proxima.worker import encoding_tasks
 from rich import print
 
 
@@ -47,7 +50,7 @@ def queue_tasks(tasks):
     """Block until all queued tasks finish, notify results."""
 
     # Wrap task objects in Celery task function
-    callable_tasks = [encode_proxy.s(x) for x in tasks]
+    callable_tasks = [encoding_tasks.encode_proxy.s(x) for x in tasks]
     logger.debug(f"[magenta]callable_tasks:[/] {callable_tasks}")
 
     # Create task group to retrieve job results as batch

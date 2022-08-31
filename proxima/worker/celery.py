@@ -5,7 +5,7 @@ import os
 import sys
 
 from celery import Celery
-from ..settings.manager import SettingsManager
+from proxima.settings import SettingsManager
 
 settings = SettingsManager()
 

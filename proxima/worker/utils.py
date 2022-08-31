@@ -4,9 +4,9 @@ import platform
 import subprocess
 from pathlib import Path
 
-from ..app.utils import core
-from ..settings.manager import SettingsManager
-from ..worker.ffmpeg.utils import ffprobe
+from proxima import core
+from proxima.settings import SettingsManager
+from proxima.worker.ffmpeg import ffprobe
 
 core.install_rich_tracebacks()
 

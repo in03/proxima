@@ -1,12 +1,11 @@
 import imp
-import pathlib
 import logging
 import os
+import pathlib
 import sys
 
-from ..app.utils import core
-from ..settings.manager import SettingsManager
-from ..app import exceptions
+from proxima import core, exceptions
+from proxima.settings import SettingsManager
 
 settings = SettingsManager()
 

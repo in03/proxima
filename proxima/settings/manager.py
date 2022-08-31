@@ -7,9 +7,9 @@ import webbrowser
 from functools import reduce
 from operator import getitem
 from pathlib import Path
-from functools import reduce
 
 from deepdiff import DeepDiff
+from proxima import core
 from rich import print
 from rich.prompt import Confirm, Prompt
 from ruamel.yaml import YAML
@@ -17,7 +17,6 @@ from yaspin import yaspin
 
 from schema import SchemaError
 
-from ..app.utils import core
 from .schema import settings_schema
 
 core.install_rich_tracebacks()

@@ -3,15 +3,12 @@ import pathlib
 import time
 from typing import Union
 
-from rich import print
+from proxima import core
+from proxima.app.utils import pkg_info
+from proxima.settings import SettingsManager
+from proxima.worker import celery_app
 from rich.prompt import Confirm
 from yaspin import yaspin
-
-from .utils import pkg_info
-
-from ..app.utils import core
-from ..settings.manager import SettingsManager
-from ..worker.celery import app as celery_app
 
 settings = SettingsManager()
 
