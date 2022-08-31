@@ -20,7 +20,7 @@ logger.setLevel(settings["app"]["loglevel"])
 
 
 class ProxyLinker:
-    def __init__(self, jobs, linkable_types: list = ["Offline", "None"]):
+    def __init__(self, jobs, linkable_types: Tuple[str, ...] = ("Offline", "None")):
 
         self.jobs = jobs
         self.linkable_types = linkable_types
