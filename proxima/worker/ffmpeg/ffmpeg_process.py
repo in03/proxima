@@ -16,9 +16,9 @@ from rich.prompt import Confirm
 
 from ffmpeg import probe
 
-from ...app.utils import core
-from ...settings.manager import SettingsManager
-from ...app.broker import RedisConnection
+from proxima import core
+from proxima.settings import SettingsManager
+from proxima import broker
 
 settings = SettingsManager()
 
@@ -37,7 +37,7 @@ class FfmpegProcess:
         self._filepath = command[index_of_filepath]
         self._output_filepath = command[-1]
 
-        redis = RedisConnection(settings)
+        redis = broker.RedisConnection(settings)
         self.redis = redis.get_connection()
 
         dirname = os.path.dirname(self._output_filepath)

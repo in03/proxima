@@ -11,9 +11,10 @@ from shutil import which
 
 from rich import print
 
-from ..app.utils import core, pkg_info
-from ..settings.manager import SettingsManager
-from ..worker.utils import get_queue
+from proxima import core
+from proxima.app.utils import pkg_info
+from proxima.settings import SettingsManager
+from proxima.worker.utils import get_queue
 
 core.install_rich_tracebacks()
 
@@ -132,7 +133,7 @@ def new_worker(id=None):
         os_ = platform.system()
 
         if os_ is "Windows":
-            return 'start "RPROX Worker"'  # First double quotes as title
+            return 'start "Proxima worker"'  # First double quotes as title
 
         elif os_ is "Mac":
             return "open"
@@ -165,7 +166,11 @@ def new_worker(id=None):
     logger.debug(f"[magenta]{' '.join(launch_cmd)}[/]\n")
 
     subprocess.Popen(
-        cwd=get_module_path(),
+        # TODO: This was causing the worker start cmd to fail after changing to absolute imports
+        # Not sure why we needed it in the first place? Would be good to do further testing and see
+        # if it is necessary in some cases.
+        # labels: testing
+        # cwd=get_module_path(),
         args=" ".join(launch_cmd),
         shell=True,
     )

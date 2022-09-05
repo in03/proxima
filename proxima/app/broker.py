@@ -15,7 +15,7 @@ from rich.progress import (
 from rich.live import Live
 from cryptohash import sha1
 
-from proxima.settings.manager import SettingsManager
+from proxima.settings import SettingsManager
 
 
 class RedisConnection:

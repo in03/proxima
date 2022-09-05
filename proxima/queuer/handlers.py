@@ -3,7 +3,7 @@ import logging
 import os
 import pathlib
 import shutil
-from typing import Union
+from typing import Union, Tuple
 
 from rich import print as pprint
 from rich.prompt import Confirm, Prompt
@@ -174,7 +174,7 @@ def handle_orphaned_proxies(media_list: list) -> list:
 
 
 def handle_already_linked(
-    media_list: list, unlinked_types: list = ["Offline", "None"]
+    media_list: list, unlinked_types: Tuple[str, ...] = ("Offline", "None")
 ) -> list:
     """Remove items from media-list that are already linked to a proxy.
     
@@ -205,7 +205,7 @@ def handle_already_linked(
 
 
 def handle_existing_unlinked(
-    media_list: list, unlinked_types: list = ["Offline", "None"]
+    media_list: list, unlinked_types: Tuple[str, ...] = ("Offline", "None")
 ) -> list:
 
     """Prompts user to either link or re-render unlinked proxy media that exists in the expected location.
@@ -320,12 +320,16 @@ def handle_existing_unlinked(
                     linkable_now.append(x)
                     media_list.remove(x)
 
-            remaining = link.link_proxies_with_mpi(
-                linkable_now,
-                linkable_types=["Offline", "None"],
-                prompt_rerender=True,
-            )
-            media_list.extend(remaining)
+            proxy_linker = link.ProxyLinker(linkable_now)
+            proxy_linker.link()
+
+            # Prompt to requeue if any failures
+            if proxy_linker.mismatch_fail:
+                if Confirm.ask(
+                    f"[yellow]{len(proxy_linker.mismatch_fail)} files failed to link."
+                    "They may be corrupt or incomplete. Re-render them?"
+                ):
+                    media_list.extend(proxy_linker.mismatch_fail)
 
         else:
 

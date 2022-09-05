@@ -12,7 +12,7 @@ from rich import print
 from rich.console import Console
 from rich.rule import Rule
 
-from .utils import pkg_info
+from proxima.app.utils import pkg_info
 
 # Init classes
 cli_app = typer.Typer()
@@ -72,8 +72,8 @@ def draw_banner():
 def run_checks():
     """Run before CLI App load."""
 
-    from ..app import checks
-    from ..settings.manager import SettingsManager
+    from proxima import checks
+    from proxima.settings import SettingsManager
 
     settings = SettingsManager()
 
@@ -103,13 +103,13 @@ def queue():
     """
 
     # Init
-    from ..app import checks
-    from ..settings.manager import SettingsManager
-    from .utils.core import setup_rich_logging
+    from proxima import checks
+    from proxima.settings import SettingsManager
+    from proxima import core
 
     settings = SettingsManager()
 
-    setup_rich_logging()
+    core.setup_rich_logging()
     logger = logging.getLogger(__name__)
     logger.setLevel(settings["app"]["loglevel"])
     # End init
@@ -123,36 +123,9 @@ def queue():
     )
     print("\n")
 
-    from ..queuer import queue
+    from proxima.queuer import queue
 
     queue.main()
-
-
-@cli_app.command()
-def link():
-    """
-    Manually link proxies from directory to
-    source media in open DaVinci Resolve project
-    """
-
-    # Init
-    from ..settings.manager import SettingsManager
-    from .utils.core import setup_rich_logging
-
-    settings = SettingsManager()
-
-    setup_rich_logging()
-    logger = logging.getLogger(__name__)
-    logger.setLevel(settings["app"]["loglevel"])
-    # End init
-
-    from ..queuer import link
-
-    print("\n")
-    console.rule(f"[green bold]Link proxies[/] :link:", align="left")
-    print("\n")
-
-    link.main()
 
 
 @cli_app.command()
@@ -181,7 +154,7 @@ def work(
 
     print("\n")
 
-    from ..worker import launch_workers
+    from proxima.worker import launch_workers
 
     launch_workers.main(workers_to_launch)
 
@@ -239,7 +212,7 @@ def celery(
 def config():
     """Open user settings configuration file for editing"""
 
-    from ..settings.manager import SettingsManager
+    from proxima.settings import SettingsManager
 
     settings = SettingsManager()
 
@@ -249,6 +222,8 @@ def config():
     )
     print("\n")
 
+    # TODO: Cross platform alternative to this hack?
+    # labels: enhancement
     webbrowser.open_new(settings.user_file)
 
 
