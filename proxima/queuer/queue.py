@@ -4,15 +4,10 @@ import logging
 import os
 
 from celery import group
+from proxima import ProxyLinker, broker, core, handlers, resolve
+from proxima.settings import SettingsManager
+from proxima.worker import encoding_tasks
 from rich import print
-
-
-from ..app import broker
-from ..app.utils import core
-from ..settings.manager import SettingsManager
-from ..worker.tasks.encode.tasks import encode_proxy
-from ..worker.celery import app as celery_app
-from . import handlers, link, resolve
 
 settings = SettingsManager()
 
@@ -47,7 +42,7 @@ def queue_tasks(tasks):
     """Block until all queued tasks finish, notify results."""
 
     # Wrap task objects in Celery task function
-    callable_tasks = [encode_proxy.s(x) for x in tasks]
+    callable_tasks = [encoding_tasks.encode_proxy.s(x) for x in tasks]
     logger.debug(f"[magenta]callable_tasks:[/] {callable_tasks}")
 
     # Create task group to retrieve job results as batch
@@ -80,13 +75,22 @@ def main():
     media_pool_items = resolve.get_media_pool_items(track_items)
     jobs = resolve.get_resolve_proxy_jobs(media_pool_items)
 
+    # Add queuer side data
+    jobs = add_queuer_data(
+        jobs,
+        project=project_name,
+        timeline=timeline_name,
+        proxy_settings=settings["proxy"],
+        paths_settings=settings["paths"],
+    )
+
     # Prompt user for intervention if necessary
     print()
-    jobs = handlers.handle_already_linked(jobs, unlinked_types=["Offline", "None"])
+    jobs = handlers.handle_already_linked(jobs, unlinked_types=("Offline", "None"))
     logger.debug(f"[magenta]Remaining queuable:[/]\n{[x['file_name'] for x in jobs]}")
 
     print()
-    jobs = handlers.handle_existing_unlinked(jobs, unlinked_types=["Offline", "None"])
+    jobs = handlers.handle_existing_unlinked(jobs, unlinked_types=("Offline", "None"))
     logger.debug(f"[magenta]Remaining queuable:[/]\n{[x['file_name'] for x in jobs]}")
 
     print()
@@ -121,21 +125,13 @@ def main():
         jobs_with_mpi.append({str(x["media_pool_item"]): x["media_pool_item"]})
         x.update({"media_pool_item": str(x["media_pool_item"])})
 
-    tasks = add_queuer_data(
-        jobs,
-        project=project_name,
-        timeline=timeline_name,
-        proxy_settings=settings["proxy"],
-        paths_settings=settings["paths"],
-    )
-
     print("\n")
 
     core.notify(f"Started encoding job '{project_name} - {timeline_name}'")
     # print(f"[yellow]Waiting for job to finish. Feel free to minimize.[/]")
 
     # Queue tasks to workers and track task progress
-    results = queue_tasks(tasks)
+    results = queue_tasks(jobs)
 
     if results.failed():
         fail_message = "Some videos failed to encode!"
@@ -160,21 +156,19 @@ def main():
             if x["media_pool_item"] == k:
                 x.update({"media_pool_item": v})
 
+    proxy_linker = ProxyLinker(jobs, linkable_types=("None",))
+
     try:
+        proxy_linker.link()
 
-        unlinkable = link.link_proxies_with_mpi(
-            jobs,
-            linkable_types=["None"],
-            prompt_rerender=False,
+    except Exception:
+
+        logger.error(
+            f"[red]Couldn't link jobs. Unhandled exception:[/]\n", exc_info=True
         )
-        assert len(unlinkable) == 0
-
-    except Exception as e:
-
-        logger.error(f"[red]Couldn't link jobs. Link manually.[/]\nError: {e}")
         core.app_exit(1, -1)
 
-    finally:
+    else:
         print("[bold][green]All linked up![/bold] Nothing to queue[/] :link:")
         core.app_exit(0)
 

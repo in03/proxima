@@ -1,13 +1,11 @@
 import imp
-import pathlib
 import logging
 import os
+import pathlib
 import sys
 
-from rich import print
-
-from ..app.utils import core
-from ..settings.manager import SettingsManager
+from proxima import core, exceptions
+from proxima.settings import SettingsManager
 
 settings = SettingsManager()
 
@@ -18,9 +16,9 @@ logger.setLevel(settings["app"]["loglevel"])
 
 class ResolveObjects:
     def __init__(self):
-        self._populate_variables()
+        self.__populate_variables()
 
-    def _get_resolve(self):
+    def __get_resolve(self):
 
         ext = ".so"
         if sys.platform.startswith("darwin"):
@@ -31,7 +29,9 @@ class ResolveObjects:
         elif sys.platform.startswith("linux"):
             path = "/opt/resolve/libs/Fusion/"
         else:
-            raise Exception("Unsupported system! " + sys.platform)
+            raise exceptions.ResolveUnsupportedPlatform(
+                "Unsupported system! " + sys.platform
+            )
 
         bmd = imp.load_dynamic("fusionscript", path + "fusionscript" + ext)
         resolve = bmd.scriptapp("Resolve")
@@ -46,56 +46,23 @@ class ResolveObjects:
 
         return resolve
 
-    def _populate_variables(self):
+    def __populate_variables(self):
 
-        try:
+        self.resolve = self.__get_resolve()
+        if self.resolve is None:
+            raise exceptions.ResolveAPIConnectionError()
 
-            self.resolve = self._get_resolve()
-            if self.resolve is None:
-                raise TypeError
+        self.project = self.resolve.GetProjectManager().GetCurrentProject()
+        if self.project is None:
+            raise exceptions.ResolveNoCurrentProjectError()
 
-        except:
+        self.timeline = self.project.GetCurrentTimeline()
+        if self.timeline is None:
+            raise exceptions.ResolveNoCurrentTimelineError()
 
-            logger.critical(
-                "[red] :warning: Couldn't access the Resolve Python API. Is DaVinci Resolve running?[/]"
-            )
-            core.app_exit(1, -1)
-
-        try:
-
-            self.project = self.resolve.GetProjectManager().GetCurrentProject()
-            if self.project is None:
-                raise TypeError
-
-        except:
-
-            logger.critical(
-                "[red] :warning: Couldn't get current project. Is a project open in Resolve?[/]"
-            )
-            core.app_exit(1, -1)
-
-        try:
-
-            self.timeline = self.project.GetCurrentTimeline()
-            if self.timeline is None:
-                raise TypeError
-        except:
-
-            logger.critical(
-                "[red] :warning: Couldn't get current timeline. Is a timeline open in Resolve?[/]"
-            )
-            core.app_exit(1, -1)
-
-        try:
-
-            self.media_pool = self.project.GetMediaPool()
-            if self.media_pool is None:
-                raise TypeError
-
-        except:
-
-            logger.critical("[red] :warning: Couldn't get Resolve's media pool.[/]")
-            core.app_exit(1, -1)
+        self.media_pool = self.project.GetMediaPool()
+        if self.media_pool is None:
+            raise exceptions.ResolveNoMediaPoolError()
 
 
 def get_video_track_items(timeline):

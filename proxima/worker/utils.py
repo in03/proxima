@@ -4,9 +4,9 @@ import platform
 import subprocess
 from pathlib import Path
 
-from ..app.utils import core
-from ..settings.manager import SettingsManager
-from ..worker.ffmpeg.utils import ffprobe
+from proxima import core
+from proxima.settings import SettingsManager
+from proxima.worker.ffmpeg import ffprobe
 
 core.install_rich_tracebacks()
 
@@ -94,6 +94,8 @@ def get_input_level(job):
         assert video_info != None
 
         color_data = {k: v for k, v in video_info.items() if "color" in k}
+        logger.debug(f"Color data:\n{color_data}")
+
         assert "color_range" in video_info.keys()
 
         switch = {

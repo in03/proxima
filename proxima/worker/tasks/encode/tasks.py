@@ -1,10 +1,10 @@
 import logging
 
-from ....app.utils import core
-from ....settings.manager import SettingsManager
-from ....worker.celery import app
-from ....worker.ffmpeg.ffmpeg_process import FfmpegProcess
-from ....worker import utils
+from proxima import core
+from proxima.settings import SettingsManager
+from proxima.worker import celery_app
+from proxima.worker.ffmpeg import FfmpegProcess
+from proxima.worker import utils
 
 from rich import print
 from rich.console import Console
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(settings["worker"]["loglevel"])
 
 
-@app.task(
+@celery_app.task(
     bind=True,
     acks_late=True,
     track_started=True,

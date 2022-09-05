@@ -2,16 +2,14 @@
 # Link proxies
 
 import logging
-import os
-from typing import Tuple, Union
 
-from rich import print as pprint
 from rich.console import Console
-from rich.prompt import Confirm, Prompt
+from typing import Tuple
 
-from ..app.utils import core
-from ..settings.manager import SettingsManager
-from .resolve import ResolveObjects
+from proxima import core
+from proxima import exceptions
+from proxima.settings import SettingsManager
+from proxima import resolve
 
 console = Console()
 settings = SettingsManager()
@@ -21,332 +19,138 @@ logger = logging.getLogger(__name__)
 logger.setLevel(settings["app"]["loglevel"])
 
 
-def get_proxy_path():
+class ProxyLinker:
+    def __init__(self, jobs, linkable_types: Tuple[str, ...] = ("Offline", "None")):
 
-    # TODO: Allow linking via custom path passed by Typer or use default proxy dir
-    # labels: enhancement
+        self.jobs = jobs
+        self.linkable_types = linkable_types
 
-    f = Prompt.ask("Enter path to search for proxies")
-    if f is None:
-        pprint("User cancelled. Exiting.")
-        core.app_exit(0, 0)
-    return f
+        self.link_success = []
+        self.mismatch_fail = []
 
+    def project_is_same(self):
+        """
+        Check that the project open in Resolve is the same one that was queued.
 
-def recurse_dir(root):
-    """Recursively search given directory for files
-    and return full filepaths
-    """
-
-    all_files = [
-        os.path.join(root, f) for root, dirs, files in os.walk(root) for f in files
-    ]
-    pprint(f"Found {len(all_files)} files in folder {root}")
-    return all_files
-
-
-def filter_files(dir_, extension_whitelist):
-    """Filter files by allowed filetype"""
-
-    # pprint(f"{timeline.GetName()} - Video track count: {track_len}")
-    allowed = [x for x in dir_ if os.path.splitext(x) in extension_whitelist]
-    return allowed
-
-
-def get_track_items(timeline, track_type="video"):
-    """Retrieve all video track items from a given timeline object"""
-
-    track_len = timeline.GetTrackCount("video")
-    logger.debug(f"[cyan]{timeline.GetName()} - Video track count: {track_len}[/]")
-
-    items = []
-
-    for i in range(track_len):
-        i += 1  # Track index starts at one...
-        items.extend(timeline.GetItemListInTrack(track_type, i))
-
-    return items
-
-
-def get_resolve_timelines(project, active_timeline_first=True):
-    """Return a list of all Resolve timeline objects in current project."""
-
-    timelines = []
-
-    timeline_len = project.GetTimelineCount()
-    if timeline_len > 0:
-
-        for i in range(1, timeline_len + 1):
-            timeline = project.GetTimelineByIndex(i)
-            timelines.append(timeline)
-
-        if active_timeline_first:
-            active = project.GetCurrentTimeline().GetName()  # Get active timeline
-            timeline_names = [x.GetName() for x in timelines]
-            active_i = timeline_names.index(
-                active
-            )  # It's already in the list, find it's index
-            timelines.insert(
-                0, timelines.pop(active_i)
-            )  # Move it to the front, indexing should be the same as name list
-    else:
-        return False
-
-    return timelines
-
-
-def get_timeline_data(timeline):
-    """Return a dictionary containing timeline names,
-    their tracks, clips media paths, etc.
-    """
-
-    clips = get_track_items(timeline, track_type="video")
-    data = {
-        "timeline": timeline,
-        "name": timeline.GetName(),
-        "track count": timeline.GetTrackCount(),
-        "clips": clips,
-    }
-
-    return data
-
-
-def _link_proxies(proxy_files, clips):
-    """Actual linking function.
-    Matches filenames between lists of paths.
-    'clips' actually needs to be a Resolve timeline item object.
-    """
-
-    linked_proxies = []
-    failed_proxies = []
-
-    for proxy in proxy_files:
-        for clip in clips:
-
-            proxy_name = os.path.splitext(os.path.basename(proxy))[0]
-            if proxy in failed_proxies:
-                logger.warning(f"[yellow]Skipping {proxy_name}, already failed.")
-                break
-
-            try:
-                mpi = clip.GetMediaPoolItem()
-                path = mpi.GetClipProperty("File Path")
-                filename = os.path.splitext(os.path.basename(path))[0]
-
-                if proxy_name.lower() in filename.lower():
-
-                    logger.info("[cyan]Found match:\n" f"- '{proxy}' \n- '{path}'")
-
-                    if mpi.LinkProxyMedia(proxy):
-
-                        logger.info(f"[green]:heavy_check_mark: Linked \n")
-                        linked_proxies.append(proxy)
-
-                    else:
-                        logger.error(f"[red bold]:x: Failed to link {mpi.GetName()}\n")
-                        failed_proxies.append(proxy)
-
-                    break
-
-            except AttributeError:
-                logger.debug(
-                    f"[magenta]{clip.GetName()} has no 'file path' attribute,"
-                    + " probably Resolve internal media."
-                )
-
-    return linked_proxies, failed_proxies
-
-
-def find_and_link_proxies(project, proxy_files) -> Tuple[list, list]:
-    """Attempts to match source media in active Resolve project
-    with a list of filepaths to proxy files."""
-
-    linked = []
-    failed = []
-
-    timelines = get_resolve_timelines(project)
-
-    if not timelines:
-
-        logger.error("[red]No timelines exist in current project.[/]")
-        return linked, failed
-
-    # Get clips from all timelines.
-    for timeline in timelines:
-
-        timeline_data = get_timeline_data(timeline)
-        clips = timeline_data["clips"]
-        unlinked_source = [x for x in clips if x not in linked]
-
-        if not unlinked_source:
-            logger.info(f" -> [yellow]No more clips to link in {timeline_data['name']}")
-            continue
-        else:
-            pprint("\n")
-            console.rule(
-                f":mag_right: [cyan bold]Searching timeline '{timeline_data['name']}'",
-                align="left",
-            )
-            pprint("\n")
-
-        unlinked_proxies = [x for x in proxy_files if x not in linked]
-        logger.info(f"[cyan]Unlinked source count:[/] {len(unlinked_source)}")
-        logger.info(f"[cyan]Unlinked proxies count:[/] {len(unlinked_proxies)}")
-
-        if not unlinked_proxies:
-            logger.info(f"[green]No more proxies to link[/]")
-            break
-
-        pprint()
-
-        # This inter-function nested loop thing is a little dank.
-        linked_, failed_ = _link_proxies(proxy_files, clips)
-
-        # Update lists for each timeline
-        linked.extend(linked_)
-        failed.extend(failed_)
-
-        if len(linked_) + len(failed_) == len(proxy_files):
-            break
-
-    if linked:
-
-        logger.info(f"[green]Link success:[/] {len(linked)}")
-
-    if failed:
-
-        logger.error(f"[red]Link fail:[/]{len(failed)}")
-        failed_paths = [(os.path.basename(x)) for x in failed]
-        logger.error(
-            f"[red]The following files matched, but couldn't be linked. Suggest re-rendering them:[/]\n{failed_paths}"
-        )
-
-    return linked, failed
-
-
-def link_proxies_with_mpi(
-    jobs,
-    linkable_types: list = ["Offline", "None"],
-    prompt_reiterate=True,
-    prompt_rerender=False,
-):
-    """
-    Iterate through media list and link each finished proxy with its media pool item.
-
-    Args:
-        jobs (list of dicts): queuable jobs with project, timeline and setting metadata
-        linkable_types (list, optional): List of job `proxy_status` values to attempt link on. Defaults to ["Offline", "None"].
-        prompt_reiterate(bool, optional): If any links fail, prompt the user to fetch media pool items again by reiterating timelines.
-        If prompt_rerender is enabled, prompt_reiterate runs first.
-        prompt_rerender (bool, optional): If any links fail, prompt the user to re-queue them. Defaults to False.
-
-    Returns:
-        remaining_jobs (list of cits): the remaining queuable jobs that haven't been linked
-    """
-
-    logger.info(f"[cyan]Linking {len(jobs)} proxies[/]")
-
-    link_success = []
-    link_fail = []
-
-    # Iterate through all available proxies
-    for job in jobs:
-
-        logger.debug(f"[magenta]Attempting to link job:[/]\n {job}")
-
-        if job["proxy_status"] not in linkable_types:
-            continue
-
-        # TODO: Should probably use MediaInfo here instead of hardcode
-
-        # We only define the vertical res in `user_settings` so we can preserve aspect ratio.
-        # To get the proper resolution, we'd have to get the original file resolution.
-        # labels: enhancement
-
-        job.update({"proxy_status": "1280x720"})
-
-        logger.info(f"[cyan]:link: '{job['file_name']}'")
-
-        # Actually link proxies
+        """
         try:
 
-            linked = job["media_pool_item"].LinkProxyMedia(job["proxy_media_path"])
-            if not linked:
-                link_fail.append(job)
+            ro = resolve.ResolveObjects()
 
-            logger.info(f"[green bold]:heavy_check_mark: Linked\n")
-            link_success.append(job)
+        except exceptions.ResolveAPIConnectionError:
+            logger.error(
+                "Can't communicate with Resolve. Maybe it's closed?\n"
+                "Run `proxima queue` when you're ready to link your proxies later.",
+                exc_info=True,
+            )
+            return False
 
-        except TypeError:
-            # MPI will be 'NoneType' if project change
-            logger.error(f"[red bold]:x: Failed to link {job['file_name']}'\n")
-            link_fail.append(job)
+        try:
 
-    if link_success:
-        logger.debug(f"[magenta]Total link success:[/] {len(link_success)}")
+            current_project = ro.project.GetName()
 
-    if link_fail:
-        logger.error(f"[red]{len(link_fail)} proxies failed to link!")
+        except exceptions.ResolveNoCurrentProjectError:
+            logger.error(
+                "Can't get current Resolve project. Looks like Resolve may be closed.\n"
+                "Run `proxima queue` when you're ready to link your proxies later.",
+                exc_info=True,
+            )
+            return False
 
-        if prompt_reiterate:
+        if current_project != self.jobs[0]["project"]:
+            logger.error(
+                f"Looks like you've changed projects. ('[red]{current_project}[/]' -> '[green{self.jobs[0]['project']}[/]')\n"
+                "Proxies can't be linked to a closed project.\n"
+                "Run `proxima queue` when you're ready to link your proxies later."
+            )
+            return False
 
-            if Confirm.ask(
-                f"\n[yellow]If you've changed projects since queuing you'll have to run\n"
-                "a comprehensive search. Make sure you're in the correct project!\n[bold]Run now?"
-            ):
-                r_ = ResolveObjects()
-                linked_, _ = find_and_link_proxies(
-                    r_.project, [x["proxy_media_path"] for x in jobs]
+        return True
+
+    def remove_unlinkable_jobs(self):
+        """
+        Remove jobs from the link queue that aren't in `linkable_types`
+
+        This prevents relinking footage that is already linked according to Resolve.
+        """
+        self.jobs = [x for x in self.jobs if x["proxy_status"] in self.linkable_types]
+
+        if not self.jobs:
+            raise exceptions.NoneLinkableError()
+
+    def __link_proxy_media(self, job):
+        """
+        Wrapper around Resolve's `LinkProxyMedia` API method.
+
+        Args:
+            job (): A Proxima Job
+
+        Raises:
+            exceptions.ResolveLinkMismatchError: Occurs when the method returns False.
+            Unfortunately the method returns no error context beyond that.
+        """
+        if not job["media_pool_item"].LinkProxyMedia(job["proxy_media_path"]):
+            raise exceptions.ResolveLinkMismatchError(
+                proxy_file=job["proxy_media_path"]
+            )
+
+    def link(self):
+
+        """
+        Iterate through media list and link each finished proxy with its media pool item.
+
+        Args:
+            jobs (list of dicts): queuable jobs with project, timeline and setting metadata
+            linkable_types (list, optional): List of job `proxy_status` values to attempt link on. Defaults to ["Offline", "None"].
+            prompt_reiterate(bool, optional): If any links fail, prompt the user to fetch media pool items again by reiterating timelines.
+            If prompt_rerender is enabled, prompt_reiterate runs first.
+            prompt_rerender (bool, optional): If any links fail, prompt the user to re-queue them. Defaults to False.
+
+        Returns:
+            remaining_jobs (list of cits): the remaining queuable jobs that haven't been linked
+        """
+
+        logger.info(f"[cyan]Linking {len(self.jobs)} proxies[/]")
+
+        if not self.project_is_same():
+            core.app_exit(1, -1)
+
+        self.remove_unlinkable_jobs()
+
+        # Iterate through all available proxies
+        for job in self.jobs:
+
+            logger.debug(f"[magenta]Attempting to link job:[/]\n {job}")
+            logger.info(f"[cyan]:link: '{job['file_name']}'")
+
+            try:
+
+                self.__link_proxy_media(job)
+
+            except exceptions.ResolveLinkMismatchError:
+                logger.error(
+                    f"[red bold]:x: Failed to link '{job['file_name']}'[/]\n" f"[red]",
+                    # exc_info=True,
                 )
+                self.mismatch_fail.append(job)
 
-                # Remove from link_fail if retry success
-                for x in reversed(link_fail):
-                    if x["proxy_media_path"] in linked_:
-                        link_fail.remove(x)
+            else:
+                logger.info(f"[green bold]:heavy_check_mark: Linked\n")
+                self.link_success.append(job)
 
-                # Move to link_success to prevent requeuing
-                link_success.extend([x for x in jobs if x not in linked_])
+        if self.link_success:
+            logger.debug(f"[magenta]Total link success:[/] {len(self.link_success)}")
 
-        if link_fail and prompt_rerender:
+        if self.mismatch_fail:
+            logger.error(f"[red]{len(self.mismatch_fail)} proxies failed to link!")
 
-            if Confirm.ask(
-                f"[yellow]Couldn't link proxies. Would you like to re-render them?"
-            ):
-                # Remove offline status, redefine media list
-                for x in jobs:
-                    if x in reversed(link_fail):
-                        x["proxy_status"] = "None"
-                        link_fail.remove(x)
+            if len(self.mismatch_fail) == len(self.jobs):
 
-    # Queue only those that remain
-    remaining_jobs = [
-        x for x in jobs if all([x not in link_success, x not in link_fail])
-    ]
-
-    logger.debug(f"[magenta]Remaining unlinked jobs:\n{remaining_jobs}")
-    return remaining_jobs
-
-
-def main():
-
-    from .resolve import ResolveObjects
-
-    try:
-
-        r_ = ResolveObjects()
-        proxy_dir = get_proxy_path()
-
-        pprint(f"Passed directory: '{proxy_dir}'\n")
-
-        all_files = recurse_dir(proxy_dir)
-        proxy_files = filter_files(
-            all_files, settings["filters"]["extension_whitelist"]
-        )
-        linked, failed = find_and_link_proxies(r_.project, proxy_files)
-
-    except Exception as e:
-        pprint("ERROR - " + str(e))
-
-
-if __name__ == "__main__":
-    main()
+                logger.critical(
+                    "[red bold]Oh dear. All the proxies failed to link.[/]\n"
+                    "[red]Resolve might not like your encoding settings or something else is wrong.[/]\n"
+                    # TODO: Add troubleshooting wiki link here
+                    # Like so: `"[cyan]See [troubleshooting](link)"`
+                    # labels: enhancement
+                )
+                core.app_exit(1, -1)

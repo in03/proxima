@@ -6,8 +6,8 @@ import subprocess
 import sys
 from fractions import Fraction
 
-from ...app.utils import core
-from ...settings.manager import SettingsManager
+from proxima import core
+from proxima.settings import SettingsManager
 
 settings = SettingsManager()
 core.install_rich_tracebacks()
