@@ -200,7 +200,7 @@ def get_resolve_proxy_jobs(media_pool_items):
 
         # Might still get media that has clip properties, but empty attributes
         # Should only be internally generated media that returns this way
-        if source_path is "":
+        if source_path == "":
 
             logger.debug(
                 f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
