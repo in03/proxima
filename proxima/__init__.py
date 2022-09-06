@@ -1,4 +1,4 @@
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 from .app.utils import core
 from .app import broker
 from .app import checks

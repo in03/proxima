@@ -8,13 +8,12 @@ license = "MIT"
 include = ["version_constraint_key"]
 
 [tool.poetry.dependencies]
-python = ">=3.6.2,<3.7.*"
+python = ">=3.10.0,<4.0.0"
 celery = "^5.1.2"
 rich = "^10.12.0"
 typer = "^0.4.0"
 pyfiglet = "^0.8.post1"
 redis = "^3.5.3"
-semver = "^2.13.0"
 requests = "^2.26.0"
 "ruamel.yaml" = "^0.17.17"
 schema = "^0.7.5"
@@ -22,10 +21,7 @@ deepdiff = "^5.7.0"
 pymediainfo = "^5.1.0"
 commonregex = "^1.5.3"
 notify-py = "^0.3.3"
-shortuuid = "^1.0.8"
 yaspin = "^2.1.0"
-ffmpeg-python = "^0.2.0"
-asciimatics = "^1.14.0"
 cryptohash = "^1.0.5"
 
 [tool.poetry.dev-dependencies]

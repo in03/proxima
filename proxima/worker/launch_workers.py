@@ -132,13 +132,13 @@ def new_worker(id=None):
         # Get new terminal cmd
         os_ = platform.system()
 
-        if os_ is "Windows":
+        if os_ == "Windows":
             return 'start "Proxima worker"'  # First double quotes as title
 
-        elif os_ is "Mac":
+        elif os_ == "Mac":
             return "open"
 
-        elif os_ is "Linux":
+        elif os_ == "Linux":
             logger.error(
                 "Cannot guess installed Linux terminal. Too many distros."
                 + "Please provide a terminal executable in 'worker_terminal_args' settings."
