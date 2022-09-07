@@ -148,7 +148,8 @@ class ProxyLinker:
 
                 logger.critical(
                     "[red bold]Oh dear. All the proxies failed to link.[/]\n"
-                    "[red]Resolve might not like your encoding settings or something else is wrong.[/]\n"
+                    "[red]Resolve might not like your encoding settings or something else is wrong.[/]\n",
+                    exc_info=True
                     # TODO: Add troubleshooting wiki link here
                     # Like so: `"[cyan]See [troubleshooting](link)"`
                     # labels: enhancement
