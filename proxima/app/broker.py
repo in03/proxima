@@ -14,7 +14,6 @@ from rich.progress import (
 )
 from rich.live import Live
 from cryptohash import sha1
-
 from proxima.settings import SettingsManager
 
 
@@ -232,49 +231,35 @@ class ProgressTracker:
             self.logger.debug(f"[magenta]Progress data: {data}")
             return
 
-        # If task is registered, track it
-        if data["task_id"] in self.matched_task_ids:
+        self.prog_percentages.update({data["task_id"]: data["percent"]})
 
-            # Store all vals for future purposes maybe?
-            self.progress_latest_data.update(
-                {data["task_id"]: [data.get("completed"), data.get("total")]}
-            )
-            # Get up-to-date average
-            progress_data = self.progress_latest_data[data["task_id"]]
-            percentage = round(progress_data[0] / progress_data[1] * 100)
-            self.prog_percentages.update({data["task_id"]: percentage})
-            active_task_average = round(
-                sum(self.prog_percentages.values()) / len(self.prog_percentages)
-            )
-            try:
-                total_task_average = round(
-                    active_task_average
-                    / (len(self.callable_tasks) - self.completed_tasks)
-                )
-            except DivisionByZero:
-                total_task_average = 0
-
-            # Log debug
-            self.logger.debug(f"[magenta]Current task percentage: {percentage}")
-            self.logger.debug(
-                f"[magenta]Active tasks average percentage: {active_task_average}"
-            )
-            self.logger.debug(
-                f"[magenta]Total tasks average percentage: {total_task_average}\n"
+        # Get up-to-date average
+        try:
+            total_task_average = sum(self.prog_percentages.values()) / len(
+                self.callable_tasks
             )
 
-            # TODO: Better way to prevent progress going backward on task pickup?
-            # Not sure why the task progress is going backwards.
-            # It happens on new task pick up, which I thought we accounted for?
-            # It doesn't seem to be off by much though.
-            # labels: enhancement
-            if total_task_average > self.last_task_average:
+        except DivisionByZero:
+            total_task_average = 0
 
-                # Update average progress bar
-                self.average_progress.update(
-                    task_id=self.average_id,
-                    completed=total_task_average,
-                )
+        # Log debug
+        self.logger.debug(f"[magenta]Current task percentage: {data['percent']}")
+        self.logger.debug(
+            f"[magenta]Total tasks average percentage: {total_task_average}"
+        )
+
+        # TODO: Better way to prevent progress going backward on task pickup?
+        # Not sure why the task progress is going backwards.
+        # It happens on new task pick up, which I thought we accounted for?
+        # It doesn't seem to be off by much though.
+        # labels: enhancement
+        if total_task_average > self.last_task_average:
+
+            # Update average progress bar
+            self.average_progress.update(
+                task_id=self.average_id,
+                completed=total_task_average,
+            )
 
     def report_progress(self, results, loop_delay=1):
 
@@ -296,7 +281,9 @@ class ProgressTracker:
                     if x is not None
                 ]
                 progress_events = [
-                    x for x in self.redis.scan_iter("task-progress*") if x is not None
+                    x
+                    for x in self.redis.scan_iter(f"task-progress:{self.group_id}")
+                    if x is not None
                 ]
 
                 for te in task_events:

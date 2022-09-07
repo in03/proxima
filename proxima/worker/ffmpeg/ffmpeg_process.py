@@ -14,7 +14,7 @@ from rich.progress import (
 )
 from rich.prompt import Confirm
 
-from ffmpeg import probe
+from .utils import ffprobe
 
 from proxima import core
 from proxima.settings import SettingsManager
@@ -28,11 +28,17 @@ logger.setLevel(settings["worker"]["loglevel"])
 
 
 class FfmpegProcess:
-    def __init__(self, command, ffmpeg_loglevel="verbose"):
+    def __init__(
+        self, task_id: str, channel_id: str, command, ffmpeg_loglevel="verbose"
+    ):
         """
         Creates the list of FFmpeg arguments.
         Accepts an optional ffmpeg_loglevel parameter to set the value of FFmpeg's -loglevel argument.
         """
+
+        self.task_id = task_id
+        self.channel_id = channel_id
+
         index_of_filepath = command.index("-i") + 1
         self._filepath = command[index_of_filepath]
         self._output_filepath = command[-1]
@@ -50,7 +56,9 @@ class FfmpegProcess:
         self._can_get_duration = True
 
         try:
-            self._duration_seconds = float(probe(self._filepath)["format"]["duration"])
+            self._duration_seconds = float(
+                ffprobe(self._filepath)["format"]["duration"]
+            )
         except Exception:
             self._can_get_duration = False
 
@@ -61,14 +69,19 @@ class FfmpegProcess:
             self._ffmpeg_args += ["-progress", "pipe:1", "-nostats"]
 
     def update_progress(self, **kwargs):
+        """
+        Send an update progress message with Redis.
+
+        Uses task group ID as channel name
+        """
 
         self.redis.setex(
-            name=str(f"task-progress:{kwargs['task_id']}"),
+            name=str(f"task-progress:{self.channel_id}"),
             time=timedelta(seconds=settings["broker"]["result_expires"]),
-            value=json.dumps(dict(**kwargs)),
+            value=json.dumps(dict(task_id=self.task_id, **kwargs)),
         )
 
-    def run(self, task_id=None, logfile=None):
+    def run(self, logfile=None):
 
         # Get progress bar
         console = Console(record=True)
@@ -156,17 +169,14 @@ class FfmpegProcess:
                             )
 
                             # Publish task progress
-                            if task_id:
-
-                                self.update_progress(
-                                    task_id=task_id,
-                                    output_filename=os.path.basename(
-                                        self._output_filepath
-                                    ),
-                                    advance=seconds_increase,
-                                    completed=seconds_processed,
-                                    total=self._duration_seconds,
-                                )
+                            self.update_progress(
+                                output_filename=os.path.basename(self._output_filepath),
+                                completed=seconds_processed,
+                                total=self._duration_seconds,
+                                percent=(
+                                    seconds_processed / self._duration_seconds * 100
+                                ),
+                            )
 
                             previous_seconds_processed = seconds_processed
 
