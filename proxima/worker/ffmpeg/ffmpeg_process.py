@@ -14,7 +14,7 @@ from rich.progress import (
 )
 from rich.prompt import Confirm
 
-from ffmpeg import probe
+from .utils import ffprobe
 
 from proxima import core
 from proxima.settings import SettingsManager
@@ -50,7 +50,9 @@ class FfmpegProcess:
         self._can_get_duration = True
 
         try:
-            self._duration_seconds = float(probe(self._filepath)["format"]["duration"])
+            self._duration_seconds = float(
+                ffprobe(self._filepath)["format"]["duration"]
+            )
         except Exception:
             self._can_get_duration = False
 
