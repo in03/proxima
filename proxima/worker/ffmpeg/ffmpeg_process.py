@@ -75,10 +75,9 @@ class FfmpegProcess:
         Uses task group ID as channel name
         """
 
-        self.redis.setex(
-            name=str(f"task-progress:{self.channel_id}"),
-            time=timedelta(seconds=settings["broker"]["result_expires"]),
-            value=json.dumps(dict(task_id=self.task_id, **kwargs)),
+        self.redis.publish(
+            channel=str(f"task-progress:{self.channel_id}"),
+            message=json.dumps(dict(task_id=self.task_id, **kwargs)),
         )
 
     def run(self, logfile=None):
