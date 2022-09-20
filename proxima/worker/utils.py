@@ -88,21 +88,29 @@ def get_input_level(job):
         # Get first valid video stream
         video_info = None
         for stream in streams:
+            logger.debug(f"[magenta]Found stream {stream}")
             if stream["codec_type"] == "video":
-                if stream["avg_frame_rate"] != "0/0":
+                if stream["r_frame_rate"] != "0/0":
                     video_info = stream
         assert video_info != None
 
         color_data = {k: v for k, v in video_info.items() if "color" in k}
         logger.debug(f"Color data:\n{color_data}")
 
-        assert "color_range" in video_info.keys()
+        if "color_range" in color_data.keys():
+            switch = {
+                "pc": "in_range=full",
+                "tv": "in_range=limited",
+            }
+            return switch[video_info["color_range"]]
 
-        switch = {
-            "pc": "in_range=full",
-            "tv": "in_range=limited",
-        }
-        return switch[video_info["color_range"]]
+        else:
+
+            logger.warning(
+                "[yellow]Couldn't get color range metadata from file! Assuming 'limited'..."
+                "If interpretation is inaccurate, please transcode to a format that supports color metadata."
+            )
+            return "in_range=limited"
 
     switch = {
         "Auto": probe_for_input_range(job),

@@ -135,7 +135,7 @@ def main():
 
     if results.failed():
         fail_message = "Some videos failed to encode!"
-        print("[red]fail_message[/]")
+        print(f"[red]{fail_message}[/]")
         core.notify(fail_message)
 
     # Notify complete

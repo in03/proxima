@@ -181,6 +181,7 @@ def launch_workers(workers_to_launch: int, queue_name: str):
     # Start launching
 
     for i in range(0, workers_to_launch):
+
         new_worker(id=i + 1)
     return
 
