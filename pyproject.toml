@@ -23,6 +23,7 @@ commonregex = "^1.5.3"
 notify-py = "^0.3.3"
 yaspin = "^2.1.0"
 cryptohash = "^1.0.5"
+shortuuid = "^1.0.9"
 
 [tool.poetry.dev-dependencies]
 mkdocs-material = "^7.3.6"

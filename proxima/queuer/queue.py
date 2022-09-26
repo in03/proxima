@@ -6,7 +6,7 @@ import os
 from celery import group
 from proxima import ProxyLinker, broker, core, handlers, resolve
 from proxima.settings import SettingsManager
-from proxima.worker import encoding_tasks
+from proxima.worker.tasks import encode_proxy
 from rich import print
 
 settings = SettingsManager()
@@ -42,13 +42,13 @@ def queue_tasks(tasks):
     """Block until all queued tasks finish, notify results."""
 
     # Wrap task objects in Celery task function
-    callable_tasks = [encoding_tasks.encode_proxy.s(x) for x in tasks]
+    callable_tasks = [encode_proxy.s(x) for x in tasks]
     logger.debug(f"[magenta]callable_tasks:[/] {callable_tasks}")
 
     # Create task group to retrieve job results as batch
     task_group = group(callable_tasks)
 
-    progress = broker.ProgressTracker(settings, callable_tasks)
+    progress = broker.ProgressTracker()
 
     # Queue job
     results = task_group.apply_async(expires=settings["broker"]["job_expires"])
@@ -135,7 +135,7 @@ def main():
 
     if results.failed():
         fail_message = "Some videos failed to encode!"
-        print("[red]fail_message[/]")
+        print(f"[red]{fail_message}[/]")
         core.notify(fail_message)
 
     # Notify complete

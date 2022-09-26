@@ -1,8 +1,5 @@
-from decimal import DivisionByZero
-from typing import Union
+from typing import List
 import logging
-import json
-import redis
 import time
 from rich.console import Group
 from rich.progress import (
@@ -10,308 +7,159 @@ from rich.progress import (
     Progress,
     SpinnerColumn,
     TextColumn,
-    TimeRemainingColumn,
 )
 from rich.live import Live
-from cryptohash import sha1
+from celery.result import AsyncResult
 
-from proxima.settings import SettingsManager
-
-
-class RedisConnection:
-
-    """
-    Redis connection class.
-
-    Pulls connection settings from config into new Redis connection instance.
-
-    Attributes:
-        connection (Redis, None): Connection object used to interface with Redis.
-        settings (SettingsManager): Configuration used for connection.
-    """
-
-    def __init__(self, settings: SettingsManager):
-        self.connection: Union[redis.Redis, None] = None
-        self.settings = settings
-
-    def get_connection(self):
-        """
-        Initialise Redis connection.
-
-        Returns:
-            connection(Redis, None): Connection object used to interface with Redis.
-        """
-
-        broker_url = str(self.settings["broker"]["url"])
-        host = str(broker_url.split("redis://")[1].split(":")[0])
-        port = int(broker_url.split(":")[2].split("/")[0])
-
-        self.connection = redis.Redis(host=host, port=port, decode_responses=False)
-        return self.connection
+logger = logging.getLogger(__name__)
 
 
 class ProgressTracker:
-    def __init__(self, settings: SettingsManager, callable_tasks):
+    def __init__(self):
         """
         Track encoding progress of all tasks in a group
-
-        `settings` needed for connection to broker
-        `callable_tasks` needed to know task count
         for accurate progress bar rendering
-
         """
 
-        redis = RedisConnection(settings)
-        self.redis = redis.get_connection()
-
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(settings["app"]["loglevel"])
-
-        self.callable_tasks = callable_tasks
-
-        self.matched_task_ids = []
-        self.progress_latest_data = {}
-        self.prog_percentages = {}
-        self.last_task_average = 0
-
-        self.active_workers = list()
-        self.completed_tasks = 0
-        self.group_id = None
-
-        self.data_checksums = list()
+        self.already_seen = {}
 
     def __define_progress_bars(self):
 
-        self.last_status = Progress(
+        self.status_view = Progress(
             TextColumn("{task.fields[last_status]}"),
         )
 
-        self.worker_spinner = Progress(
+        self.progress = Progress(
             SpinnerColumn(),
-            # TODO: Get individual worker names instead of host machines
-            # labels: enhancement
-            TextColumn("[cyan]Using {task.fields[active_workers]} workers"),
-        )
-
-        self.average_progress = Progress(
             TextColumn("[cyan][progress.description]{task.description}"),
             BarColumn(),
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            TextColumn("[yellow]ETA:[/]"),
-            TimeRemainingColumn(),
-        )
-
-        self.overall_progress = Progress(
-            TextColumn("[cyan]{task.description}"),
-            # TODO: Fix bar column not lining up with task_progress bars
-            # Maybe we can make a spacer text column for all the bars and truncate long filenames with [...]?
-            # labels: bug
-            BarColumn(),
-            TextColumn("[cyan]({task.completed} of {task.total})"),
+            TextColumn(
+                "[cyan]{task.fields[completed_tasks]}/{task.fields[total_tasks]} | "
+                "{task.fields[active_workers]} workers"
+            ),
         )
 
         # Create group of renderables
         self.progress_group = Group(
-            self.last_status,
+            self.status_view,
             "",  # This actually works as a spacer lol
-            self.worker_spinner,
-            self.average_progress,
-            self.overall_progress,
+            self.progress,
         )
 
     def __init_progress_bars(self):
 
-        self.worker_id = self.last_status.add_task(
+        self.status_view_id = self.status_view.add_task(
             description="Last task event status",
             last_status="",
         )
-        self.last_status_id = self.worker_spinner.add_task(
-            description="Active worker count",
+
+        self.progress_id = self.progress.add_task(
             active_workers=0,
-            last_status="",
-        )
-
-        self.average_id = self.average_progress.add_task(
-            description="Average task progress",
+            description="Task progress",
             total=100,  # percentage
+            completed_tasks=0,
+            total_tasks=0,
         )
 
-        self.overall_id = self.overall_progress.add_task(
-            description="Total task progress",
-            total=len(self.callable_tasks),
-        )
+    def update_last_status(self, task_results: List[AsyncResult]):
 
-    def get_new_data(self, key):
+        for result in task_results:
 
-        data = self.redis.get(key)
-        if data is None:
-            self.logger.debug(f"[yellow]Could not get value from key: '{key}'")
-            return None
+            if not result or not result.args:
+                continue
 
-        # TODO: This shouldn't be returning invalid JSON?
-        # Not sure why but every 8th poll returns a value that isn't None, but isn't JSON.
-        # Also, JSONDecodeError is actually thrown as ValueError. Which is weird
-        # labels: Enhancement
-
-        try:
-            data = json.loads(data)
-        except ValueError:
-            self.logger.debug(f"[yellow]Could not decode value from key {key}")
-            return None
-
-        if not self.__data_is_new(data):
-            self.logger.debug(
-                f"Fetching redis key: '{key}' returned stale data:\n{data}"
-            )
-            return None
-
-        return data
-
-    def __data_is_new(self, data):
-
-        checksum = sha1(str(data))
-
-        if checksum in self.data_checksums:
-            return False
-        else:
-            self.data_checksums.append(checksum)
-            return True
-
-    def handle_task_event(self, key):
-
-        data = self.get_new_data(key)
-        if data == None:
-            return
-
-        # Is this one of our tasks, or another queuers?
-        if self.group_id == data["group_id"]:
-
-            # Update worker count
-            self.matched_task_ids.append(data["task_id"])
-            if data["worker"] not in self.active_workers:
-                self.active_workers.append(data["worker"])
-
-            # Update discrete task progress
-            if data["status"] in ["SUCCESS", "FAILURE"]:
-
-                self.completed_tasks = self.completed_tasks + 1
-                self.overall_progress.update(
-                    task_id=self.overall_id,
-                    completed=self.completed_tasks,
-                    total=len(self.callable_tasks),
-                )
-
-            # Print task event updates
-            worker = data["worker"]
-            file_name = data["args"][0]["file_name"]
+            # Skip if we've already seen this data
+            if (
+                result.id in self.already_seen
+                and self.already_seen[result.id] == result.status
+            ):
+                continue
 
             switch = {
-                "SUCCESS": f"[bold green] :green_circle: {worker}[/] -> finished '{file_name}'",
-                "FAILURE": f"[bold red] :red_circle: {worker}[/] -> [red]failed '{file_name}'",
-                "STARTED": f"[bold cyan] :blue_circle: {worker}[/] -> picked up '{file_name}'",
+                "STARTED": f"[bold cyan] :blue_circle: {result.worker}[/] -> [cyan]started on '{result.args[0]['file_name']}'",
+                "SUCCESS": f"[bold green] :green_circle: {result.worker}[/] -> [green]finished '{result.args[0]['file_name']}'",
+                "FAILURE": f"[bold red] :red_circle: {result.worker}[/] -> [red]failed '{result.args[0]['file_name']}'",
             }
 
-            self.status = switch[data["status"]]
+            if last_status := switch.get(result.status):
 
-            # Update spinner last status
-            self.last_status.update(
-                task_id=self.last_status_id,
-                last_status=switch[data["status"]],
-            )
+                self.status_view.update(
+                    task_id=self.status_view_id,
+                    last_status=last_status,
+                )
 
-            # Update worker spinner
-            self.worker_spinner.update(
-                task_id=self.worker_id,
-                active_workers=len(self.active_workers),
-            )
+            # Add to already seen, so we don't handle this event again
+            self.already_seen.update({result.id: result.status})
 
-    def handle_task_progress(self, key):
+    def update_progress(self, task_results: List[AsyncResult]):
 
-        data = self.get_new_data(key)
-        if not data:
-            self.logger.debug(f"[magenta]Progress data: {data}")
+        # Get encoding progress from task custom status
+        progress_data = [
+            x.info["percent"] for x in task_results if x.status == "ENCODING"
+        ]
+        if not progress_data:
             return
 
-        # If task is registered, track it
-        if data["task_id"] in self.matched_task_ids:
+        # Make sure we keep account for finished tasks
+        completed_data = [100 for x in task_results if x.ready()]
+        progress_data.extend(completed_data)
+        progress_avg = sum(progress_data) / len(task_results)
 
-            # Store all vals for future purposes maybe?
-            self.progress_latest_data.update(
-                {data["task_id"]: [data.get("completed"), data.get("total")]}
-            )
-            # Get up-to-date average
-            progress_data = self.progress_latest_data[data["task_id"]]
-            percentage = round(progress_data[0] / progress_data[1] * 100)
-            self.prog_percentages.update({data["task_id"]: percentage})
-            active_task_average = round(
-                sum(self.prog_percentages.values()) / len(self.prog_percentages)
-            )
-            try:
-                total_task_average = round(
-                    active_task_average
-                    / (len(self.callable_tasks) - self.completed_tasks)
-                )
-            except DivisionByZero:
-                total_task_average = 0
+        # Update average progress
+        self.progress.update(
+            task_id=self.progress_id,
+            completed=progress_avg,
+        )
 
-            # Log debug
-            self.logger.debug(f"[magenta]Current task percentage: {percentage}")
-            self.logger.debug(
-                f"[magenta]Active tasks average percentage: {active_task_average}"
-            )
-            self.logger.debug(
-                f"[magenta]Total tasks average percentage: {total_task_average}\n"
-            )
+        # try:
+        #     progress_avg = sum(progress_data) / len(task_results)
+        # except ZeroDivisionError:
+        #     self.logger.debug(
+        #         "[yellow]Encountered division by zero error! Setting progress to zero."
+        #     )
+        #     progress_avg = 0.0
 
-            # TODO: Better way to prevent progress going backward on task pickup?
-            # Not sure why the task progress is going backwards.
-            # It happens on new task pick up, which I thought we accounted for?
-            # It doesn't seem to be off by much though.
-            # labels: enhancement
-            if total_task_average > self.last_task_average:
+    def report_progress(self, group_results):
 
-                # Update average progress bar
-                self.average_progress.update(
-                    task_id=self.average_id,
-                    completed=total_task_average,
-                )
-
-    def report_progress(self, results, loop_delay=1):
-
-        # I figure timeout should be shorter than loop delay,
-        # that way we know we're not outpacing ourselves
-
-        self.group_id = results.id
-
+        self.group_id = group_results.id
         self.__define_progress_bars()
         self.__init_progress_bars()
 
         with Live(self.progress_group):
 
-            while not results.ready():
+            try:
 
-                task_events = [
-                    x
-                    for x in self.redis.scan_iter("celery-task-meta*")
-                    if x is not None
-                ]
-                progress_events = [
-                    x for x in self.redis.scan_iter("task-progress*") if x is not None
-                ]
+                while not group_results.ready():
 
-                for te in task_events:
-                    self.handle_task_event(te)
+                    # UPDATE PROGRESS
+                    task_results = group_results.results
+                    self.update_progress(task_results)
 
-                for pe in progress_events:
-                    self.handle_task_progress(pe)
+                    # HANDLE LAST STATUS
+                    self.update_last_status(task_results)
 
-                # Let's be nice to the server ;)
-                time.sleep(loop_delay)
+                    # HANDLE TASK INFO
+                    self.progress.update(
+                        task_id=self.progress_id,
+                        active_workers=len(
+                            [x for x in task_results if x.status == "ENCODING"]
+                        ),
+                        completed_tasks=group_results.completed_count(),
+                        total_tasks=len(task_results),
+                    )
+
+                    time.sleep(0.001)
+
+            except:
+                raise
+
+            finally:
+                # Allow reading final results
+                time.sleep(2)
 
             # Hide the progress bars after finish
-            self.worker_spinner.update(task_id=self.worker_id, visible=False)
-            self.last_status.update(task_id=self.last_status_id, visible=False)
-            self.average_progress.update(task_id=self.average_id, visible=False)
-            self.overall_progress.update(task_id=self.overall_id, visible=False)
+            self.status_view.update(task_id=self.status_view_id, visible=False)
+            self.progress.update(task_id=self.progress_id, visible=False)
 
-        return results
+        return group_results

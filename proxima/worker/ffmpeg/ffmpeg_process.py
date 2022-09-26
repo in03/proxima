@@ -1,4 +1,3 @@
-from datetime import timedelta
 import logging
 import os
 import subprocess
@@ -28,11 +27,17 @@ logger.setLevel(settings["worker"]["loglevel"])
 
 
 class FfmpegProcess:
-    def __init__(self, command, ffmpeg_loglevel="verbose"):
+    def __init__(
+        self, task_id: str, channel_id: str, command, ffmpeg_loglevel="verbose"
+    ):
         """
         Creates the list of FFmpeg arguments.
         Accepts an optional ffmpeg_loglevel parameter to set the value of FFmpeg's -loglevel argument.
         """
+
+        self.task_id = task_id
+        self.channel_id = channel_id
+
         index_of_filepath = command.index("-i") + 1
         self._filepath = command[index_of_filepath]
         self._output_filepath = command[-1]
@@ -63,14 +68,18 @@ class FfmpegProcess:
             self._ffmpeg_args += ["-progress", "pipe:1", "-nostats"]
 
     def update_progress(self, **kwargs):
+        """
+        Send an update progress message with Redis.
 
-        self.redis.setex(
-            name=str(f"task-progress:{kwargs['task_id']}"),
-            time=timedelta(seconds=settings["broker"]["result_expires"]),
-            value=json.dumps(dict(**kwargs)),
+        Uses task group ID as channel name
+        """
+
+        self.redis.publish(
+            channel=str(f"task-progress:{self.channel_id}"),
+            message=json.dumps(dict(task_id=self.task_id, **kwargs)),
         )
 
-    def run(self, task_id=None, logfile=None):
+    def run(self, celery_task_object, logfile=None):
 
         # Get progress bar
         console = Console(record=True)
@@ -157,18 +166,15 @@ class FfmpegProcess:
                                 advance=seconds_increase,
                             )
 
-                            # Publish task progress
-                            if task_id:
-
-                                self.update_progress(
-                                    task_id=task_id,
-                                    output_filename=os.path.basename(
-                                        self._output_filepath
-                                    ),
-                                    advance=seconds_increase,
-                                    completed=seconds_processed,
-                                    total=self._duration_seconds,
-                                )
+                            # Update task custom state
+                            celery_task_object.update_state(
+                                state="ENCODING",
+                                meta={
+                                    "percent": seconds_processed
+                                    / self._duration_seconds
+                                    * 100
+                                },
+                            )
 
                             previous_seconds_processed = seconds_processed
 

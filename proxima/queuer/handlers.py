@@ -327,7 +327,7 @@ def handle_existing_unlinked(
             if proxy_linker.mismatch_fail:
                 if Confirm.ask(
                     f"[yellow]{len(proxy_linker.mismatch_fail)} files failed to link."
-                    "They may be corrupt or incomplete. Re-render them?"
+                    + "They may be corrupt or incomplete. Re-render them?"
                 ):
                     media_list.extend(proxy_linker.mismatch_fail)
 
