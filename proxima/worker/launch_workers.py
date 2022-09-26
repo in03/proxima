@@ -8,6 +8,8 @@ import os
 import platform
 import subprocess
 from shutil import which
+import shortuuid
+import time
 
 from rich import print
 
@@ -56,7 +58,7 @@ def prompt_worker_amount(cpu_cores: int):
     return answer
 
 
-def new_worker(id=None):
+def new_worker(nickname=None):
     """Start a new celery worker in a new process
 
     Used to start workers even when the script binaries are buried
@@ -72,10 +74,10 @@ def new_worker(id=None):
         - none
     """
 
-    def get_worker_name(id):
+    def get_worker_name(nickname):
 
         # @h for 'hostname'
-        return f"-n worker{id}@{platform.node()}"
+        return f"-n {nickname}@{platform.node()}"
 
     def get_worker_queue():
 
@@ -157,12 +159,12 @@ def new_worker(id=None):
         f'"{get_celery_binary_path()}"',
         "-A proxima.worker",
         "worker",
-        get_worker_name(id),
+        get_worker_name(nickname),
         get_worker_queue(),
         *settings["worker"]["celery_args"],
     ]
 
-    logger.info(f"[cyan]NEW WORKER - {id}[/]")
+    logger.info(f"[cyan]NEW WORKER - {nickname}[/]")
     logger.debug(f"[magenta]{' '.join(launch_cmd)}[/]\n")
 
     subprocess.Popen(
@@ -176,13 +178,13 @@ def new_worker(id=None):
     )
 
 
-def launch_workers(workers_to_launch: int, queue_name: str):
+def launch_workers(workers_to_launch: int):
 
     # Start launching
 
-    for i in range(0, workers_to_launch):
-
-        new_worker(id=i + 1)
+    for _ in range(0, workers_to_launch):
+        new_worker(nickname=shortuuid.uuid()[:5])
+        time.sleep(0.3)
     return
 
 
@@ -202,14 +204,14 @@ def main(workers: int = 0):
     # Don't bother with tips if not prompting
     if workers:
 
-        launch_workers(workers, queue_name)
+        launch_workers(workers)
 
     else:
 
         print(f"[green]Running on {os_} with {cpu_cores} cores.[/]\n")
         print("For maximum performance, start as many workers as CPU cores.")
         print("Default recommendation is 2 cores spare for Resolve and other tasks.\n")
-        launch_workers(prompt_worker_amount(cpu_cores), queue_name)
+        launch_workers(prompt_worker_amount(cpu_cores))
 
     print(f"[green]Done![/]")
     core.app_exit(0, 2)

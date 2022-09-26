@@ -48,7 +48,7 @@ def queue_tasks(tasks):
     # Create task group to retrieve job results as batch
     task_group = group(callable_tasks)
 
-    progress = broker.ProgressTracker(settings, callable_tasks)
+    progress = broker.ProgressTracker()
 
     # Queue job
     results = task_group.apply_async(expires=settings["broker"]["job_expires"])

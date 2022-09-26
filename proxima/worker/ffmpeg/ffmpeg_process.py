@@ -79,7 +79,7 @@ class FfmpegProcess:
             message=json.dumps(dict(task_id=self.task_id, **kwargs)),
         )
 
-    def run(self, logfile=None):
+    def run(self, celery_task_object, logfile=None):
 
         # Get progress bar
         console = Console(record=True)
@@ -166,14 +166,14 @@ class FfmpegProcess:
                                 advance=seconds_increase,
                             )
 
-                            # Publish task progress
-                            self.update_progress(
-                                output_filename=os.path.basename(self._output_filepath),
-                                completed=seconds_processed,
-                                total=self._duration_seconds,
-                                percent=(
-                                    seconds_processed / self._duration_seconds * 100
-                                ),
+                            # Update task custom state
+                            celery_task_object.update_state(
+                                state="ENCODING",
+                                meta={
+                                    "percent": seconds_processed
+                                    / self._duration_seconds
+                                    * 100
+                                },
                             )
 
                             previous_seconds_processed = seconds_processed

@@ -108,6 +108,10 @@ def encode_proxy(self, job):
     print()  # Newline
     logger.debug(f"[magenta]Running! FFmpeg command:[/]\n{' '.join(ffmpeg_command)}\n")
 
+    # self.update_state(
+    #     state='ENCODING',
+    #     meta={'percent': 33}
+    # )
     process = FfmpegProcess(
         task_id=self.request.id,
         channel_id=self.request.group,
@@ -123,7 +127,7 @@ def encode_proxy(self, job):
     logger.info("[yellow]Encoding...[/]")
 
     try:
-        process.run(logfile=logfile_path)
+        process.run(self, logfile=logfile_path)
 
     except Exception as e:
         logger.exception(f"[red] :warning: Couldn't encode proxy.[/]\n{e}")
