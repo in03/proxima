@@ -12,12 +12,6 @@
 
 ##### Proxima makes queuing proxies from DaVinci Resolve a breeze. Launch the worker on as many computers as you have free and it'll pool all the free CPU threads together to encode multiple proxies at once. Only have the one computer? Encoding runs entirely on the CPU, leaving GPU-heavy Resolve with plenty of resources to continue editing while you pump out proxies. Once they're finished, they're automatically linked.
 
-> **Warning**
->
-> **Broker support has changed!**
-> Since introducing queuer-side progress indicators, only Redis is supported as a broker. Any other brokers officially supported by Celery will no longer work. 
-> Passing progress data back to the queuer through Celery proved to be a little obtuse. Choosing and working with a single broker was the path forward.
-
 ![](https://github.com/in03/proxima/blob/main/docs/images/rprox_worker-min.gif)
  
 ## Why make proxies? ##
@@ -61,20 +55,12 @@ I started this for the company I work for, well before BPG was on the scene. If 
 - Worker computers (decent resources, can overlap with editing computers)
 - all above machines on LAN and able to access same files via same filepath.
 
-> **Warning**
+> **Note**
 > 
-> **DaVinci Resolve 17 requires Python 3.6.**
+> **Only Davinci Resolve 18 is supported**
 > 
-> This Python version is end-of-life. No bug-fixes or security-patches are being released anymore. 
-> As such, many popular Python packages we depend on are dropping support for Python 3.6. 
-> Resolve 18 is now out of public beta. Once Proxima's integration and testing are complete for compatability with 18,
-> there will be a final release for Resolve 17 and future development will continue in a later version of Python 3.
-> Until then the full, working feature-set is available on the main branch.
-> To mitigate dependency conflicts you can try:
->
-> - Calling Proxima from a Python 3.6 virtual environment.
-> - Install Python 3.6 for Proxima and install a newer Python alongside it for your other needs.
-> - Install a tool like *pipx* that isolates Python CLI tools with their own virtual environments but keeps them on path (recommended)
+> Please check out the "resolve-17" branch if you need Resolve 17 support. 
+> Prior versions are untested, but may work depending on Resolve's API feature set for that version.  
 
 ### Installation
 Proxima is composed of three major parts:
@@ -92,7 +78,8 @@ pipx install git+https://github.com/in03/proxima
 
 #### Broker
 The broker is best installed on an always-on computer or server. If it's not running neither queuers nor workers can communicate.
-Very little configuration is required. Just make sure it's accessible over LAN. Since [#190](https://github.com/in03/proxima/pull/190), brokers other than Redis are no longer supported.
+Very little configuration is required. Just make sure it's accessible over LAN. Redis and RabbitMQ are Celery's best supported broker backends.
+Only Redis has been tested extensively with Proxima.
 
 Install Redis with docker:
 ```
