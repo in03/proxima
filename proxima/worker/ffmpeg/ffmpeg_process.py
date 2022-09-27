@@ -17,7 +17,6 @@ from .utils import ffprobe
 
 from proxima import core
 from proxima.settings import SettingsManager
-from proxima import broker
 
 settings = SettingsManager()
 
@@ -42,9 +41,6 @@ class FfmpegProcess:
         self._filepath = command[index_of_filepath]
         self._output_filepath = command[-1]
 
-        redis = broker.RedisConnection(settings)
-        self.redis = redis.get_connection()
-
         dirname = os.path.dirname(self._output_filepath)
 
         if dirname != "":
@@ -66,18 +62,6 @@ class FfmpegProcess:
         if self._can_get_duration:
             # pipe:1 sends the progress to stdout. See https://stackoverflow.com/a/54386052/13231825
             self._ffmpeg_args += ["-progress", "pipe:1", "-nostats"]
-
-    def update_progress(self, **kwargs):
-        """
-        Send an update progress message with Redis.
-
-        Uses task group ID as channel name
-        """
-
-        self.redis.publish(
-            channel=str(f"task-progress:{self.channel_id}"),
-            message=json.dumps(dict(task_id=self.task_id, **kwargs)),
-        )
 
     def run(self, celery_task_object, logfile=None):
 
