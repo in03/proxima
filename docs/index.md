@@ -18,10 +18,3 @@ comments: true
   * `proxima config`                               - Open user settings configuration file for editing
   * `proxima purge`                                - Purge all tasks from Celery according to VC key
   * `proxima celery [celery command] `             - Pass commands to Celery buried in venv
-
-## Project layout
-
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
