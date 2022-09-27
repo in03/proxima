@@ -63,7 +63,6 @@ class FfmpegProcess:
             # pipe:1 sends the progress to stdout. See https://stackoverflow.com/a/54386052/13231825
             self._ffmpeg_args += ["-progress", "pipe:1", "-nostats"]
 
-
     def run(self, celery_task_object, logfile=None):
 
         # Get progress bar
