@@ -32,6 +32,10 @@ isort = "^5.10.1"
 pre-commit = "^2.16.0"
 commitizen = "^2.27.1"
 
+[tool.poetry.group.dev.dependencies]
+mkdocs-git-revision-date-localized-plugin = "^1.1.0"
+mike = "^1.1.2"
+
 [tool.semantic_release]
 version_variable = [
     "proxima/__init__.py:__version__",

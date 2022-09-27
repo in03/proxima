@@ -1,3 +1,54 @@
 site_name: Proxima
+repo_name: in03/proxima
+repo_url: https://github.com/in03/proxima
+
 theme:
   name: material
+  icon:
+    logo: material/filmstrip-box-multiple
+    repo: fontawesome/brands/git-alt
+
+  custom_dir: docs/overrides
+
+  palette:
+
+    - scheme: default
+      primary: white
+      accent: blue
+      toggle:
+        icon: material/brightness-7 
+        name: Switch to dark mode
+
+    - scheme: slate
+      primary: black
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+  features:
+    - navigation.instant
+    - navigation.expand
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+
+  plugins:
+  - tags
+  - search
+  - git-revision-date-localized:
+      enable_creation_date: true
+
+
+extra:
+  version:
+    provider: mike
+    default: latest
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/in03
+    - icon: fontawesome/brands/linkedin
+      link: https://au.linkedin.com/in/caleb-trevatt-16217b102
+copyright: Copyright &copy; 2019 - 2022 Caleb Trevatt
