@@ -115,11 +115,21 @@ def get_remote_current_commit(github_url: str) -> Union[str, None]:
     return remote_current_commit
 
 
-def get_script_from_package(script_name: str) -> Union[str, None]:
-    """Get path to a named script in the current package
+def get_script_from_package(script_name: str) -> str:
+    """
+    Get path to a named script in the current package
 
     Allows us to call scripts buried in a virtual env like pipx.
     Case insensitive.
+
+    Args:
+        script_name (str): The name of the script to locate, e.g. "Celery"
+
+    Raises:
+        ImportError: Raised when the script can't be found
+
+    Returns:
+        script_path (str): Absolute path to the installed script
     """
 
     package_dir = Path(get_python_lib()).resolve().parents[1]
@@ -132,4 +142,7 @@ def get_script_from_package(script_name: str) -> Union[str, None]:
 
             return os.path.abspath(os.path.join(scripts_dir, file_))
 
-    return None
+    raise ImportError(
+        f"Couldn't find {script_name} script in Proxima package."
+        "Proxima may need reinstallation!"
+    )

@@ -7,9 +7,9 @@ import multiprocessing
 import os
 import platform
 import subprocess
-from shutil import which
 import shortuuid
 import time
+from shutil import which
 
 from rich import print
 
@@ -83,36 +83,6 @@ def new_worker(nickname=None):
 
         return f" -Q {get_queue()}"
 
-    def get_celery_binary_path():
-
-        # Check if in virtual env. Find.
-        celery_bin = pkg_info.get_script_from_package("Celery")
-        if celery_bin:
-            return celery_bin
-
-        logger.warning("[yellow]Can't get Celery from package.[/]")
-
-        # Assume global
-        celery_bin = which("celery")
-        if celery_bin:
-            return celery_bin
-        logger.warning(
-            "[yellow]Using Celery on path." + "Please ensure version compatibility![/]"
-        )
-
-        logger.error("[red]Couldn't find celery binary! Is it installed?[/]")
-        core.app_exit(1, -1)
-
-    def get_module_path():
-        """Get absolute module path to pass to Celery worker"""
-
-        # Change dir to package root
-        module_path = os.path.dirname(os.path.abspath(__file__))
-
-        logger.debug(f"[magenta]Path to worker module: '{module_path}'")
-        assert os.path.exists(module_path)
-        return os.path.abspath(module_path)
-
     def get_new_console():
         """Get os command to spawn process in a new console window"""
 
@@ -156,7 +126,7 @@ def new_worker(nickname=None):
     launch_cmd = [
         get_new_console(),
         *settings["worker"]["terminal_args"],
-        f'"{get_celery_binary_path()}"',
+        f'"{pkg_info.get_script_from_package("celery")}"',
         "-A proxima.worker",
         "worker",
         get_worker_name(nickname),

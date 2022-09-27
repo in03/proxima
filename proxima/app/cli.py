@@ -178,7 +178,16 @@ def purge():
     console.rule(f"[red bold]Purge all tasks! :fire:", align="left")
     print("\n")
 
-    subprocess.run(["celery", "-A", "proxima.worker", "purge", "-Q", VC_KEY])
+    subprocess.run(
+        [
+            pkg_info.get_script_from_package("celery"),
+            "-A",
+            "proxima.worker",
+            "purge",
+            "-Q",
+            VC_KEY,
+        ]
+    )
 
 
 @cli_app.command(
@@ -205,7 +214,14 @@ def celery(
     console.rule(f"[cyan bold]Celery command :memo:", align="left")
     print("\n")
 
-    subprocess.run(["celery", "-A", "proxima.worker", *celery_command])
+    subprocess.run(
+        [
+            pkg_info.get_script_from_package("celery"),
+            "-A",
+            "proxima.worker",
+            *celery_command,
+        ]
+    )
 
 
 @cli_app.command()
