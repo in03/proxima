@@ -4,8 +4,9 @@ repo_url: https://github.com/in03/proxima
 
 theme:
   name: material
+  logo: images/proxima_icon.svg
+  favicon: images/proxima_icon.svg
   icon:
-    logo: material/filmstrip-box-multiple
     repo: fontawesome/brands/git-alt
 
   custom_dir: docs/overrides
@@ -38,9 +39,9 @@ theme:
   plugins:
   - tags
   - search
+  - termynal
   - git-revision-date-localized:
       enable_creation_date: true
-
 
 extra:
   version:
@@ -52,3 +53,8 @@ extra:
     - icon: fontawesome/brands/linkedin
       link: https://au.linkedin.com/in/caleb-trevatt-16217b102
 copyright: Copyright &copy; 2019 - 2022 Caleb Trevatt
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - pymdownx.superfences

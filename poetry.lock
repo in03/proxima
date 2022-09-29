@@ -456,7 +456,7 @@ dev = ["Sphinx (>=2.2.1)", "black (>=19.10b0)", "codecov (>=2.0.15)", "colorama 
 name = "markdown"
 version = "3.3.7"
 description = "Python implementation of Markdown."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -891,6 +891,20 @@ optional = false
 python-versions = ">=2.6"
 
 [[package]]
+name = "termynal"
+version = "0.2.0"
+description = ""
+category = "main"
+optional = false
+python-versions = ">=3.7,<4.0"
+
+[package.dependencies]
+markdown = "*"
+
+[package.extras]
+mkdocs = ["mkdocs"]
+
+[[package]]
 name = "toml"
 version = "0.10.2"
 description = "Python Library for Tom's Obvious, Minimal Language"
@@ -1044,7 +1058,7 @@ testing = ["func-timeout", "jaraco.itertools", "pytest (>=6)", "pytest-black (>=
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10.0,<4.0.0"
-content-hash = "a96d620caf3e54e082d17b37a06aae0d9c4066b27ef78904c9fd54318dd07565"
+content-hash = "8b0b0a6d3f8bc3ad87f78ba6178f8c969922ef9f85150273a714560b76bb320b"
 
 [metadata.files]
 amqp = [
@@ -1440,6 +1454,10 @@ termcolor = [
 ]
 termcolor-whl = [
     {file = "termcolor_whl-1.1.2-py2.py3-none-any.whl", hash = "sha256:3e7eda7348bb90ddea2d7a2171df65ed4a37adf62574fbd5459198410fdba881"},
+]
+termynal = [
+    {file = "termynal-0.2.0-py3-none-any.whl", hash = "sha256:1d8f73c9c21414253e812f1684431cf7eda5d9f4539aa7479e055b5cac33873f"},
+    {file = "termynal-0.2.0.tar.gz", hash = "sha256:b83642fff7a5b93bb08aa3655754e0410f124f2e75cd34ce1b161a90fc621f8e"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
