@@ -1,6 +1,6 @@
 # Proxima :sparkles:
 
-Documentation: https://in03.github.io/proxima/
+![proxima logo](https://in03.github.io/proxima/images/proxima_banner_vector.svg)
 
 ![GitHub](https://img.shields.io/github/license/in03/proxima) 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -10,10 +10,16 @@ Documentation: https://in03.github.io/proxima/
 ![GitHub last commit](https://img.shields.io/github/last-commit/in03/proxima)
 ![GitHub Repo stars](https://img.shields.io/github/stars/in03/proxima?style=social)
 
+---
 
-##### Proxima makes queuing proxies from DaVinci Resolve a breeze. Launch the worker on as many computers as you have free and it'll pool all the free CPU threads together to encode multiple proxies at once. Only have the one computer? Encoding runs entirely on the CPU, leaving GPU-heavy Resolve with plenty of resources to continue editing while you pump out proxies. Once they're finished, they're automatically linked.
+**Check out the Docs!** :sparkles: https://in03.github.io/proxima/
 
-![](https://github.com/in03/proxima/blob/main/docs/images/rprox_worker-min.gif)
+---
+
+#### Proxima makes queuing proxies from DaVinci Resolve a breeze. 
+Launch the worker on as many computers as you have free and it'll pool all the free CPU threads together to encode multiple proxies at once. Only have the one computer? Encoding runs entirely on the CPU, leaving GPU-heavy Resolve with plenty of resources to continue editing while you pump out proxies. Once they're finished, they're automatically linked.
+
+![queuer demo](https://in03.github.io/proxima/images/proxima_queue_demo.gif)
  
 ## Why make proxies? ##
 DaVinci Resolve's greatly benefits from having all-intra media, like ProRes or DNxHD. If you shoot in h.264 or h.265 like many do, you're likely to see great performance improvements using proxies. This application makes queuing, encoding and linking them quick and easy.
