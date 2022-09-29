@@ -14,7 +14,7 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.3.0
     hooks:
-     - id: check-added-large-files
+    #  - id: check-added-large-files
      - id: check-toml
      - id: pretty-format-json
      - id: check-vcs-permalinks
