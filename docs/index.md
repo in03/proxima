@@ -71,21 +71,24 @@ It's ***gutsy*** ⚡:
 
  But ***smart*** 🧐:
 
- - **Resolve clip attributes support** - Inherit orientation and data-levels from Resolve - upside-down, colour-rich footage is in good hands.
- - **Automatic linking** - Proxima automatically links generated proxies to the correct source media after encoding.
- - **Intelligent handling** - Proxima intelligently searches for existing proxies, always picking the newest one. Even ones made by other applications. It also handles offline and orphaned proxies. 
+ - **Resolve clip attributes support** - Generated proxy media inherits orientation, data-levels, and other clip attributes from the original source media in Resolve.
+ - **Automatic linking** - Proxima automatically links generated proxies to the correct media pool items after encoding.
+ - **Intelligent handling** - Proxima intelligently searches for existing proxies, always picking the newest one - even ones made by other applications. It's also careful in handling offline and orphaned proxies. 
  - **Advanced user configuration** - Simple YAML configuration with settings for source media whitelisting (by framerate, extension type), cross-platform path-mapping and lots more!
  - **Easy progress tracking** - A nice pretty progress bar to display aggregate task progress, discrete task completion worker utilisation + desktop notifications. Flower for advanced metrics and a dedicated web-app on the way.
 
 
 --- 
 
+#### Coming soon!
+
+
 ## Usage
 Check out the [Getting Started](https://in03.github.io/proxima/User Guide/Getting Started) guide for a quick setup tutorial.
 Otherwise, here are the basics for reference.
 
 
-## Commands
+### Commands
   * `proxima queue`                                - Queue proxies from the currently open DaVinci Resolve timeline
   * `proxima work [Optional: number of workers]`   - Launch some local workers
   * `proxima config`                               - Open user settings configuration file for editing
