@@ -25,9 +25,9 @@ yaspin = "^2.1.0"
 cryptohash = "^1.0.5"
 shortuuid = "^1.0.9"
 termynal = "^0.2.0"
+mkdocs-material = "^8.5.3"
 
 [tool.poetry.dev-dependencies]
-mkdocs-material = "^7.3.6"
 black = "^21.12b0"
 isort = "^5.10.1"
 pre-commit = "^2.16.0"
