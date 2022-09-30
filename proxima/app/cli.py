@@ -208,7 +208,7 @@ def celery(
     See https://docs.celeryq.dev/en/latest/reference/cli.html for proper usage.
     """
 
-    print(ctx.params["celery_command"])
+    # print(ctx.params["celery_command"])
 
     print("\n")
     console.rule(f"[cyan bold]Celery command :memo:", align="left")
