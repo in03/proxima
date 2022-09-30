@@ -25,6 +25,7 @@ Launch the worker on as many computers as you have free and it'll pool all the f
 DaVinci Resolve's greatly benefits from having all-intra media, like ProRes or DNxHD. If you shoot in h.264 or h.265 like many do, you're likely to see great performance improvements using proxies. This application makes queuing, encoding and linking them quick and easy.
 
 ## Features ##
+- [x] Resolve 18 + legacy Resolve 17 support
 - [x] Distributed encoding on multiple machines
 - [x] Utilizes all CPU threads for encoding
 - [x] Queue only used proxies straight from a DaVinci Resolve timeline
@@ -38,7 +39,6 @@ DaVinci Resolve's greatly benefits from having all-intra media, like ProRes or D
 - [x] Multi progress-bar [#190](https://github.com/in03/proxima/issues/190)
 
 ## Roadmap ##
-- [ ] Better Resolve 18 integration
 - [ ] Better Apple silicon support
 - [ ] Faster config parsing and validation with TOML [#207](https://github.com/in03/proxima/issues/207)
 - [ ] Interactive timeline selection [#161](https://github.com/in03/proxima/issues/161)
