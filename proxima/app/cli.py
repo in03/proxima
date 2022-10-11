@@ -238,9 +238,7 @@ def config():
     )
     print("\n")
 
-    # TODO: Cross platform alternative to this hack?
-    # labels: enhancement
-    webbrowser.open_new(settings.user_file)
+    typer.launch(settings.user_file)
 
 
 def main():

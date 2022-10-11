@@ -3,11 +3,11 @@ import operator
 import os
 import re
 import shutil
-import webbrowser
 from functools import reduce
 from operator import getitem
 from pathlib import Path
 
+import typer
 from deepdiff import DeepDiff
 from proxima import core
 from rich import print
@@ -192,7 +192,7 @@ class SettingsManager(metaclass=Singleton):
                     core.app_exit(1, -1)
 
                 self.spinner.stop()
-                webbrowser.open(self.user_file)  # Technically unsupported method
+                typer.launch(self.user_file)
 
             core.app_exit(0)
 
