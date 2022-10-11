@@ -22,21 +22,24 @@ pymediainfo = "^5.1.0"
 commonregex = "^1.5.3"
 notify-py = "^0.3.3"
 yaspin = "^2.1.0"
-cryptohash = "^1.0.5"
 shortuuid = "^1.0.9"
 termynal = "^0.2.0"
 mkdocs-material = "^8.5.3"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 black = "^21.12b0"
 isort = "^5.10.1"
 pre-commit = "^2.16.0"
 commitizen = "^2.27.1"
 
-[tool.poetry.group.dev.dependencies]
-mkdocs-git-revision-date-localized-plugin = "^1.1.0"
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
 mike = "^1.1.2"
+mkdocs-git-revision-date-localized-plugin = "^1.1.0"
 termynal = "^0.2.0"
+mkdocs = "*"
 
 [tool.semantic_release]
 version_variable = [
