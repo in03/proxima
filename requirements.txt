@@ -11,7 +11,6 @@ colorama==0.4.5 ; python_full_version >= "3.10.0" and python_full_version < "4.0
 commonmark==0.9.1 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
 commonregex==1.5.3 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
 contextlib2==21.6.0 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
-cryptohash==1.0.5 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
 deepdiff==5.8.1 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
 ghp-import==2.1.0 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
 idna==3.3 ; python_full_version >= "3.10.0" and python_version < "4"
