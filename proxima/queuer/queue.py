@@ -156,7 +156,7 @@ def main():
             if x["media_pool_item"] == k:
                 x.update({"media_pool_item": v})
 
-    proxy_linker = ProxyLinker(jobs, linkable_types=("None",))
+    proxy_linker = ProxyLinker(jobs)
 
     try:
         proxy_linker.link()
