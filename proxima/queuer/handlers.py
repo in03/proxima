@@ -372,10 +372,10 @@ def handle_offline_proxies(media_list: list) -> list:
         assert choice in choices
         print()
 
-        if choice == "Rerender":
+        if choice == "rerender":
             return media_list
 
-        if choice == "Skip":
+        if choice == "skip":
             return [x for x in media_list if x["proxy_status"] != "Offline"]
 
         new_list = []
