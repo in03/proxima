@@ -360,33 +360,54 @@ def handle_offline_proxies(media_list: list) -> list:
 
         logger.warning(f"[yellow]Offline proxies: {len(offline_proxies)}[/]")
 
+        choices = ["rerender", "skip", "choose"]
+        choice = Prompt.ask(
+            f"\n[yellow]{len(offline_proxies)} proxies are offline.[/]\n"
+            f"You can choose to rerender them all, skip them all, or choose individually.\n"
+            "[cyan]What would you like to do?",
+            choices=choices,
+            default="rerender",
+        )
+
+        assert choice in choices
+        print()
+
+        if choice == "Rerender":
+            return media_list
+
+        if choice == "Skip":
+            return [x for x in media_list if x["proxy_status"] != "Offline"]
+
+        new_list = []
         for offline_proxy in offline_proxies:
 
-            answer = Prompt.ask(
-                f"\n[yellow][bold]'{offline_proxy['file_name']}' is offline.\n"
-                f"[/yellow][/bold]Last path was '{offline_proxy['proxy_media_path']}'\n"
-                "[yellow]Would you like to re-render it?[/] [magenta][Y/N or All)]"
+            confirm = Confirm.ask(
+                f"[yellow bold]Offline media:[/] [green]'{offline_proxy['file_name']}'[/] - "
+                f"[yellow bold]last path: [/][green]'{offline_proxy['proxy_media_path']}'[/]\n"
+                f"[cyan]Would you like to rerender it?"
             )
 
-            if answer.lower().startswith("y"):
-                pprint(f"[yellow]Queuing '{offline_proxy['file_name']}' for re-render")
+            if confirm:
+                pprint(f"[green]Queuing '{offline_proxy['file_name']}' for re-render")
 
-                for x in media_list:
-                    if x["file_path"] == offline_proxy["file_path"]:
-                        x["proxy_status"] = "None"
-
-            elif answer.lower().startswith("a"):
-
-                pprint(
-                    f"[yellow]Queuing {len(offline_proxies)} offline proxies for re-render"
+                new_list.extend(
+                    [
+                        x
+                        for x in media_list
+                        if x["file_path"] == offline_proxy["file_path"]
+                    ]
                 )
 
-                for x in media_list:
-                    if x == "Offline":
-                        x["proxy_status"] = "None"
+            else:
+                pprint(f"[yellow]Skipping '{offline_proxy['file_name']}'...")
+
+            print()
 
         global SOME_ACTION_TAKEN
         SOME_ACTION_TAKEN = True
+
+        if new_list:
+            return new_list
 
     return media_list
 
