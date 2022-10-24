@@ -31,6 +31,7 @@ settings_schema = Schema(
                 "verbose",
                 "debug",
             ],
+            "nickname": str,
             "codec": str,
             "vertical_res": str,
             "profile": str,

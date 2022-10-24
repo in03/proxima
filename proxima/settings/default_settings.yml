@@ -16,6 +16,7 @@ paths:
   linkable_proxy_suffix_regex: [-\d, _\d, S\d*] # -1, # _1, #_S001 respectively
 
 proxy:
+  nickname: "ProRes 422 720P"
   ffmpeg_loglevel: error # "quiet", "panic", "fatal", "error", "warning", "info", "verbose", "debug"
   codec: dnxhd
   vertical_res: "720"
