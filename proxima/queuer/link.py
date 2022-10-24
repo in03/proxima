@@ -8,11 +8,13 @@ from typing import Tuple
 
 from proxima import core
 from proxima import exceptions
-from proxima.settings import SettingsManager
-from proxima import resolve
+from proxima.settings.manager import settings
+from pydavinci import davinci
+from proxima.queuer.job import Job
+from proxima.queuer.media_pool_index import media_pool_index
 
+resolve = davinci.Resolve()
 console = Console()
-settings = SettingsManager()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
@@ -20,10 +22,13 @@ logger.setLevel(settings["app"]["loglevel"])
 
 
 class ProxyLinker:
-    def __init__(self, jobs, linkable_types: Tuple[str, ...] = ("Offline", "None")):
+    def __init__(
+        self, jobs: list[Job], linkable_types: Tuple[str, ...] = ("Offline", "None")
+    ):
 
         self.jobs = jobs
         self.linkable_types = linkable_types
+        self.project_name = self.jobs[0].project.project_name
 
         self.link_success = []
         self.mismatch_fail = []
@@ -35,19 +40,7 @@ class ProxyLinker:
         """
         try:
 
-            ro = resolve.ResolveObjects()
-
-        except exceptions.ResolveAPIConnectionError:
-            logger.error(
-                "Can't communicate with Resolve. Maybe it's closed?\n"
-                "Run `proxima queue` when you're ready to link your proxies later.",
-                exc_info=True,
-            )
-            return False
-
-        try:
-
-            current_project = ro.project.GetName()
+            current_project = resolve.project.name
 
         except exceptions.ResolveNoCurrentProjectError:
             logger.error(
@@ -57,9 +50,9 @@ class ProxyLinker:
             )
             return False
 
-        if current_project != self.jobs[0]["project"]:
+        if current_project != self.project_name:
             logger.error(
-                f"Looks like you've changed projects. ('[red]{current_project}[/]' -> '[green{self.jobs[0]['project']}[/]')\n"
+                f"Looks like you've changed projects. ('[red]{current_project}[/]' -> '[green]{self.project_name}[/]')\n"
                 "Proxies can't be linked to a closed project.\n"
                 "Run `proxima queue` when you're ready to link your proxies later."
             )
@@ -73,12 +66,12 @@ class ProxyLinker:
 
         This prevents relinking footage that is already linked according to Resolve.
         """
-        self.jobs = [x for x in self.jobs if x["proxy_status"] in self.linkable_types]
+        self.jobs = [x for x in self.jobs if x.is_linked in self.linkable_types]
 
         if not self.jobs:
             raise exceptions.NoneLinkableError()
 
-    def __link_proxy_media(self, job):
+    def __link_proxy_media(self, job: Job):
         """
         Wrapper around Resolve's `LinkProxyMedia` API method.
 
@@ -89,10 +82,10 @@ class ProxyLinker:
             exceptions.ResolveLinkMismatchError: Occurs when the method returns False.
             Unfortunately the method returns no error context beyond that.
         """
-        if not job["media_pool_item"].LinkProxyMedia(job["proxy_media_path"]):
-            raise exceptions.ResolveLinkMismatchError(
-                proxy_file=job["proxy_media_path"]
-            )
+        mpi = media_pool_index.lookup(job.source.media_pool_id)
+
+        if not mpi.LinkProxyMedia(job.output_path):  # type: ignore
+            raise exceptions.ResolveLinkMismatchError(proxy_file=job.output_path)
 
     def link(self):
 
@@ -121,7 +114,7 @@ class ProxyLinker:
         for job in self.jobs:
 
             logger.debug(f"[magenta]Attempting to link job:[/]\n {job}")
-            logger.info(f"[cyan]:link: '{job['file_name']}'")
+            logger.info(f"[cyan]:link: '{job.source.file_name}'")
 
             try:
 
@@ -129,7 +122,8 @@ class ProxyLinker:
 
             except exceptions.ResolveLinkMismatchError:
                 logger.error(
-                    f"[red bold]:x: Failed to link '{job['file_name']}'[/]\n" f"[red]",
+                    f"[red bold]:x: Failed to link '{job.source.file_name}'[/]\n"
+                    f"[red]",
                     # exc_info=True,
                 )
                 self.mismatch_fail.append(job)
