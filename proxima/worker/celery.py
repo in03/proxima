@@ -38,8 +38,6 @@ except Exception as e:
 
 # Fragile! Moved from user settings to here.
 app.conf.update(
-    task_serializer="json",  # Pickle allows us to post-encode link using remote objects
-    result_serializer="json",  # Keep same as above
     result_extended=True,  # Allows us to get task args after task completion
     acks_late=True,
     worker_pool_restarts=True,
