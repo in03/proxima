@@ -1,41 +1,15 @@
-#!/usr/bin/env python3.6
-
 import logging
-import os
-
 from celery import group
-from proxima import ProxyLinker, broker, core, handlers, resolve
-from proxima.settings import SettingsManager
+from proxima import ProxyLinker, broker, core, resolve
+from proxima.settings.manager import settings
 from proxima.worker.tasks import encode_proxy
 from rich import print
-
-settings = SettingsManager()
+from pydavinci import davinci
+from proxima.queuer import resolve
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
 logger.setLevel(settings["app"]["loglevel"])
-
-# Set global flags
-SOME_ACTION_TAKEN = False
-
-
-def add_queuer_data(jobs, **kwargs):
-    """
-    Extend jobs with relevant queuer data
-
-    Args:
-        **kwargs - any keyword arguments to pass with the tasks to the worker\n
-         queuer-side configuration extra Resolve variables, etc can be passed
-
-    Returns:
-        jobs - the original jobs with added data
-
-    Raises:
-        nothing
-    """
-
-    jobs = [dict(item, **kwargs) for item in jobs]
-    return jobs
 
 
 def queue_tasks(tasks):
@@ -62,73 +36,20 @@ def queue_tasks(tasks):
 def main():
     """Main function"""
 
-    r_ = resolve.ResolveObjects()
-    project_name = r_.project.GetName()
-    timeline_name = r_.timeline.GetName()
-
-    print("\n")
-    print(f"[cyan]Working on: '{r_.project.GetName()}[/]'")
-    print("\n")
+    r_ = davinci.Resolve()
 
     # Lets make it happen!
-    track_items = resolve.get_video_track_items(r_.timeline)
+    track_items = resolve.get_timeline_items(r_.active_timeline)
     media_pool_items = resolve.get_media_pool_items(track_items)
-    jobs = resolve.get_resolve_proxy_jobs(media_pool_items)
+    jobs = resolve.generate_jobs(media_pool_items, settings)
 
-    # Add queuer side data
-    jobs = add_queuer_data(
-        jobs,
-        project=project_name,
-        timeline=timeline_name,
-        proxy_settings=settings["proxy"],
-        paths_settings=settings["paths"],
-    )
+    jobs.print_batch_info()
+    return
 
-    # Prompt user for intervention if necessary
-    print()
-    jobs = handlers.handle_already_linked(jobs, unlinked_types=("Offline", "None"))
-    logger.debug(f"[magenta]Remaining queuable:[/]\n{[x['file_name'] for x in jobs]}")
-
-    print()
-    jobs = handlers.handle_existing_unlinked(jobs, unlinked_types=("Offline", "None"))
-    logger.debug(f"[magenta]Remaining queuable:[/]\n{[x['file_name'] for x in jobs]}")
-
-    print()
-    jobs = handlers.handle_offline_proxies(jobs)
-    logger.debug(f"[magenta]Remaining queuable:[/]\n{[x['file_name'] for x in jobs]}")
-
-    print("\n")
-
-    # Alert user final queuable. Confirm.
-    handlers.handle_final_queuable(jobs)
-
-    # Get output paths for queueable jobs
-    for x in jobs:
-
-        proxy_output_path = os.path.join(
-            x["proxy_dir"],
-            os.path.splitext(x["file_name"])[0]
-            + settings["proxy"]["ext"],  # Output ext, differs from source
-        )
-
-        x.update({"proxy_media_path": proxy_output_path})
-
-        logger.debug(
-            "[magenta]Set proxy_media_path to output path:[/]\n"
-            f"'{x['proxy_media_path']}'\n"
-        )
-
-    # Celery can't accept MPI (pyremoteobj)
-    # Convert to string for later reference
-    jobs_with_mpi = []
-    for x in jobs:
-        jobs_with_mpi.append({str(x["media_pool_item"]): x["media_pool_item"]})
-        x.update({"media_pool_item": str(x["media_pool_item"])})
-
-    print("\n")
-
-    core.notify(f"Started encoding job '{project_name} - {timeline_name}'")
-    # print(f"[yellow]Waiting for job to finish. Feel free to minimize.[/]")
+    # TODO: Got about here.
+    # Need to correctly queue tasks, parse in worker
+    # and restore media-pool-items before link
+    core.notify(f"Started encoding job '{r_.project.name} - {r_.active_timeline.name}'")
 
     # Queue tasks to workers and track task progress
     results = queue_tasks(jobs)
