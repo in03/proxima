@@ -20,11 +20,12 @@ schema = "^0.7.5"
 deepdiff = "^5.7.0"
 pymediainfo = "^5.1.0"
 commonregex = "^1.5.3"
-notify-py = "^0.3.3"
 yaspin = "^2.1.0"
 shortuuid = "^1.0.9"
 termynal = "^0.2.0"
 mkdocs-material = "^8.5.3"
+notify-py = {git = "https://github.com/in03/notify-py"}
+pydavinci = {git = "https://github.com/in03/pydavinci"}
 
 [tool.poetry.group.dev.dependencies]
 black = "^21.12b0"
