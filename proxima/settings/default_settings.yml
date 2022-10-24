@@ -13,6 +13,7 @@ app:
 paths:
   proxy_path_root: R:/ProxyMedia  # Proxy media retains source folder structure
   ffmpeg_logfile_path: R:/ProxyMedia/@logs
+  linkable_proxy_suffix_regex: [-\d, _\d, S\d*] # -1, # _1, #_S001 respectively
 
 proxy:
   ffmpeg_loglevel: error # "quiet", "panic", "fatal", "error", "warning", "info", "verbose", "debug"

@@ -1,6 +1,7 @@
-import re
-from commonregex import link
 import os
+import re
+
+from commonregex import link
 from schema import Schema, And, Optional
 
 
@@ -16,6 +17,7 @@ settings_schema = Schema(
         "paths": {
             "proxy_path_root": lambda p: os.path.exists(p),
             "ffmpeg_logfile_path": lambda p: os.path.exists(os.path.dirname(p)),
+            "linkable_proxy_suffix_regex": list,
         },
         "proxy": {
             "ffmpeg_loglevel": lambda l: l
