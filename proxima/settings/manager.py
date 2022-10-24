@@ -35,16 +35,7 @@ USER_SETTINGS_FILE = os.path.join(
 )
 
 
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-
-class SettingsManager(metaclass=Singleton):
+class SettingsManager:
     def __init__(
         self,
         default_settings_file=DEFAULT_SETTINGS_FILE,
@@ -58,11 +49,12 @@ class SettingsManager(metaclass=Singleton):
         self.default_file = default_settings_file
         self.user_file = user_settings_file
         self.user_settings = dict()
+        self.load()
 
-        # Originally had default settings validated against schema too
-        # but realised testing a path exists is not a good idea for defaults.
-        # Instead let's write a build time test for this.
-
+    def load(self):
+        """
+        Load settings
+        """
         self.__load_default_file()
 
         # Validate user settings
@@ -80,6 +72,8 @@ class SettingsManager(metaclass=Singleton):
         self.__validate_schema()
 
         self.spinner.ok("✅ ")
+
+        return self.user_settings
 
     def __len__(self):
 
@@ -364,3 +358,6 @@ class SettingsManager(metaclass=Singleton):
     def update(self, dict_: dict):
         logger.info(f"[yellow]Reconfigured settings:\n{dict_}")
         self.user_settings.update(dict_)
+
+
+settings = SettingsManager().load()
