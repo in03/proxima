@@ -95,9 +95,15 @@ class ProgressTracker:
     def update_progress(self, task_results: List[AsyncResult]):
 
         # Get encoding progress from task custom status
-        progress_data = [
-            x.info["percent"] for x in task_results if x.status == "ENCODING"
-        ]
+        try:
+            progress_data = [
+                x.info.get("percent") for x in task_results if x.status == "ENCODING"
+            ]
+        except AttributeError as e:
+            # Sometimes (rarely) Celery passes a string instead of a dict.
+            logger.debug(f"[red]Progress error: {e}")
+            return
+
         if not progress_data:
             return
 
