@@ -130,3 +130,15 @@ class NoneLinkableError(Exception):
             "This shouldn't happen under normal circumstances. Probably the list has been misconfigured."
 
         super().__init__(self.message)
+
+
+class MPIAlreadyRegistered(Exception):
+    """
+    Exception raised when a media pool item is already registered in the MediaPoolIndex.
+    """
+
+    def __init__(self, mpi_id: str):
+
+        self.message = f"The media pool item '{mpi_id}' is already registered.\n"
+
+        super().__init__(self.message)
