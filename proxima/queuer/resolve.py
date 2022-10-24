@@ -1,212 +1,122 @@
-import imp
 import logging
 import os
-import pathlib
-import sys
 
 from proxima import core, exceptions
-from proxima.settings import SettingsManager
+from proxima.settings.manager import settings, SettingsManager
+from pydavinci import davinci
+from pydavinci.wrappers.timeline import Timeline
+from pydavinci.wrappers.project import Project
+from pydavinci.wrappers.timelineitem import TimelineItem
+from pydavinci.wrappers.mediapool import MediaPool
+from pydavinci.wrappers.mediapoolitem import MediaPoolItem
+from proxima.queuer.media_pool_index import media_pool_index
+from proxima.queuer.job import Job, ProjectMetadata, SourceMetadata
+from proxima.queuer.jobs import Jobs
 
-settings = SettingsManager()
+resolve = davinci.Resolve()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
 logger.setLevel(settings["app"]["loglevel"])
 
 
-class ResolveObjects:
-    def __init__(self):
-        self.__populate_variables()
+def get_timeline_items(timeline: Timeline) -> list[TimelineItem]:
+    """
+    Get all video track items from the provided timeline
 
-    def __get_resolve(self):
+    Args:
+        timeline (Timeline): Provided DaVinci Resolve timeline object
 
-        ext = ".so"
-        if sys.platform.startswith("darwin"):
-            path = "/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/"
-        elif sys.platform.startswith("win") or sys.platform.startswith("cygwin"):
-            path = "C:\\Program Files\\Blackmagic Design\\DaVinci Resolve\\"
-            ext = ".dll"
-        elif sys.platform.startswith("linux"):
-            path = "/opt/resolve/libs/Fusion/"
-        else:
-            raise exceptions.ResolveUnsupportedPlatform(
-                "Unsupported system! " + sys.platform
-            )
-
-        bmd = imp.load_dynamic("fusionscript", path + "fusionscript" + ext)
-        resolve = bmd.scriptapp("Resolve")
-
-        if not resolve:
-            return None
-
-        try:
-            sys.modules[__name__] = resolve
-        except ImportError:
-            return None
-
-        return resolve
-
-    def __populate_variables(self):
-
-        self.resolve = self.__get_resolve()
-        if self.resolve is None:
-            raise exceptions.ResolveAPIConnectionError()
-
-        self.project = self.resolve.GetProjectManager().GetCurrentProject()
-        if self.project is None:
-            raise exceptions.ResolveNoCurrentProjectError()
-
-        self.timeline = self.project.GetCurrentTimeline()
-        if self.timeline is None:
-            raise exceptions.ResolveNoCurrentTimelineError()
-
-        self.media_pool = self.project.GetMediaPool()
-        if self.media_pool is None:
-            raise exceptions.ResolveNoMediaPoolError()
-
-
-def get_video_track_items(timeline):
-    """Get all video track items from the provided timeline"""
+    Returns:
+        list[TimelineItem]: List of Davinci Resolve timelineitems.
+    """
 
     all_track_items = []
 
-    # Get count of tracks (index) in active timeline
-    track_len = timeline.GetTrackCount("video")
-    logger.info(f"[green]Video track count: {track_len}[/]")
-
-    # For each track in timeline (using index)
+    track_len = timeline.track_count("video")
+    logger.info(f"[magenta]Video tracks: {track_len}[/]")
     for i in range(1, track_len + 1):
 
         # Get items
-        track_items = timeline.GetItemListInTrack("video", i)
-
-        if track_items is None:
-            logger.debug(f"[magenta]No items found in track {i}[/]")
-            continue
-
-        else:
-            all_track_items.append(track_items)
+        all_track_items.extend(timeline.items("video", i))
 
     return all_track_items
 
 
-def get_media_pool_items(track_items):
-    """Return media pool items for all track items"""
+def get_media_pool_items(timeline_items: list[TimelineItem]) -> list[MediaPoolItem]:
+    """
+    Get media pool items from timeline items.
 
-    all_media_pool_items = []
+    Args:
+        timeline_items (list[TimelineItem]): List of timeline items.
 
-    for track in track_items:
-        for item in track:
-            media_item = item.GetMediaPoolItem()
-            all_media_pool_items.append(media_item)
+    Returns:
+        list[MediaPoolItem]|None: List of media pool items.
+    """
+    media_pool_items = []
+    for item in timeline_items:
+        try:
+            media_pool_items.append(item.mediapoolitem)
+        except TypeError:
+            logger.debug(f"[magenta]Ignoring {item.name} without mediapoolitem")
+            continue
 
-    return all_media_pool_items
+    return media_pool_items
 
 
-def get_resolve_timelines(project, active_timeline_first=True):
-    """Return a list of all Resolve timeline objects in current project."""
+def get_resolve_timelines(
+    project: Project,
+) -> list[Timeline] | None:
+    """
+    Return a list of all Resolve timeline objects in current project.
 
-    timelines = []
+    Args:
+        project (Project): DaVinci Resolve Project object
 
-    timeline_len = project.GetTimelineCount()
-    if timeline_len > 0:
+    Returns:
+        list[Timeline]|None: List of DaVinci Resolve timeline objects. None if none found.
+    """
 
-        for i in range(1, timeline_len + 1):
-            timeline = project.GetTimelineByIndex(i)
-            timelines.append(timeline)
+    timelines = project.timelines
+    if not timelines:
+        return None
 
-        if active_timeline_first:
-            active = project.GetCurrentTimeline().GetName()  # Get active timeline
-            timeline_names = [x.GetName() for x in timelines]
-            active_i = timeline_names.index(
-                active
-            )  # It's already in the list, find it's index
-            timelines.insert(
-                0, timelines.pop(active_i)
-            )  # Move it to the front, indexing should be the same as name list
-    else:
-        return False
+    # Make active timeline first in list
+    timeline_names = [x.name for x in timelines]
+    active_index = timeline_names.index(project.timeline.name)
+    timelines.insert(0, timelines.pop(active_index))
 
     return timelines
 
 
-# TODO: Is this worth refactoring as a class?
-# Like a 'job' class with these functions as class methods?
-# labels: enhancement
-def get_resolve_proxy_jobs(media_pool_items):
-    """Return source metadata for each media pool item that passes configured criteria.
+def filter_queueable(media_pool_items: list[MediaPoolItem]) -> list[MediaPoolItem]:
 
-    each media pool item must meet the following criteria:
-        - return valid clip properties (needed for encoding, internal track items don't have them)
-        - whitelisted extension (e.g, BRAW performs fine without proxies)
-        - whitelisted framerate (optional) FFmpeg should handle most
-
-    Args:
-        - media_pool_items: list of Resolve API media pool items
-
-    Returns:
-        - filtered_metadata: a list of dictionaries containing clip attributes for proxy-encodable Resolve media.
-
-    Raises:
-        - none
-
-    """
-
-    jobs = []
     seen = []
 
-    for media_pool_item in media_pool_items:
+    if not media_pool_items:
+        raise ValueError("No media pool items were passed")
 
-        # Check media pool item is valid, get UUID
-        try:
-
-            mpi_uuid = str(media_pool_item).split("UUID:")[1].split("]")[0]
-            logger.debug(f"[magenta]Media Pool Item: {mpi_uuid}")
-
-        except:
-
+    for mpi in media_pool_items:
+        if mpi.media_id in seen:
             logger.debug(
-                f"[magenta]Media Pool Item: 'None'[/]\n"
-                + f"[yellow]Invalid item: has no UUID[/]\n"
+                f"[magenta]Media Pool Item: '{mpi.media_id}' alreeady seen, skipping...\n"
             )
             continue
+        seen.append(mpi.media_id)
 
-        if str(media_pool_item) in seen:
-
+        if not hasattr(mpi, "properties"):
             logger.debug(
-                f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
-                + "[yellow]Already seen media pool item. Skipping...[/]\n"
-            )
-            continue
-
-        else:
-
-            # Add first encounter to list for comparison
-            seen.append(str(media_pool_item))
-
-        # Check media pool item has clip properties
-        if not hasattr(media_pool_item, "GetClipProperty()"):
-
-            logger.debug(
-                f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
+                f"[magenta]Media Pool Item: {mpi.media_id}[/]\n"
                 + "[yellow]Media pool item has no clip properties. Skipping...[/]\n"
             )
             continue
 
-        # Get source metadata, path, extension
-        clip_properties = media_pool_item.GetClipProperty()
-        source_path = clip_properties["File Path"]
-        source_ext = os.path.splitext(source_path)[1].lower()
-
-        # Might still get media that has clip properties, but empty attributes
-        # Should only be internally generated media that returns this way
-        if source_path == "":
-
-            logger.debug(
-                f"[magenta]Media Pool Item: {mpi_uuid}[/]\n"
-                + f"clip properties did not return a valid filepath. Skipping...\n"
-            )
+        # Filepath won't exist for internally generated media
+        source_path = mpi.properties["File Path"]  # type: ignore
+        if not source_path:
             continue
+
+        source_ext = os.path.splitext(source_path)[1].lower()
 
         # Filter extension
         if settings["filters"]["extension_whitelist"]:
@@ -215,7 +125,7 @@ def get_resolve_proxy_jobs(media_pool_items):
 
                 logger.warning(
                     f"[yellow]Ignoring file with extension not in whitelist: '{source_ext}'\n"
-                    + f"from '{clip_properties['File Path']}'[/]\n"
+                    + f"from '{mpi.properties['File Path']}'[/]\n"
                 )
                 continue
 
@@ -223,57 +133,60 @@ def get_resolve_proxy_jobs(media_pool_items):
         if settings["filters"]["framerate_whitelist"]:
 
             # Make int to avoid awkward extra zeros.
-            if float(clip_properties["FPS"]).is_integer():
-                clip_properties["FPS"] = int(float(clip_properties["FPS"]))
+            if float(mpi.properties["FPS"]).is_integer():
+                mpi.properties["FPS"] = int(float(mpi.properties["FPS"]))
 
-            if clip_properties["FPS"] not in settings["filters"]["framerate_whitelist"]:
+            if mpi.properties["FPS"] not in settings["filters"]["framerate_whitelist"]:
 
                 logger.warning(
-                    f"[yellow]Ignoring file with framerate not in whitelist: '{clip_properties['FPS']}'\n"
-                    + f"from '{clip_properties['File Path']}' [/]\n"
+                    f"[yellow]Ignoring file with framerate not in whitelist: '{mpi.properties['FPS']}'\n"
+                    + f"from '{mpi.properties['File Path']}' [/]\n"
                 )
                 continue
 
-        # Get expected proxy path
-        file_path = clip_properties["File Path"]
-        p = pathlib.Path(file_path)
+    return media_pool_items
 
-        proxy_dir = os.path.normpath(
-            os.path.join(
-                settings["paths"]["proxy_path_root"],
-                os.path.dirname(p.relative_to(*p.parts[:1])),
-            )
+
+def generate_jobs(
+    media_pool_items: list[MediaPoolItem], settings: SettingsManager
+) -> Jobs:
+
+    # Iterate the active timeline and get media pool items
+    timeline_items = get_timeline_items(resolve.active_timeline)
+    media_pool_items = get_media_pool_items(timeline_items)
+    media_pool_items = filter_queueable(media_pool_items)
+
+    job_list = []
+    for mpi in media_pool_items:
+
+        global media_pool_index
+
+        props = mpi.properties
+        project_metadata = ProjectMetadata(
+            resolve.project.name, resolve.active_timeline.name
         )
 
-        # TODO: These would definitely be nicer as class attributes
-        # labels: enhancement
-        cp = clip_properties
-        job = {
-            "clip_name": cp["Clip Name"],
-            "file_name": cp["File Name"],
-            "file_path": cp["File Path"],
-            "duration": cp["Duration"],
-            "data_level": cp["Data Level"],
-            "resolution": str(cp["Resolution"]).split("x"),
-            "frames": int(cp["Frames"]),
-            "fps": float(cp["FPS"]),
-            "h_flip": True if cp["H-FLIP"] == "On" else False,
-            "v_flip": True if cp["H-FLIP"] == "On" else False,
-            "proxy_status": cp["Proxy"],
-            "proxy_media_path": cp["Proxy Media Path"]
-            if not len(cp["Proxy Media Path"])
-            else cp["Proxy Media Path"],
-            "proxy_dir": proxy_dir,
-            "start": int(cp["Start"]),
-            "end": int(cp["End"]),
-            "start_tc": cp["Start TC"],
-            "end_tc": cp["End TC"],
-            "media_pool_item": media_pool_item,
-        }
+        source_metadata = SourceMetadata(
+            clip_name=props["Clip Name"],
+            file_name=props["File Name"],
+            file_path=props["File Path"],
+            duration=props["Duration"],
+            resolution=str(props["Resolution"]).split("x"),
+            frames=int(props["Frames"]),
+            fps=float(props["FPS"]),
+            h_flip=True if props["H-FLIP"] == "On" else False,
+            v_flip=True if props["H-FLIP"] == "On" else False,
+            start=int(props["Start"]),
+            end=int(props["End"]),
+            start_tc=props["Start TC"],
+            end_tc=props["End TC"],
+            proxy_status=props["Proxy"],
+            proxy_media_path=props["Proxy Media Path"],
+            media_pool_id=mpi.media_id,
+        )
 
-        logger.debug(f"[magenta]Clip properties: {job}\n")
-        jobs.append(job)
+        job_list.append(Job(project_metadata, source_metadata, settings))
+        media_pool_index.add_to_index(mpi)
 
-    logger.info(f"[green]Total queuable clips on timeline: {len(jobs)}[/]")
-
+    jobs = Jobs(job_list)
     return jobs
