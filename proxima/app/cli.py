@@ -2,7 +2,6 @@
 
 import logging
 import subprocess
-import webbrowser
 from pathlib import Path
 from typing import Optional, List
 
