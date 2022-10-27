@@ -108,16 +108,16 @@ def encode_proxy(self, job):
     print()  # Newline
     logger.debug(f"[magenta]Running! FFmpeg command:[/]\n{' '.join(ffmpeg_command)}\n")
 
-    # self.update_state(
-    #     state='ENCODING',
-    #     meta={'percent': 33}
-    # )
-    process = FfmpegProcess(
-        task_id=self.request.id,
-        channel_id=self.request.group,
-        command=[*ffmpeg_command],
-        ffmpeg_loglevel=ps["ffmpeg_loglevel"],
-    )
+    try:
+        process = FfmpegProcess(
+            task_id=self.request.id,
+            channel_id=self.request.group,
+            command=[*ffmpeg_command],
+            ffmpeg_loglevel=ps["ffmpeg_loglevel"],
+        )
+    except Exception as e:
+        logger.error(f"[red]Error: {e}\nRejecting task to prevent requeuing.")
+        raise Reject(e, requeue=False)
 
     # Get logfile path
     logfile_path = utils.ensure_logs_output_path(job, output_path)
