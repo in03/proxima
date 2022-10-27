@@ -69,7 +69,7 @@ def get_queue():
         return file.read()
 
 
-def get_input_level(job):
+def get_input_level(job) -> str:
     """
     Match Resolve's set data levels ("Auto", "Full" or "Video")
 
