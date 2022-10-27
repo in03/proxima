@@ -52,7 +52,7 @@ def frac_to_dec(fraction: str):
     return float(f)
 
 
-def ffprobe(file):
+def ffprobe(file) -> dict:
     """Get media info from file using ffprobe"""
 
     cmd = f'ffprobe -v quiet -print_format json -show_format -show_streams "{file}"'
@@ -67,7 +67,6 @@ def ffprobe(file):
     json_result = json.loads(clean_result)
 
     if not json_result:
-        print(f"Couldn't get data!")
-        sys.exit(1)
+        raise ValueError("Couldn't get file metadata with ffprobe")
 
     return json_result
