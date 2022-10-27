@@ -5,6 +5,7 @@ from proxima.settings import SettingsManager
 from proxima.worker import celery_app
 from proxima.worker.ffmpeg import FfmpegProcess
 from proxima.worker import utils
+from celery.exceptions import Reject
 
 from rich import print
 from rich.console import Console
