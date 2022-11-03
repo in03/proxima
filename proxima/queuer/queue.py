@@ -1,28 +1,32 @@
 import logging
 from celery import group
-from proxima import ProxyLinker, broker, core, resolve
-from proxima.settings.manager import settings
+from proxima import ProxyLinker, shared, core, resolve
+from proxima.settings import settings
 from proxima.worker.tasks import encode_proxy
 from rich import print
 from pydavinci import davinci
 from proxima.queuer import resolve
+from proxima.queuer.batch_handler import BatchHandler
+from proxima.app.cli import app_status
+from rich.panel import Panel
+from rich.prompt import Confirm
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
 logger.setLevel(settings["app"]["loglevel"])
 
 
-def queue_tasks(tasks):
+def queue_batch(batch: list):
     """Block until all queued tasks finish, notify results."""
 
     # Wrap task objects in Celery task function
-    callable_tasks = [encode_proxy.s(x) for x in tasks]
+    callable_tasks = [encode_proxy.s(x) for x in batch]
     logger.debug(f"[magenta]callable_tasks:[/] {callable_tasks}")
 
     # Create task group to retrieve job results as batch
     task_group = group(callable_tasks)
 
-    progress = broker.ProgressTracker()
+    progress = shared.ProgressTracker()
 
     # Queue job
     results = task_group.apply_async(expires=settings["broker"]["job_expires"])
@@ -41,10 +45,29 @@ def main():
     # Lets make it happen!
     track_items = resolve.get_timeline_items(r_.active_timeline)
     media_pool_items = resolve.get_media_pool_items(track_items)
-    jobs = resolve.generate_jobs(media_pool_items, settings)
+    batch = resolve.generate_batch(media_pool_items, settings)
 
-    jobs.print_batch_info()
-    return
+    print(
+        Panel(
+            title="[bold]Ready to queue!",
+            expand=False,
+            title_align="left",
+            renderable=(
+                app_status.status_text
+                + "\n\n[bold white]Jobs[/][/]\n"
+                + batch.batch_info
+            ),
+        )
+    )
+
+    # Prompt the user to queue
+    # Confirm exit if nothing to queue, exit directly if user cancels
+
+    cont = batch.prompt_queue()
+    if cont == None:
+        core.app_exit(0, -1)
+    if cont == False:
+        raise KeyboardInterrupt
 
     # TODO: Got about here.
     # Need to correctly queue tasks, parse in worker
@@ -52,7 +75,7 @@ def main():
     core.notify(f"Started encoding job '{r_.project.name} - {r_.active_timeline.name}'")
 
     # Queue tasks to workers and track task progress
-    results = queue_tasks(jobs)
+    results = queue_batch(batch.hashable)
 
     if results.failed():
         fail_message = "Some videos failed to encode!"
@@ -68,16 +91,8 @@ def main():
 
     _ = results.join()  # Must always call join, or results don't expire
 
-    # Get media pool items back
-    logger.debug(f"[magenta]Restoring media-pool-items[/]")
-
-    for x, y in zip(jobs, jobs_with_mpi):
-        for k, v in y.items():
-            assert hasattr(v, "GetClipProperty()")
-            if x["media_pool_item"] == k:
-                x.update({"media_pool_item": v})
-
-    proxy_linker = ProxyLinker(jobs)
+    batch = batch.batch
+    proxy_linker = ProxyLinker(batch)
 
     try:
         proxy_linker.link()

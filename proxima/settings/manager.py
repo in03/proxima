@@ -9,14 +9,13 @@ from pathlib import Path
 
 import typer
 from deepdiff import DeepDiff
-from proxima import core
+from proxima.app import core
 from rich import print
 from rich.prompt import Confirm, Prompt
 from ruamel.yaml import YAML
 from yaspin import yaspin
 
 from schema import SchemaError
-
 from .schema import settings_schema
 
 core.install_rich_tracebacks()
@@ -216,7 +215,7 @@ class SettingsManager:
             # Get default value
             if len(key_list) > 0:
                 logger.debug("Getting default value from nested keys")
-                default_value = reduce(dict.get, key_list, self.default_settings)
+                default_value = reduce(dict.get, key_list, self.default_settings)  # type: ignore
 
             else:
                 logger.debug("Standard dict lookup")
@@ -360,4 +359,4 @@ class SettingsManager:
         self.user_settings.update(dict_)
 
 
-settings = SettingsManager().load()
+settings = SettingsManager()

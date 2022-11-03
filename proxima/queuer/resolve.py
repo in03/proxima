@@ -1,8 +1,8 @@
 import logging
 import os
 
-from proxima import core, exceptions
-from proxima.settings.manager import settings, SettingsManager
+from proxima.app import core
+from proxima.settings import settings, SettingsManager
 from pydavinci import davinci
 from pydavinci.wrappers.timeline import Timeline
 from pydavinci.wrappers.project import Project
@@ -11,7 +11,7 @@ from pydavinci.wrappers.mediapool import MediaPool
 from pydavinci.wrappers.mediapoolitem import MediaPoolItem
 from proxima.queuer.media_pool_index import media_pool_index
 from proxima.queuer.job import Job, ProjectMetadata, SourceMetadata
-from proxima.queuer.jobs import Jobs
+from proxima.queuer.batch_handler import BatchHandler
 
 resolve = davinci.Resolve()
 
@@ -147,9 +147,9 @@ def filter_queueable(media_pool_items: list[MediaPoolItem]) -> list[MediaPoolIte
     return media_pool_items
 
 
-def generate_jobs(
+def generate_batch(
     media_pool_items: list[MediaPoolItem], settings: SettingsManager
-) -> Jobs:
+) -> BatchHandler:
 
     # Iterate the active timeline and get media pool items
     timeline_items = get_timeline_items(resolve.active_timeline)
@@ -171,7 +171,8 @@ def generate_jobs(
             file_name=props["File Name"],
             file_path=props["File Path"],
             duration=props["Duration"],
-            resolution=str(props["Resolution"]).split("x"),
+            resolution=[int(x) for x in str(props["Resolution"]).split("x")],
+            data_level=props["Data Level"],
             frames=int(props["Frames"]),
             fps=float(props["FPS"]),
             h_flip=True if props["H-FLIP"] == "On" else False,
@@ -188,5 +189,5 @@ def generate_jobs(
         job_list.append(Job(project_metadata, source_metadata, settings))
         media_pool_index.add_to_index(mpi)
 
-    jobs = Jobs(job_list)
+    jobs = BatchHandler(job_list)
     return jobs

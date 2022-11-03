@@ -2,96 +2,41 @@
 
 import logging
 import subprocess
-from pathlib import Path
 from typing import Optional, List
 
 import typer
-from pyfiglet import Figlet
 from rich import print
 from rich.console import Console
-from rich.rule import Rule
 
-from proxima.app.utils import pkg_info
+
+from proxima.settings import settings
+from proxima.app.checks import AppStatus
+from proxima.app.celery import get_version_constraint_key
 
 # Init classes
 cli_app = typer.Typer()
 console = Console()
+app_status = AppStatus("proxima")
 
-# Get VC Key
-VC_KEY_FILE = Path(__file__).parent.parent.parent.joinpath("version_constraint_key")
-with open(VC_KEY_FILE) as file:
-    VC_KEY = file.read()
-
-# TODO: Add global option to hide banner
-# labels: enhancement
 hide_banner = typer.Option(
     default=False, help="Hide the title and build info on startup"
 )
 
 # Special functions
-
-
 @cli_app.callback(invoke_without_command=True)
 def run_without_args():
-    draw_banner()
-    print("Run [bold]proxima --help[/] for a list of commands")
-
-
-def draw_banner():
-
-    # Print CLI title
-    fig = Figlet(font="rectangles")
-    text = fig.renderText("proxima")
-    print(text + "\n")
-
-    # Get build info
-    build_info = pkg_info.get_build_info("proxima")
-
-    # Print banner data
-    if build_info["build"] == "release":
-
-        print(
-            f"[bold]{str(build_info['build']).capitalize()} build[/] "
-            f"{build_info['version']} | "
-            f"[bold]VC key:[/] '{VC_KEY}'"
-        )
-
-    else:
-
-        print(
-            f"[bold]{str(build_info['build']).capitalize()} build[/] "
-            f"{'([green]installed[/] :package:)' if build_info['installed'] else '([yellow]cloned[/] :hammer_and_wrench:)'} "
-            f"'{build_info['version'][:7:]}' | "
-            f"[bold]Version constraint key[/] '{VC_KEY}'"
-        )
-
-    Rule()
-
-
-def run_checks():
-    """Run before CLI App load."""
-
-    from proxima import checks
-    from proxima.settings import SettingsManager
-
-    settings = SettingsManager()
-
-    # Check for any updates and inject version info into user settings.
-    version_info = checks.check_for_updates(
-        github_url=settings["app"]["update_check_url"],
-        package_name="proxima",
-    )
-
-    settings.update({"version_info": version_info})
+    # print("Run [bold]proxima --help[/] for a list of commands")
+    ...
 
 
 def cli_init():
-
-    draw_banner()
-    run_checks()
+    print(app_status.banner)
 
 
 # Commands
+@cli_app.command()
+def status():
+    print(app_status.status_panel)
 
 
 @cli_app.command()
@@ -102,25 +47,19 @@ def queue():
     """
 
     # Init
-    from proxima import checks
-    from proxima.settings import SettingsManager
-    from proxima import core
-
-    settings = SettingsManager()
+    from proxima.app import core
 
     core.setup_rich_logging()
     logger = logging.getLogger(__name__)
     logger.setLevel(settings["app"]["loglevel"])
     # End init
 
-    checks.check_worker_compatibility()
-
-    print("\n")
-    console.rule(
-        f"[green bold]Queuing proxies from Resolve's active timeline[/] :outbox_tray:",
-        align="left",
-    )
-    print("\n")
+    # print("\n")
+    # console.rule(
+    #     f"[green bold]Queuing proxies from Resolve's active timeline[/] :outbox_tray:",
+    #     align="left",
+    # )
+    # print("\n")
 
     from proxima.queuer import queue
 
@@ -177,14 +116,16 @@ def purge():
     console.rule(f"[red bold]Purge all tasks! :fire:", align="left")
     print("\n")
 
+    from proxima.app.utils import package
+
     subprocess.run(
         [
-            pkg_info.get_script_from_package("celery"),
+            package.get_script_from_package("celery"),
             "-A",
             "proxima.worker",
             "purge",
             "-Q",
-            VC_KEY,
+            get_version_constraint_key(),
         ]
     )
 
@@ -213,9 +154,11 @@ def celery(
     console.rule(f"[cyan bold]Celery command :memo:", align="left")
     print("\n")
 
+    from proxima.app.utils import package
+
     subprocess.run(
         [
-            pkg_info.get_script_from_package("celery"),
+            package.get_script_from_package("celery"),
             "-A",
             "proxima.worker",
             *celery_command,
@@ -227,10 +170,6 @@ def celery(
 def config():
     """Open user settings configuration file for editing"""
 
-    from proxima.settings import SettingsManager
-
-    settings = SettingsManager()
-
     print("\n")
     console.rule(
         f"[green bold]Open 'user_settings.yaml' config[/] :gear:", align="left"
@@ -241,6 +180,7 @@ def config():
 
 
 def main():
+    cli_init()
     cli_app()
 
 

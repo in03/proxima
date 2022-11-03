@@ -5,11 +5,9 @@ import shlex
 import subprocess
 import sys
 from fractions import Fraction
+from proxima.app import core
+from proxima.settings import settings
 
-from proxima import core
-from proxima.settings import SettingsManager
-
-settings = SettingsManager()
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
 

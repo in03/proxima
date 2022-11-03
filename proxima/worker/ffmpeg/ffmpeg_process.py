@@ -15,10 +15,8 @@ from rich.prompt import Confirm
 
 from .utils import ffprobe
 
-from proxima import core
-from proxima.settings import SettingsManager
-
-settings = SettingsManager()
+from proxima.app import core
+from proxima.settings import settings
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
@@ -48,20 +46,10 @@ class FfmpegProcess:
         else:
             self._dir_files = [file for file in os.listdir()]
 
-        self._can_get_duration = True
-
-        try:
-            self._duration_seconds = float(
-                ffprobe(self._filepath)["format"]["duration"]
-            )
-        except Exception:
-            self._can_get_duration = False
+        self._duration_seconds = float(ffprobe(self._filepath)["format"]["duration"])
 
         self._ffmpeg_args = command + ["-loglevel", ffmpeg_loglevel]
-
-        if self._can_get_duration:
-            # pipe:1 sends the progress to stdout. See https://stackoverflow.com/a/54386052/13231825
-            self._ffmpeg_args += ["-progress", "pipe:1", "-nostats"]
+        self._ffmpeg_args += ["-progress", "pipe:1", "-nostats"]
 
     def run(self, celery_task_object, logfile=None):
 
@@ -96,19 +84,13 @@ class FfmpegProcess:
 
         self._ffmpeg_args += ["-y"]
 
-        # If we sucessfully got file duration, start the process
-        if self._can_get_duration:
+        process = None
 
-            process = None
-
-            if logfile:
-                with open(logfile, "a") as f:
-                    process = subprocess.Popen(
-                        self._ffmpeg_args, stdout=subprocess.PIPE, stderr=f
-                    )
-        else:
-            logger.critical(f"[red]Couldn't get duration of '{self._filepath}'[/]")
-            core.app_exit(1, -1)
+        if logfile:
+            with open(logfile, "a") as f:
+                process = subprocess.Popen(
+                    self._ffmpeg_args, stdout=subprocess.PIPE, stderr=f
+                )
 
         previous_seconds_processed = 0
         seconds_processed = 0
@@ -131,40 +113,39 @@ class FfmpegProcess:
 
                 while not progress_bar.finished:
 
-                    if self._can_get_duration:
+                    if not process.stdout:
+                        break
 
-                        ffmpeg_output = process.stdout.readline().decode()
+                    ffmpeg_output = process.stdout.readline().decode()
 
-                        if "out_time_ms" in ffmpeg_output:
+                    if "out_time_ms" in ffmpeg_output:
 
-                            seconds_processed = (
-                                int(ffmpeg_output.strip()[12:]) / 1_000_000
-                            )
-                            seconds_increase = (
-                                seconds_processed - previous_seconds_processed
-                            )
+                        seconds_processed = int(ffmpeg_output.strip()[12:]) / 1_000_000
+                        seconds_increase = (
+                            seconds_processed - previous_seconds_processed
+                        )
 
-                            # Update worker stdout progress bar
-                            progress_bar.update(
-                                task_id=encoding_task,
-                                advance=seconds_increase,
-                            )
+                        # Update worker stdout progress bar
+                        progress_bar.update(
+                            task_id=encoding_task,
+                            advance=seconds_increase,
+                        )
 
-                            # Update task custom state
-                            celery_task_object.update_state(
-                                state="ENCODING",
-                                meta={
-                                    "percent": seconds_processed
-                                    / self._duration_seconds
-                                    * 100
-                                },
-                            )
+                        # Update task custom state
+                        celery_task_object.update_state(
+                            state="ENCODING",
+                            meta={
+                                "percent": seconds_processed
+                                / self._duration_seconds
+                                * 100
+                            },
+                        )
 
-                            previous_seconds_processed = seconds_processed
+                        previous_seconds_processed = seconds_processed
 
-                        else:
+                    else:
 
-                            break
+                        break
 
             progress_bar.stop()
             logger.info("[green]Finished encoding[/]")

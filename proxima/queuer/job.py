@@ -1,7 +1,8 @@
 import logging
 import os
 
-from proxima import core, exceptions
+from proxima.app import core
+from proxima.worker.ffmpeg import ffprobe
 
 import os
 import pathlib
@@ -11,7 +12,7 @@ from dataclasses import dataclass
 from glob import glob
 from functools import cached_property
 
-from proxima.settings.manager import settings, SettingsManager
+from proxima.settings import settings, SettingsManager
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
@@ -25,7 +26,8 @@ class SourceMetadata:
     file_name: str
     file_path: str
     duration: str
-    resolution: list
+    resolution: list[int]
+    data_level: str
     frames: int
     fps: float
     h_flip: bool
@@ -58,6 +60,7 @@ class ProxySettings:
     ext: str
 
 
+@dataclass(init=True, repr=True)
 class Job:
     def __init__(
         self,
@@ -72,15 +75,12 @@ class Job:
         self.settings = settings
 
     def __repr__(self):
-        file_name = self.source.file_name
         status = "linked" if self.is_linked and not self.is_offline else "unlinked"
         status = "OFFLINE" if self.is_offline else status
-        output_path = self.output_path
+        return f"Job object: '{self.source.file_name}' - {status} - {self.output_file_path}"
 
-        return f"Job object: '{file_name}' - {status} - {output_path}"
-
-    @property
-    def output_path(self):
+    @cached_property
+    def output_file_path(self) -> str:
         """Get a clear output path for Job, incrementing if any exist"""
 
         def collision_free_path(
@@ -102,6 +102,30 @@ class Job:
 
         initial_output_path = os.path.join(self.output_directory, self.source.file_name)
         return collision_free_path(initial_output_path)
+
+    @property
+    def output_file_name(self) -> str:
+        """
+        Output file name without extension
+
+        Returns:
+            str: The file name without extension
+        """
+        return os.path.splitext(os.path.basename(self.output_file_path))[0]
+
+    @property
+    def output_directory(self):
+        """Get output proxy dir, mirroring source subfolder structure"""
+        file_path = self.source.file_path
+        assert file_path
+        p = pathlib.Path(file_path)
+
+        return os.path.normpath(
+            os.path.join(
+                settings["paths"]["proxy_path_root"],
+                os.path.dirname(p.relative_to(*p.parts[:1])),
+            )
+        )
 
     @property
     def is_linked(self) -> bool:
@@ -137,7 +161,7 @@ class Job:
         )[0]
 
         # Fetch paths of all possible variants of source filename
-        matches = glob.glob(glob_path + "*.*")
+        matches = glob(glob_path + "*.*")
 
         candidates = []
         for x in matches:
@@ -148,7 +172,7 @@ class Job:
 
             # If match allowed suffix
             basename = os.path.basename(x)
-            candidate_suffix = basename.split(self.source.file_name)[1]
+            candidate_suffix = os.path.splitext(basename)[1]
             for criteria in self.settings["paths"]["linkable_proxy_suffix_regex"]:
                 if re.search(criteria, candidate_suffix):
                     candidates.append(x)
@@ -162,15 +186,54 @@ class Job:
         candidates = sorted(candidates, key=os.path.getmtime, reverse=True)
         return os.path.normpath(candidates[0])
 
-    @property
-    def output_directory(self):
-        """Get output proxy dir, mirroring source subfolder structure"""
-        file_path = self.source.file_path
-        p = pathlib.Path(file_path)
+    @cached_property
+    def input_level(self) -> str:
+        """
+        Match Resolve's set data levels ("Auto", "Full" or "Video")
 
-        return os.path.normpath(
-            os.path.join(
-                settings["paths"]["proxy_path_root"],
-                os.path.dirname(p.relative_to(*p.parts[:1])),
-            )
-        )
+        Uses ffprobe to probe file for levels if Resolve data levels are set to Auto.
+        """
+
+        def probe_for_input_range(self):
+            """
+            Probe file with ffprobe for colour range
+            and map to ffmpeg 'in_range' value ("full" or "limited")
+            """
+
+            input = self.source.file_path
+            streams = ffprobe(file=input)["streams"]
+
+            # Get first valid video stream
+            video_info = None
+            for stream in streams:
+                logger.debug(f"[magenta]Found stream {stream}")
+                if stream["codec_type"] == "video":
+                    if stream["r_frame_rate"] != "0/0":
+                        video_info = stream
+            assert video_info != None
+
+            color_data = {k: v for k, v in video_info.items() if "color" in k}
+            logger.debug(f"Color data:\n{color_data}")
+
+            if "color_range" in color_data.keys():
+                switch = {
+                    "pc": "in_range=full",
+                    "tv": "in_range=limited",
+                }
+                return switch[video_info["color_range"]]
+
+            else:
+
+                logger.warning(
+                    "[yellow]Couldn't get color range metadata from file! Assuming 'limited'..."
+                    "If interpretation is inaccurate, please transcode to a format that supports color metadata."
+                )
+                return "in_range=limited"
+
+        switch = {
+            "Auto": probe_for_input_range(self),
+            "Full": "in_range=full",
+            "Video": "in_range=limited",
+        }
+
+        return switch[self.source.data_level]

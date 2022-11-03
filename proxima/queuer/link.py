@@ -1,4 +1,3 @@
-#!/usr/bin/env python3.6
 # Link proxies
 
 import logging
@@ -6,9 +5,9 @@ import logging
 from rich.console import Console
 from typing import Tuple
 
-from proxima import core
+from proxima.app import core
 from proxima import exceptions
-from proxima.settings.manager import settings
+from proxima.settings import settings
 from pydavinci import davinci
 from proxima.queuer.job import Job
 from proxima.queuer.media_pool_index import media_pool_index
@@ -23,10 +22,10 @@ logger.setLevel(settings["app"]["loglevel"])
 
 class ProxyLinker:
     def __init__(
-        self, jobs: list[Job], linkable_types: Tuple[str, ...] = ("Offline", "None")
+        self, batch: list[Job], linkable_types: Tuple[str, ...] = ("Offline", "None")
     ):
 
-        self.jobs = jobs
+        self.jobs = batch
         self.linkable_types = linkable_types
         self.project_name = self.jobs[0].project.project_name
 
@@ -84,8 +83,8 @@ class ProxyLinker:
         """
         mpi = media_pool_index.lookup(job.source.media_pool_id)
 
-        if not mpi.LinkProxyMedia(job.output_path):  # type: ignore
-            raise exceptions.ResolveLinkMismatchError(proxy_file=job.output_path)
+        if not mpi.LinkProxyMedia(job.output_file_path):  # type: ignore
+            raise exceptions.ResolveLinkMismatchError(proxy_file=job.output_file_path)
 
     def link(self):
 

@@ -1,29 +1,33 @@
+from functools import cached_property
 import logging
 
 from rich.prompt import Confirm, Prompt
 from rich import print
 from rich.panel import Panel
+from dataclasses import asdict
+import json
 
-from proxima import core
+from proxima.app import core
 from proxima.queuer import link
 from proxima.queuer.job import Job
-from proxima.settings.manager import settings
+from proxima.settings import settings
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
 logger.setLevel(settings["app"]["loglevel"])
 
 
-class Jobs:
-    def __init__(self, jobs: list[Job]):
+class BatchHandler:
+    def __init__(self, batch: list[Job]):
 
         self.action_taken = False
         self.existing_link_success_count = 0
         self.existing_link_failed_count = 0
         self.existing_link_requeued_count = 0
-        self.batch = jobs
+        self.batch = batch
 
-    def print_batch_info(self):
+    @property
+    def batch_info(self) -> str:
 
         project = self.batch[0].project.project_name
         timeline = self.batch[0].project.timeline_name
@@ -32,22 +36,73 @@ class Jobs:
         elf = self.existing_link_failed_count
         elr = self.existing_link_requeued_count
 
-        els = f"[green]Linked: {els}, " if els else ""
-        elf = f"[red]Failed: {elf}, " if elf else ""
-        elr = f"[yellow]Requeued: {elr}" if elr else ""
-
-        job_info = str(
-            f"Project: {project}\n" f"Timeline: {timeline}\n" f"{els}\n{elf}\n{elr}"
+        return str(
+            f"[white]"
+            f"Project '{project}'\n"
+            f"Timeline '{timeline}'\n"
+            f"[/]"
+            f"[green]Linked {els} | [yellow]Requeued {elr} | [red]Failed {elf}\n"
+            f"[cyan]Queueable now {len(self.batch)}\n"
         )
 
-        print(
-            Panel(
-                job_info,
-                title="Job Info",
-                title_align="left",
-                expand=False,
+    @property
+    def batch_info_panel(self) -> Panel:
+        return Panel(
+            title="[bold]Batch Info",
+            expand=False,
+            title_align="left",
+            renderable=self.batch_info,
+        )
+
+    @cached_property
+    def hashable(self) -> list[dict]:
+        """
+        All hashable class attributes as list of dictionaries
+
+        Used to make job classes JSON serialisable.
+        Each class attribute is tested for JSON serialisability(?),
+        it's cached for faster subsequent access.
+
+        Returns:
+            list[dict]: List of dicts of select class attributes
+        """
+
+        def is_jsonable(x):
+            try:
+                json.dumps(x)
+                return True
+            except (TypeError, OverflowError):
+                return False
+
+        def as_dict(dataclass_):
+            return asdict(
+                dataclass_,
+                dict_factory=lambda x: {k: v for (k, v) in x if is_jsonable(x)},
             )
-        )
+
+        data = []
+        for x in self.batch:
+
+            job_attributes = {
+                "output_file_path": x.output_file_path,
+                "output_file_name": x.output_file_name,
+                "output_directory": x.output_directory,
+                "is_linked": x.is_linked,
+                "is_offline": x.is_offline,
+                "newest_linkable_proxy": x.newest_linkable_proxy,
+                "input_level": x.input_level,
+            }
+
+            data.append(
+                {
+                    "job": job_attributes,
+                    "project": as_dict(x.project),
+                    "source": as_dict(x.source),
+                    "settings": x.settings.user_settings,
+                }
+            )
+
+        return data
 
     def handle_existing_unlinked(self):
 
@@ -160,7 +215,7 @@ class Jobs:
             self.action_taken = True
             self.batch = new_jobs
 
-    def handle_final_queuable(self):
+    def prompt_queue(self):
         """
         Final prompt to confirm number queueable or warn if none.
         """
@@ -177,13 +232,14 @@ class Jobs:
                     "[green]Looks like all your media is already linked.[/]\n"
                     "[magenta italic]If you want to re-rerender proxies, unlink them within Resolve and try again."
                 )
-                core.app_exit(0, -1)
+                return None
 
             print("[bold][green]All linked up![/bold] Nothing to queue[/] :link:")
-            core.app_exit(0, -1)
+            return None
 
         # Final Prompt confirm
-        if not Confirm.ask(f"[bold][green]Jobs ready to queue![/bold] Continue?[/]"):
-            core.app_exit(0)
+        print()
+        if not Confirm.ask("[bold]Send it?[/] :fire:"):
+            return False
 
-        return
+        return True

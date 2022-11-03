@@ -4,10 +4,9 @@ import logging
 import os
 import sys
 
+from pathlib import Path
 from celery import Celery
-from proxima.settings import SettingsManager
-
-settings = SettingsManager()
+from proxima.settings import settings
 
 logger = logging.getLogger(__name__)
 logger.setLevel(settings["app"]["loglevel"])
@@ -50,3 +49,22 @@ app.conf.update(
     worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=1,
 )
+
+
+def get_version_constraint_key() -> str:
+
+    vc_key_file = Path(__file__).parent.parent.parent.joinpath("version_constraint_key")
+    with open(vc_key_file) as file:
+        return file.read()
+
+
+def get_queue() -> str:
+    """Get Celery queue name (routing key) from version constraint key
+
+    Allows constraining tasks and workers to exact same version and prevent breaking changes.
+    """
+
+    if settings["app"]["disable_version_constrain"]:
+        return "all"
+
+    return get_version_constraint_key()

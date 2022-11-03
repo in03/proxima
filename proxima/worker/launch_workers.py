@@ -1,5 +1,3 @@
-#!/usr/bin/env python3.6
-
 # Launch multiple workers
 
 import logging
@@ -13,14 +11,12 @@ from shutil import which
 
 from rich import print
 
-from proxima import core
-from proxima.app.utils import pkg_info
-from proxima.settings import SettingsManager
-from proxima.worker.utils import get_queue
+from proxima.app import core
+from proxima.app.utils import package
+from proxima.settings import settings
+from proxima.app.celery import get_version_constraint_key, get_queue
 
 core.install_rich_tracebacks()
-
-settings = SettingsManager()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(settings["app"]["loglevel"])
@@ -58,20 +54,19 @@ def prompt_worker_amount(cpu_cores: int):
     return answer
 
 
-def new_worker(nickname=None):
-    """Start a new celery worker in a new process
+def new_worker(nickname: str = "") -> int:
+    """
+    Start a new celery worker in a new process
 
     Used to start workers even when the script binaries are buried
     in a virtual env like in pipx.
 
     Args:
-        - id: Used to differentiate multiple workers on the same host
+        nickname (str, optional): Used to differentiate multiple workers on the same host.
+        Defaults to None.
 
     Returns:
-        - none
-
-    Raises:
-        - none
+        int: Process ID of the new subprocess (pid)
     """
 
     def get_worker_name(nickname):
@@ -81,7 +76,7 @@ def new_worker(nickname=None):
 
     def get_worker_queue():
 
-        return f" -Q {get_queue()}"
+        return f" -Q {get_version_constraint_key()},all"
 
     def get_new_console():
         """Get os command to spawn process in a new console window"""
@@ -126,7 +121,7 @@ def new_worker(nickname=None):
     launch_cmd = [
         get_new_console(),
         *settings["worker"]["terminal_args"],
-        f'"{pkg_info.get_script_from_package("celery")}"',
+        f'"{package.get_script_from_package("celery")}"',
         "-A proxima.worker",
         "worker",
         get_worker_name(nickname),
@@ -137,7 +132,7 @@ def new_worker(nickname=None):
     logger.info(f"[cyan]NEW WORKER - {nickname}[/]")
     logger.debug(f"[magenta]{' '.join(launch_cmd)}[/]\n")
 
-    subprocess.Popen(
+    process = subprocess.Popen(
         # TODO: This was causing the worker start cmd to fail after changing to absolute imports
         # Not sure why we needed it in the first place? Would be good to do further testing and see
         # if it is necessary in some cases.
@@ -146,16 +141,18 @@ def new_worker(nickname=None):
         args=" ".join(launch_cmd),
         shell=True,
     )
+    return process.pid
 
 
-def launch_workers(workers_to_launch: int):
+def launch_workers(workers_to_launch: int) -> list[str]:
 
     # Start launching
 
+    pids = []
     for _ in range(0, workers_to_launch):
-        new_worker(nickname=shortuuid.uuid()[:5])
+        pids.append(new_worker(nickname=shortuuid.uuid()[:5]))
         time.sleep(0.3)
-    return
+    return pids
 
 
 def main(workers: int = 0):

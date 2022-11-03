@@ -5,6 +5,9 @@ import time
 from notifypy import Notify
 from rich.logging import RichHandler
 from rich.prompt import Prompt
+from rich.console import Console
+
+console = Console()
 
 
 def setup_rich_logging():
@@ -37,7 +40,12 @@ def install_rich_tracebacks(show_locals=False):
     install(show_locals=show_locals)
 
 
-def app_exit(level: int = 0, timeout: int = 0, cleanup_funcs: list = []):
+def app_exit(
+    level: int = 0,
+    timeout: int = 0,
+    console: Console = console,
+    cleanup_funcs: list = [],
+):
 
     """
     Exit function to allow time to
@@ -55,7 +63,7 @@ def app_exit(level: int = 0, timeout: int = 0, cleanup_funcs: list = []):
 
     if timeout < 0:
         print()
-        answer = Prompt.ask("Press [yellow]ENTER[/] to exit")
+        answer = Prompt.ask("Press [yellow]ENTER[/] to exit", console=console)
         sys.exit(level)
 
     else:
@@ -63,11 +71,11 @@ def app_exit(level: int = 0, timeout: int = 0, cleanup_funcs: list = []):
         for i in range(timeout, -1, -1):
 
             time.sleep(1)
-            sys.stdout.write(f"\rExiting in " + str(i))
+            console.print(f"\rExiting in " + str(i), end="")
 
         # Erase last line
-        sys.stdout.write("\x1b[1A")
-        sys.stdout.write("\x1b[2K")
+        console.print("\x1b[1A", end="")
+        console.print("\x1b[2K", end="")
 
     sys.exit(level)
 

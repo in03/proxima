@@ -10,6 +10,7 @@ from rich.progress import (
 )
 from rich.live import Live
 from celery.result import AsyncResult
+from celery.result import GroupResult
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +43,9 @@ class ProgressTracker:
 
         # Create group of renderables
         self.progress_group = Group(
-            self.status_view,
+            self.status_view,  # type: ignore
             "",  # This actually works as a spacer lol
-            self.progress,
+            self.progress,  # type: ignore
         )
 
     def __init_progress_bars(self):
@@ -118,15 +119,7 @@ class ProgressTracker:
             completed=progress_avg,
         )
 
-        # try:
-        #     progress_avg = sum(progress_data) / len(task_results)
-        # except ZeroDivisionError:
-        #     self.logger.debug(
-        #         "[yellow]Encountered division by zero error! Setting progress to zero."
-        #     )
-        #     progress_avg = 0.0
-
-    def report_progress(self, group_results):
+    def report_progress(self, group_results: GroupResult) -> GroupResult:
 
         self.group_id = group_results.id
         self.__define_progress_bars()
@@ -140,6 +133,8 @@ class ProgressTracker:
 
                     # UPDATE PROGRESS
                     task_results = group_results.results
+                    assert task_results
+
                     self.update_progress(task_results)
 
                     # HANDLE LAST STATUS
@@ -149,7 +144,7 @@ class ProgressTracker:
                     self.progress.update(
                         task_id=self.progress_id,
                         active_workers=len(
-                            [x for x in task_results if x.status == "ENCODING"]
+                            [x for x in task_results if x.status == "ENCODING"]  # type: ignore
                         ),
                         completed_tasks=group_results.completed_count(),
                         total_tasks=len(task_results),

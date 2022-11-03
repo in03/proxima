@@ -1,10 +1,10 @@
 import logging
-
-from proxima import core
-from proxima.settings import SettingsManager
+import os
+from proxima.app import core
+from proxima.settings import settings
 from proxima.worker import celery_app
 from proxima.worker.ffmpeg import FfmpegProcess
-from proxima.worker import utils
+from proxima.app.celery import get_queue
 from celery.exceptions import Reject
 
 from rich import print
@@ -12,12 +12,41 @@ from rich.console import Console
 
 # Worker and Celery settings pulled from local user_settings file
 # All other settings are passed from queuer
-settings = SettingsManager()
 console = Console()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
 logger.setLevel(settings["worker"]["loglevel"])
+
+
+def ensure_logs_output_path(job: dict):
+    """
+    Ensure log folder is writable, get path.
+
+    Args:
+        job (list): Job object
+        output_path(string): Proxy file output path
+
+    Returns:
+        logfile_path (path string): Path of output log file
+
+    """
+
+    encode_log_dir = job["settings"]["paths_settings"]["ffmpeg_logfile_path"]
+    os.makedirs(encode_log_dir, exist_ok=True)
+
+    return os.path.normpath(
+        os.path.join(encode_log_dir, job["output_file_name"] + ".txt")
+    )
+
+
+def ffmpeg_video_flip(job: dict):
+    flip_string = ""
+    if job["source"]["h_flip"]:
+        flip_string += "hflip, "
+    if job["source"]["v_flip"]:
+        flip_string += "vflip, "
+    return flip_string
 
 
 @celery_app.task(
@@ -27,9 +56,9 @@ logger.setLevel(settings["worker"]["loglevel"])
     prefetch_limit=1,
     soft_time_limit=60,
     reject_on_worker_lost=True,
-    queue=utils.get_queue(),
+    queue=get_queue(),
 )
-def encode_proxy(self, job):
+def encode_proxy(self, job: dict) -> str:
 
     """
     Celery task to encode proxy media using parameters in job argument
@@ -43,24 +72,25 @@ def encode_proxy(self, job):
     print("\n")
 
     logger.info(
-        f"[magenta bold]Job: [/]{self.request.id}\n" f"Input File: '{job['file_path']}'"
+        f"[magenta bold]Job: [/]{self.request.id}\n"
+        f"Input File: '{job['source']['file_path']}'"
     )
 
     ############################################################################################
 
-    # Get proxy output path
-    output_path = utils.ensure_output_paths(job)
-
     # Log job details
-    logger.info(f"Output File: '{output_path}'\n")
+    logger.info(f"Output File: '{job['output_file_path']}'\n")
     logger.info(
-        f"Source Resolution: {int(job['resolution'][0])} x {int(job['resolution'][1])}"
+        f"Source Resolution: {job['source']['resolution'][0]} x {job['source']['resolution'][1]}"
     )
-    logger.info(f"Horizontal Flip: {job['h_flip']}\n" f"Vertical Flip: {job['h_flip']}")
-    logger.info(f"Starting Timecode: {job['start_tc']}")
+    logger.info(
+        f"Horizontal Flip: {job['source']['h_flip']}\n"
+        f"Vertical Flip: {job['source']['v_flip']}"
+    )
+    logger.info(f"Starting Timecode: {job['source']['start_tc']}")
 
     # Get FFmpeg Command
-    ps = job["proxy_settings"]
+    ps = job["settings"]["proxy_settings"]
 
     ffmpeg_command = [
         # INPUT
@@ -68,7 +98,7 @@ def encode_proxy(self, job):
         "-y",  # Never prompt!
         *ps["misc_args"],
         "-i",
-        job["file_path"],
+        job["source"]["filepath"],
         # VIDEO
         "-c:v",
         ps["codec"],
@@ -85,9 +115,9 @@ def encode_proxy(self, job):
         # labels: enhancement
         # VIDEO FILTERS
         "-vf",
-        f"scale=-2:{int(job['proxy_settings']['vertical_res'])},"
-        f"scale={utils.get_input_level(job)}:out_range=limited, "
-        f"{utils.get_flip(job)}"
+        f"scale=-2:{job['settings']['proxy_settings']['vertical_res']},"
+        f"scale={job['input_level']}:out_range=limited, "
+        f"{ffmpeg_video_flip(job)}"
         f"format={ps['pix_fmt']}"
         if ps["pix_fmt"]
         else "",
@@ -98,12 +128,12 @@ def encode_proxy(self, job):
         ps["audio_samplerate"],
         # TIMECODE
         "-timecode",
-        job["start_tc"],
+        job["source"]["start_tc"],
         # FLAGS
         "-movflags",
         "+write_colr",
         # OUTPUT
-        output_path,
+        job["output_file_path"],
     ]
 
     print()  # Newline
@@ -121,7 +151,7 @@ def encode_proxy(self, job):
         raise Reject(e, requeue=False)
 
     # Get logfile path
-    logfile_path = utils.ensure_logs_output_path(job, output_path)
+    logfile_path = ensure_logs_output_path(job)
     logger.debug(f"[magenta]Encoder logfile path: {logfile_path}[/]")
 
     # Run encode job
@@ -133,4 +163,4 @@ def encode_proxy(self, job):
     except Exception as e:
         logger.exception(f"[red] :warning: Couldn't encode proxy.[/]\n{e}")
 
-    return f"{job['file_name']} encoded successfully"
+    return f"{job['source']['file_name']} encoded successfully"
