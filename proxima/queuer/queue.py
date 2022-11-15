@@ -71,9 +71,6 @@ def main():
     if cont == False:
         raise KeyboardInterrupt
 
-    # TODO: Got about here.
-    # Need to correctly queue tasks, parse in worker
-    # and restore media-pool-items before link
     core.notify(f"Started encoding job '{r_.project.name} - {r_.active_timeline.name}'")
 
     # Queue tasks to workers and track task progress

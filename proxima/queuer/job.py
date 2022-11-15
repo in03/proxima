@@ -14,7 +14,6 @@ from functools import cached_property, lru_cache
 
 from proxima.settings import settings, SettingsManager
 from proxima.queuer.media_pool_index import media_pool_index
-from pydavinci.wrappers.mediapoolitem import MediaPoolItem
 from proxima.app import exceptions
 
 core.install_rich_tracebacks()
@@ -48,19 +47,6 @@ class SourceMetadata:
 class ProjectMetadata:
     project_name: str
     timeline_name: str
-
-
-@dataclass(frozen=True)
-class ProxySettings:
-    ffmpeg_loglevel: list[str]
-    codec: str
-    vertical_res: str
-    profile: str
-    pix_fmt: str
-    audio_codec: str
-    audio_samplerate: str
-    misc_args: list[str]
-    ext: str
 
 
 @dataclass(init=True, repr=True)

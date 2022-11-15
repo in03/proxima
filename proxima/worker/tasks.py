@@ -1,11 +1,14 @@
+from dataclasses import dataclass, fields
 import logging
 import os
 from proxima.app import core
 from proxima.settings import settings
+from proxima.settings.manager import SettingsManager
 from proxima.worker import celery_app
 from proxima.worker.ffmpeg import FfmpegProcess
 from proxima.app.celery import get_queue
 from celery.exceptions import Reject
+from proxima.queuer.job import ProjectMetadata, SourceMetadata
 
 from rich import print
 from rich.console import Console
@@ -19,7 +22,35 @@ logger = logging.getLogger(__name__)
 logger.setLevel(settings["worker"]["loglevel"])
 
 
-def ensure_logs_output_path(job: dict):
+def class_from_args(class_name, arg_dict: dict):
+    fieldSet = {f.name for f in fields(class_name) if f.init}
+    filteredArgDict = {k: v for k, v in arg_dict.items() if k in fieldSet}
+    return class_name(**filteredArgDict)
+
+
+@dataclass(frozen=True, init=True)
+class TaskJob:
+
+    settings: SettingsManager
+    project: ProjectMetadata
+    source: SourceMetadata
+
+    output_file_path: str
+    output_file_name: str
+    output_directory: str
+    input_level: str
+
+    def __post_init__(self):
+
+        # TODO: Custom exceptions for task job validation
+
+        assert os.path.exists(self.source.file_path)  # SOURCE ACCESSIBLE
+        assert os.path.exists(self.output_directory)  # CLEAR EXPORT PATH
+        assert not os.path.exists(self.output_file_path)  # NO OVERWRITE
+        assert self.input_level in ["in_range=full", "in_range=video"]
+
+
+def ensure_logs_output_path(job: TaskJob):
     """
     Ensure log folder is writable, get path.
 
@@ -32,19 +63,17 @@ def ensure_logs_output_path(job: dict):
 
     """
 
-    encode_log_dir = job["settings"]["paths_settings"]["ffmpeg_logfile_path"]
+    encode_log_dir = job.settings["paths"]["ffmpeg_logfile_path"]
     os.makedirs(encode_log_dir, exist_ok=True)
 
-    return os.path.normpath(
-        os.path.join(encode_log_dir, job["output_file_name"] + ".txt")
-    )
+    return os.path.normpath(os.path.join(encode_log_dir, job.output_file_name + ".txt"))
 
 
-def ffmpeg_video_flip(job: dict):
+def ffmpeg_video_flip(job: TaskJob):
     flip_string = ""
-    if job["source"]["h_flip"]:
+    if job.source.h_flip:
         flip_string += "hflip, "
-    if job["source"]["v_flip"]:
+    if job.source.v_flip:
         flip_string += "vflip, "
     return flip_string
 
@@ -58,12 +87,25 @@ def ffmpeg_video_flip(job: dict):
     reject_on_worker_lost=True,
     queue=get_queue(),
 )
-def encode_proxy(self, job: dict) -> str:
+def encode_proxy(self, job_dict: dict) -> str:
 
     """
     Celery task to encode proxy media using parameters in job argument
     and user-defined settings
     """
+
+    project_metadata = class_from_args(ProjectMetadata, job_dict["project"])
+    source_metadata = class_from_args(SourceMetadata, job_dict["source"])
+
+    job = TaskJob(
+        settings=job_dict["settings"],
+        project=project_metadata,
+        source=source_metadata,
+        output_file_path=job_dict["job"]["output_file_path"],
+        output_file_name=job_dict["job"]["output_file_name"],
+        output_directory=job_dict["job"]["output_directory"],
+        input_level=job_dict["job"]["input_level"],
+    )
 
     # Print new job header #####################################################################
 
@@ -73,24 +115,23 @@ def encode_proxy(self, job: dict) -> str:
 
     logger.info(
         f"[magenta bold]Job: [/]{self.request.id}\n"
-        f"Input File: '{job['source']['file_path']}'"
+        f"Input File: '{job.source.file_path}'"
     )
 
     ############################################################################################
 
     # Log job details
-    logger.info(f"Output File: '{job['output_file_path']}'\n")
+    logger.info(f"Output File: '{job.output_file_path}'\n")
     logger.info(
-        f"Source Resolution: {job['source']['resolution'][0]} x {job['source']['resolution'][1]}"
+        f"Source Resolution: {job.source.resolution[0]} x {job.source.resolution[1]}"
     )
     logger.info(
-        f"Horizontal Flip: {job['source']['h_flip']}\n"
-        f"Vertical Flip: {job['source']['v_flip']}"
+        f"Horizontal Flip: {job.source.h_flip}\n" f"Vertical Flip: {job.source.v_flip}"
     )
-    logger.info(f"Starting Timecode: {job['source']['start_tc']}")
+    logger.info(f"Starting Timecode: {job.source.start_tc}")
 
     # Get FFmpeg Command
-    ps = job["settings"]["proxy_settings"]
+    ps = job.settings["proxy"]
 
     ffmpeg_command = [
         # INPUT
@@ -98,7 +139,7 @@ def encode_proxy(self, job: dict) -> str:
         "-y",  # Never prompt!
         *ps["misc_args"],
         "-i",
-        job["source"]["filepath"],
+        job.source.file_path,
         # VIDEO
         "-c:v",
         ps["codec"],
@@ -115,8 +156,8 @@ def encode_proxy(self, job: dict) -> str:
         # labels: enhancement
         # VIDEO FILTERS
         "-vf",
-        f"scale=-2:{job['settings']['proxy_settings']['vertical_res']},"
-        f"scale={job['input_level']}:out_range=limited, "
+        f"scale=-2:{job.settings['proxy']['vertical_res']},"
+        f"scale={job.input_level}:out_range=limited, "
         f"{ffmpeg_video_flip(job)}"
         f"format={ps['pix_fmt']}"
         if ps["pix_fmt"]
@@ -128,12 +169,12 @@ def encode_proxy(self, job: dict) -> str:
         ps["audio_samplerate"],
         # TIMECODE
         "-timecode",
-        job["source"]["start_tc"],
+        job.source.start_tc,
         # FLAGS
         "-movflags",
         "+write_colr",
         # OUTPUT
-        job["output_file_path"],
+        job.output_file_path,
     ]
 
     print()  # Newline
@@ -163,4 +204,4 @@ def encode_proxy(self, job: dict) -> str:
     except Exception as e:
         logger.exception(f"[red] :warning: Couldn't encode proxy.[/]\n{e}")
 
-    return f"{job['source']['file_name']} encoded successfully"
+    return f"{job.source.file_name} encoded successfully"
