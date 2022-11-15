@@ -10,9 +10,12 @@ import re
 
 from dataclasses import dataclass
 from glob import glob
-from functools import cached_property
+from functools import cached_property, lru_cache
 
 from proxima.settings import settings, SettingsManager
+from proxima.queuer.media_pool_index import media_pool_index
+from pydavinci.wrappers.mediapoolitem import MediaPoolItem
+from proxima.app import exceptions
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
@@ -79,10 +82,11 @@ class Job:
         status = "OFFLINE" if self.is_offline else status
         return f"Job object: '{self.source.file_name}' - {status} - {self.output_file_path}"
 
-    @cached_property
+    @property
     def output_file_path(self) -> str:
         """Get a clear output path for Job, incrementing if any exist"""
 
+        @lru_cache
         def collision_free_path(
             initial_output_path: str, increment_num: int = 1
         ) -> str:
@@ -167,7 +171,7 @@ class Job:
         for x in matches:
 
             # If exact match
-            if x == self.source.file_name:
+            if os.path.basename(x).upper() == self.source.file_name.upper():
                 candidates.append(x)
 
             # If match allowed suffix
@@ -237,3 +241,27 @@ class Job:
         }
 
         return switch[self.source.data_level]
+
+    def link_proxy(self, proxy_media_path: str):
+        """
+        Wrapper around Resolve's `LinkProxyMedia` API method.
+
+        Args:
+            job (): A Proxima Job
+
+        Raises:
+            FileNotFoundError: Occurs when the proxy media file does not exist at `proxy_media_path`.
+
+            exceptions.ResolveLinkMismatchError: Occurs when the method returns False.
+            Unfortunately the method returns no error context beyond that.
+        """
+
+        media_pool_item = media_pool_index.lookup(self.source.media_pool_id)
+
+        if not os.path.exists(proxy_media_path):
+            raise FileNotFoundError(
+                f"File does not exist at path: '{proxy_media_path}'"
+            )
+
+        if not media_pool_item.link_proxy(proxy_media_path):
+            raise exceptions.ResolveLinkMismatchError(proxy_file=proxy_media_path)

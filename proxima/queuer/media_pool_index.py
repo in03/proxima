@@ -39,7 +39,7 @@ class MediaPoolIndex:
         self._mpi_index.update({id: media_pool_item})
         return
 
-    def lookup(self, id: str) -> dict[str, MediaPoolItem] | None:
+    def lookup(self, id: str) -> MediaPoolItem:
         """Lookup mediapoolitem in index by ID"""
         return self._mpi_index.get(id)
 

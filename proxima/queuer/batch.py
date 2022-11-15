@@ -1,13 +1,13 @@
 from functools import cached_property
 import logging
-
+import os
 from rich.prompt import Confirm, Prompt
 from rich import print
 from rich.panel import Panel
 from dataclasses import asdict
 import json
 
-from proxima.app import core
+from proxima.app import core, exceptions
 from proxima.queuer import link
 from proxima.queuer.job import Job
 from proxima.settings import settings
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(settings["app"]["loglevel"])
 
 
-class BatchHandler:
+class Batch:
     def __init__(self, batch: list[Job]):
 
         self.action_taken = False
@@ -26,11 +26,28 @@ class BatchHandler:
         self.existing_link_requeued_count = 0
         self.batch = batch
 
+        # instantiate cached properties
+        self.project
+        self.timeline
+
+    @cached_property
+    def project(self):
+        try:
+            return self.batch[0].project.project_name
+        except (KeyError, AttributeError) as e:
+            logger.error(f"[red]Can't derive project from batch:\n{e}")
+            return None
+
+    @cached_property
+    def timeline(self):
+        try:
+            return self.batch[0].project.timeline_name
+        except (KeyError, AttributeError) as e:
+            logger.error(f"[red]Can't derive project from batch:\n{e}")
+            return None
+
     @property
     def batch_info(self) -> str:
-
-        project = self.batch[0].project.project_name
-        timeline = self.batch[0].project.timeline_name
 
         els = self.existing_link_success_count
         elf = self.existing_link_failed_count
@@ -38,8 +55,8 @@ class BatchHandler:
 
         return str(
             f"[white]"
-            f"Project '{project}'\n"
-            f"Timeline '{timeline}'\n"
+            f"Project '{self.project}'\n"
+            f"Timeline '{self.timeline}'\n"
             f"[/]"
             f"[green]Linked {els} | [yellow]Requeued {elr} | [red]Failed {elf}\n"
             f"[cyan]Queueable now {len(self.batch)}\n"
@@ -104,50 +121,72 @@ class BatchHandler:
 
         return data
 
+    def remove_already_linked(self):
+        self.batch = [x for x in self.batch if not x.is_linked]
+
     def handle_existing_unlinked(self):
 
         """
         Prompts user to either link or re-render unlinked proxy media that exists in the expected location.
         """
 
-        logger.info(f"[cyan]Checking for existing, unlinked media.")
+        logger.info(f"[cyan]Checking for existing, unlinked media...")
 
-        existing_unlinked = [x.newest_linkable_proxy for x in self.batch]
+        existing_unlinked = []
+        mismatch_fail = []
+        link_success = []
+
+        if self.batch:
+            existing_unlinked = [
+                x for x in self.batch if not x.is_linked and x.newest_linkable_proxy
+            ]
+
         if len(existing_unlinked) > 0:
 
-            logger.info(f"[yellow]Found {len(existing_unlinked)} unlinked[/]")
+            [
+                logger.debug(
+                    f"[magenta] * Existing unlinked - '{x.source.file_name}' <-> {(core.shorten_long_path(x.newest_linkable_proxy))}"
+                )
+                for x in existing_unlinked
+            ]
 
             if Confirm.ask(
                 f"\n[yellow][bold]{len(existing_unlinked)} source files have existing but unlinked proxy media.\n"
                 "[/bold]Would you like to link them? If not they will be re-rendered."
             ):
 
-                self.action_taken = True
+                from rich.progress import track
 
-                linkable_now = []
-                # Reverse to prevent skipping elements
-                for x in reversed(self.batch):
-                    if x.newest_linkable_proxy in existing_unlinked:
-                        linkable_now.append(x)
-                        self.batch.remove(x)
+                for job in track(
+                    existing_unlinked, description="[cyan]Linking...", transient=True
+                ):
 
-                proxy_linker = link.ProxyLinker(linkable_now)
-                proxy_linker.link()
+                    if job.newest_linkable_proxy:
+                        try:
+                            job.link_proxy(job.newest_linkable_proxy)
+                        except exceptions.ResolveLinkMismatchError:
+                            mismatch_fail.append(job)
+                            logger.error(
+                                f"Failed to link {os.path.basename(job.newest_linkable_proxy)}"
+                            )
+                        else:
+                            link_success.append(job)
+                            self.batch.remove(job)
 
                 # Prompt to requeue if any failures
-                if proxy_linker.mismatch_fail:
+                if mismatch_fail:
                     if Confirm.ask(
-                        f"[yellow]{len(proxy_linker.mismatch_fail)} files failed to link."
+                        f"[yellow]{len(mismatch_fail)} files failed to link."
                         + "They may be corrupt or incomplete. Re-render them?"
                     ):
-                        self.batch.extend(proxy_linker.mismatch_fail)
+                        self.batch.extend(mismatch_fail)
 
-                self.existing_link_success_count = proxy_linker.link_success
-                self.existing_link_failed_count = proxy_linker.mismatch_fail
+                self.existing_link_success_count = len(link_success)
+                self.existing_link_failed_count = len(mismatch_fail)
 
             else:
 
-                self.existing_link_requeued_count = existing_unlinked
+                self.existing_link_requeued_count = len(existing_unlinked)
                 logger.warning(
                     f"[yellow]Existing proxies will be [bold]OVERWRITTEN![/bold][/yellow]"
                 )
@@ -159,8 +198,12 @@ class BatchHandler:
         This prompt can warn users to find that media if it's missing, or rerender if intentionally unavailable.
         """
 
-        logger.info(f"[cyan]Checking for offline proxies[/]")
-        offline_proxies = [x for x in self.batch if x.is_offline]
+        logger.info(f"[cyan]Checking for offline proxies...")
+
+        offline_proxies = []
+
+        if self.batch:
+            offline_proxies = [x for x in self.batch if x.is_offline]
 
         if len(offline_proxies) > 0:
 
@@ -199,16 +242,9 @@ class BatchHandler:
                         f"[green]Queuing '{offline_proxy.source.file_name}' for re-render"
                     )
 
-                    new_jobs.extend(
-                        [
-                            x
-                            for x in self.batch
-                            if x.source.file_name == offline_proxy.source.file_name
-                        ]
-                    )
-
                 else:
                     print(f"[yellow]Skipping '{offline_proxy.source.file_name}'...")
+                    self.batch.remove(offline_proxy)
 
                 print()
 

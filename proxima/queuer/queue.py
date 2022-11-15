@@ -6,10 +6,8 @@ from proxima.worker.tasks import encode_proxy
 from rich import print
 from pydavinci import davinci
 from proxima.queuer import resolve
-from proxima.queuer.batch_handler import BatchHandler
 from proxima.app.cli import app_status
 from rich.panel import Panel
-from rich.prompt import Confirm
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
@@ -47,9 +45,13 @@ def main():
     media_pool_items = resolve.get_media_pool_items(track_items)
     batch = resolve.generate_batch(media_pool_items, settings)
 
+    batch.remove_already_linked()
+    batch.handle_existing_unlinked()
+    batch.remove_already_linked()
+    batch.handle_offline_proxies()
+
     print(
         Panel(
-            title="[bold]Ready to queue!",
             expand=False,
             title_align="left",
             renderable=(
@@ -91,11 +93,10 @@ def main():
 
     _ = results.join()  # Must always call join, or results don't expire
 
-    batch = batch.batch
-    proxy_linker = ProxyLinker(batch)
+    proxy_linker = ProxyLinker(batch.batch)
 
     try:
-        proxy_linker.link()
+        proxy_linker.batch_link()
 
     except Exception:
 

@@ -1,16 +1,16 @@
 # Link proxies
 
 import logging
+import os
 
 from rich.console import Console
-from typing import Tuple
-
 from proxima.app import core
 from proxima import exceptions
 from proxima.settings import settings
 from pydavinci import davinci
 from proxima.queuer.job import Job
 from proxima.queuer.media_pool_index import media_pool_index
+from pydavinci.wrappers.mediapoolitem import MediaPoolItem
 
 resolve = davinci.Resolve()
 console = Console()
@@ -21,12 +21,9 @@ logger.setLevel(settings["app"]["loglevel"])
 
 
 class ProxyLinker:
-    def __init__(
-        self, batch: list[Job], linkable_types: Tuple[str, ...] = ("Offline", "None")
-    ):
+    def __init__(self, batch: list[Job]):
 
         self.jobs = batch
-        self.linkable_types = linkable_types
         self.project_name = self.jobs[0].project.project_name
 
         self.link_success = []
@@ -65,12 +62,14 @@ class ProxyLinker:
 
         This prevents relinking footage that is already linked according to Resolve.
         """
-        self.jobs = [x for x in self.jobs if x.is_linked in self.linkable_types]
+        self.jobs = [x for x in self.jobs if not x.is_linked or not x.is_offline]
 
         if not self.jobs:
             raise exceptions.NoneLinkableError()
 
-    def __link_proxy_media(self, job: Job):
+    def single_link(
+        self, media_pool_item: MediaPoolItem, proxy_media_path: str
+    ) -> None:
         """
         Wrapper around Resolve's `LinkProxyMedia` API method.
 
@@ -78,28 +77,24 @@ class ProxyLinker:
             job (): A Proxima Job
 
         Raises:
+            FileNotFoundError: Occurs when the proxy media file does not exist at `proxy_media_path`.
+
             exceptions.ResolveLinkMismatchError: Occurs when the method returns False.
             Unfortunately the method returns no error context beyond that.
         """
-        mpi = media_pool_index.lookup(job.source.media_pool_id)
 
-        if not mpi.LinkProxyMedia(job.output_file_path):  # type: ignore
-            raise exceptions.ResolveLinkMismatchError(proxy_file=job.output_file_path)
+        if not os.path.exists(proxy_media_path):
+            raise FileNotFoundError(
+                f"File does not exist at path: '{proxy_media_path}'"
+            )
 
-    def link(self):
+        if not media_pool_item.link_proxy(proxy_media_path):
+            raise exceptions.ResolveLinkMismatchError(proxy_file=proxy_media_path)
+
+    def batch_link(self):
 
         """
         Iterate through media list and link each finished proxy with its media pool item.
-
-        Args:
-            jobs (list of dicts): queuable jobs with project, timeline and setting metadata
-            linkable_types (list, optional): List of job `proxy_status` values to attempt link on. Defaults to ["Offline", "None"].
-            prompt_reiterate(bool, optional): If any links fail, prompt the user to fetch media pool items again by reiterating timelines.
-            If prompt_rerender is enabled, prompt_reiterate runs first.
-            prompt_rerender (bool, optional): If any links fail, prompt the user to re-queue them. Defaults to False.
-
-        Returns:
-            remaining_jobs (list of cits): the remaining queuable jobs that haven't been linked
         """
 
         logger.info(f"[cyan]Linking {len(self.jobs)} proxies[/]")
@@ -112,18 +107,24 @@ class ProxyLinker:
         # Iterate through all available proxies
         for job in self.jobs:
 
-            logger.debug(f"[magenta]Attempting to link job:[/]\n {job}")
+            logger.debug(f"[magenta]Attempting to link job:[/]\n{job.output_file_path}")
             logger.info(f"[cyan]:link: '{job.source.file_name}'")
 
-            try:
+            mpi = media_pool_index.lookup(job.source.media_pool_id)
 
-                self.__link_proxy_media(job)
+            try:
+                self.single_link(mpi, job.output_file_path)
 
             except exceptions.ResolveLinkMismatchError:
+
+                show_exception = False
+                if logger.getEffectiveLevel() <= 10:
+                    show_exception = True
+
                 logger.error(
                     f"[red bold]:x: Failed to link '{job.source.file_name}'[/]\n"
                     f"[red]",
-                    # exc_info=True,
+                    exc_info=show_exception,
                 )
                 self.mismatch_fail.append(job)
 

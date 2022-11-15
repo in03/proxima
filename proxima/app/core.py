@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 import time
 
@@ -8,6 +9,19 @@ from rich.prompt import Prompt
 from rich.console import Console
 
 console = Console()
+
+
+def shorten_long_path(long_path: str | None, max_len: int = 40):
+
+    if long_path:
+
+        if len(long_path) > max_len:
+
+            front_slice = int(max_len / 2)
+            end_slice = len(long_path) - front_slice
+            return long_path[:front_slice] + "..." + long_path[end_slice:]
+
+    return long_path
 
 
 def setup_rich_logging():
