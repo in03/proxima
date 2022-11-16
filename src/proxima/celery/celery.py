@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from celery import Celery
 from proxima.settings import settings
+import proxima
 
 logger = logging.getLogger(__name__)
 logger.setLevel(settings["app"]["loglevel"])
@@ -53,7 +54,9 @@ app.conf.update(
 
 def get_version_constraint_key() -> str:
 
-    vc_key_file = Path(__file__).parent.parent.parent.joinpath("version_constraint_key")
+    package_root = Path(proxima.__file__)
+    great_grandfather = package_root.parent.parent.parent
+    vc_key_file = great_grandfather.joinpath("version_constraint_key")
     with open(vc_key_file) as file:
         return file.read()
 
