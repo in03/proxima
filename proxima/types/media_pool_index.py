@@ -41,7 +41,7 @@ class MediaPoolIndex:
 
     def lookup(self, id: str) -> MediaPoolItem:
         """Lookup mediapoolitem in index by ID"""
-        return self._mpi_index.get(id)
+        return self._mpi_index.get(id)  # type: ignore
 
 
 media_pool_index = MediaPoolIndex()

@@ -12,9 +12,9 @@ from shutil import which
 from rich import print
 
 from proxima.app import core
-from proxima.app.utils import package
+from proxima.app import package
 from proxima.settings import settings
-from proxima.app.celery import get_version_constraint_key, get_queue
+from proxima.celery import get_version_constraint_key, get_queue
 
 core.install_rich_tracebacks()
 
@@ -122,7 +122,7 @@ def new_worker(nickname: str = "") -> int:
         get_new_console(),
         *settings["worker"]["terminal_args"],
         f'"{package.get_script_from_package("celery")}"',
-        "-A proxima.worker",
+        "-A proxima.celery",
         "worker",
         get_worker_name(nickname),
         get_worker_queue(),

@@ -8,8 +8,8 @@ from proxima.app import core
 from proxima import exceptions
 from proxima.settings import settings
 from pydavinci import davinci
-from proxima.queuer.job import Job
-from proxima.queuer.media_pool_index import media_pool_index
+from proxima.types.job import Job
+from proxima.types.media_pool_index import media_pool_index
 from pydavinci.wrappers.mediapoolitem import MediaPoolItem
 
 resolve = davinci.Resolve()

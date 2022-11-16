@@ -4,11 +4,11 @@ import os
 from proxima.app import core
 from proxima.settings import settings
 from proxima.settings.manager import SettingsManager
-from proxima.worker import celery_app
-from proxima.worker.ffmpeg import FfmpegProcess
-from proxima.app.celery import get_queue
+from proxima.celery import celery_app
+from proxima.celery.ffmpeg import FfmpegProcess
+from proxima.celery.celery import get_queue
 from celery.exceptions import Reject
-from proxima.queuer.job import ProjectMetadata, SourceMetadata
+from proxima.types.job import ProjectMetadata, SourceMetadata
 
 from rich import print
 from rich.console import Console

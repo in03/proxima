@@ -1,7 +1,7 @@
 import pytest
 
 from proxima.app import checks
-from proxima.worker import launch_workers
+from proxima.celery import launch_workers
 
 from shortuuid import uuid
 

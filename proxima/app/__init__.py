@@ -1,1 +1,1 @@
-from proxima.app.utils.package import build_info
+from proxima.app.package import build_info

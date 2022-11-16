@@ -1,6 +1,8 @@
 from .app import core
-from .app import shared
+from .celery import shared
 from .app import checks
 from .app import exceptions
-from .queuer import resolve
-from .queuer.link import ProxyLinker
+from .app import resolve
+from .app.link import ProxyLinker
+
+from proxima.cli import main as cli

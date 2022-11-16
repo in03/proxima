@@ -1,12 +1,13 @@
 import logging
 from celery import group
-from proxima import ProxyLinker, shared, core, resolve
+from proxima import ProxyLinker, shared, core
+from proxima.app import resolve
 from proxima.settings import settings
-from proxima.worker.tasks import encode_proxy
+from proxima.celery.tasks import encode_proxy
 from rich import print
 from pydavinci import davinci
-from proxima.queuer import resolve
-from proxima.app.cli import app_status
+from proxima.app import resolve
+from proxima import cli
 from rich.panel import Panel
 from pydavinci.exceptions import TimelineNotFound
 
@@ -64,7 +65,7 @@ def main():
             expand=False,
             title_align="left",
             renderable=(
-                app_status.status_text
+                cli.app_status.status_text
                 + "\n\n[bold white]Jobs[/][/]\n"
                 + batch.batch_info
             ),
@@ -115,6 +116,10 @@ def main():
         print("[bold][green]All linked up![/bold] Nothing to queue[/] :link:")
         core.app_exit(0)
 
+
+# TODO: Refactor queue module
+# This module should be CLI/API agnostic
+# Move interactivity to the CLI module, then this queue module can move to 'app'
 
 if __name__ == "__main__":
     main()

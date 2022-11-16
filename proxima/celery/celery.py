@@ -19,7 +19,7 @@ app = Celery("worker")
 
 app.autodiscover_tasks(
     [
-        "proxima.worker.tasks",
+        "proxima.celery.tasks",
     ]
 )
 

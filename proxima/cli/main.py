@@ -1,5 +1,3 @@
-#!/usr/bin/env python3.6
-
 import logging
 import subprocess
 from typing import Optional, List
@@ -7,11 +5,12 @@ from typing import Optional, List
 import typer
 from rich import print
 from rich.console import Console
+from rich.panel import Panel
 
 
 from proxima.settings import settings
 from proxima.app.checks import AppStatus
-from proxima.app.celery import get_version_constraint_key
+from proxima.celery import get_version_constraint_key
 
 # Init classes
 cli_app = typer.Typer()
@@ -24,13 +23,13 @@ hide_banner = typer.Option(
 
 # Special functions
 @cli_app.callback(invoke_without_command=True)
-def run_without_args():
-    # print("Run [bold]proxima --help[/] for a list of commands")
-    ...
-
-
-def cli_init():
-    print(app_status.banner)
+def run_without_args(ctx: typer.Context):
+    sub = ctx.invoked_subcommand
+    if sub is None:
+        print("Run [bold]proxima --help[/] for a list of commands")
+        status()
+    else:
+        print(Panel(f"[bold]{sub.capitalize()}", expand=False))
 
 
 # Commands
@@ -61,7 +60,7 @@ def queue():
     # )
     # print("\n")
 
-    from proxima.queuer import queue
+    from proxima.cli import queue
 
     queue.main()
 
@@ -92,7 +91,7 @@ def work(
 
     print("\n")
 
-    from proxima.worker import launch_workers
+    from proxima.celery import launch_workers
 
     launch_workers.main(workers_to_launch)
 
@@ -116,13 +115,13 @@ def purge():
     console.rule(f"[red bold]Purge all tasks! :fire:", align="left")
     print("\n")
 
-    from proxima.app.utils import package
+    from proxima.app import package
 
     subprocess.run(
         [
             package.get_script_from_package("celery"),
             "-A",
-            "proxima.worker",
+            "proxima.celery",
             "purge",
             "-Q",
             get_version_constraint_key(),
@@ -140,7 +139,7 @@ def celery(
     """
     Pass commands to Celery buried in venv.
 
-    Runs `celery -A proxima.worker [celery_command]`
+    Runs `celery -A proxima.celery [celery_command]`
     at the absolute location of the package's Celery executable.
     Useful when the celery project is buried in a virtual environment and you want
     to do something a little more custom like purge jobs from a custom queue name.
@@ -148,19 +147,17 @@ def celery(
     See https://docs.celeryq.dev/en/latest/reference/cli.html for proper usage.
     """
 
-    # print(ctx.params["celery_command"])
-
     print("\n")
     console.rule(f"[cyan bold]Celery command :memo:", align="left")
     print("\n")
 
-    from proxima.app.utils import package
+    from proxima.app import package
 
     subprocess.run(
         [
             package.get_script_from_package("celery"),
             "-A",
-            "proxima.worker",
+            "proxima.celery",
             *celery_command,
         ]
     )
@@ -180,7 +177,7 @@ def config():
 
 
 def main():
-    cli_init()
+    print(app_status.banner)
     cli_app()
 
 

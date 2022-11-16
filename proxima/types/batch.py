@@ -9,8 +9,8 @@ from dataclasses import asdict
 import json
 
 from proxima.app import core, exceptions
-from proxima.queuer import link
-from proxima.queuer.job import Job
+from proxima.app import link
+from proxima.types.job import Job
 from proxima.settings import settings
 
 core.install_rich_tracebacks()

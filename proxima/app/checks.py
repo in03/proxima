@@ -3,15 +3,14 @@ from functools import cached_property
 import logging
 
 from proxima.app import core
-from proxima.worker import celery_app
-from proxima.app.celery import get_queue
+from proxima.celery import celery_app
+from proxima.celery import get_queue
 from rich.console import Console
 from rich.rule import Rule
 from rich.panel import Panel
 from pyfiglet import Figlet
-from proxima.app.utils.package import build_info
+from proxima.app.package import build_info
 from proxima.settings import settings
-from proxima.app import celery
 
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
@@ -121,7 +120,7 @@ class AppStatus:
 
         self.package_name = package_name
         self.status_text: str = ""
-        self.vc_key: str = celery.get_queue()
+        self.vc_key: str = get_queue()
 
         self.build_status()
         self.update_status()
@@ -138,7 +137,7 @@ class AppStatus:
     def status_panel(self):
 
         return Panel(
-            title="[bold]Status",
+            # title="[bold]Status",
             expand=False,
             title_align="left",
             renderable=self.status_text,

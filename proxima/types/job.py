@@ -2,7 +2,7 @@ import logging
 import os
 
 from proxima.app import core
-from proxima.worker.ffmpeg import ffprobe
+from proxima.celery import ffmpeg
 
 import os
 import pathlib
@@ -13,7 +13,7 @@ from glob import glob
 from functools import cached_property
 
 from proxima.settings import settings, SettingsManager
-from proxima.queuer.media_pool_index import media_pool_index
+from proxima.types.media_pool_index import media_pool_index
 from proxima.app import exceptions
 
 core.install_rich_tracebacks()
@@ -237,7 +237,7 @@ class Job:
             """
 
             input = self.source.file_path
-            streams = ffprobe(file=input)["streams"]
+            streams = ffmpeg.ffprobe(file=input)["streams"]
 
             # Get first valid video stream
             video_info = None

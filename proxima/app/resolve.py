@@ -9,9 +9,9 @@ from pydavinci.wrappers.project import Project
 from pydavinci.wrappers.timelineitem import TimelineItem
 from pydavinci.wrappers.mediapool import MediaPool
 from pydavinci.wrappers.mediapoolitem import MediaPoolItem
-from proxima.queuer.media_pool_index import media_pool_index
-from proxima.queuer.job import Job, ProjectMetadata, SourceMetadata
-from proxima.queuer.batch import Batch
+from proxima.types.media_pool_index import media_pool_index
+from proxima.types.job import Job, ProjectMetadata, SourceMetadata
+from proxima.types.batch import Batch
 
 resolve = davinci.Resolve()
 
