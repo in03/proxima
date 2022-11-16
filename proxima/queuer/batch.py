@@ -35,6 +35,14 @@ class Batch:
 
     @cached_property
     def project(self):
+        """
+        Project name derived from first job in batch.
+
+        Property is cached to prevent KeyError if handler removes all jobs.
+
+        Returns:
+            project_name: The name of the Resolve project the job refers to
+        """
         try:
             return self.batch[0].project.project_name
         except (KeyError, AttributeError) as e:
@@ -43,6 +51,14 @@ class Batch:
 
     @cached_property
     def timeline(self):
+        """
+        Timeline name derived from first job in batch.
+
+        Timeline is cached to prevent KeyError if handler removes all jobs.
+
+        Returns:
+            timeline_name: The name of the Resolve timeline the job refers to
+        """
         try:
             return self.batch[0].project.timeline_name
         except (KeyError, AttributeError) as e:
@@ -51,6 +67,16 @@ class Batch:
 
     @property
     def batch_info(self) -> str:
+        """
+        Information about the current batch:
+        - project, timeline name
+        - Linked, requeued and failed to link existing proxies
+        - Proxy preset nickname, write mode: overwrite, unique
+        - Total proxies queueable now
+
+        Returns:
+            str: A multiline string with batch information
+        """
 
         els = self.existing_link_success_count
         elf = self.existing_link_failed_count
@@ -70,6 +96,12 @@ class Batch:
 
     @property
     def batch_info_panel(self) -> Panel:
+        """
+        Batch info displayed in a Rich renderable panel
+
+        Returns:
+            Panel: Rich Panel wrapping batch info
+        """
         return Panel(
             title="[bold]Batch Info",
             expand=False,

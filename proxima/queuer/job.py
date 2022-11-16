@@ -10,7 +10,7 @@ import re
 
 from dataclasses import dataclass
 from glob import glob
-from functools import cached_property, lru_cache
+from functools import cached_property
 
 from proxima.settings import settings, SettingsManager
 from proxima.queuer.media_pool_index import media_pool_index
@@ -70,7 +70,16 @@ class Job:
 
     @cached_property
     def output_file_path(self) -> str:
-        """Get a clear output path for Job, incrementing if any exist"""
+        """
+        Get the determined output file path
+
+        Derived from source structure.
+        Collision free path calculated if overwrite mode is disabled.
+        Cached to prevent recalculating each call.
+
+        Returns:
+            str: output_file_path
+        """
 
         logger.info("[cyan]Getting collision-free path...")
 
