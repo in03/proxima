@@ -158,7 +158,7 @@ class AppStatus:
             return
 
         if build_info.is_updatable == False:
-            self.status_text += "[cyan]Running latest :running_man:\n"
+            self.status_text += "[cyan]Running latest :runner:\n"
             return
 
     def build_status(self):
