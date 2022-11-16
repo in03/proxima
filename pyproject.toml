@@ -11,7 +11,7 @@ include = ["version_constraint_key"]
 python = ">=3.10.0,<4.0.0"
 celery = "^5.1.2"
 rich = "^10.12.0"
-typer = "^0.4.0"
+typer = {extras = ["all"], version = "^0.6.1"}
 pyfiglet = "^0.8.post1"
 redis = "^3.5.3"
 requests = "^2.26.0"
@@ -20,11 +20,12 @@ schema = "^0.7.5"
 deepdiff = "^5.7.0"
 pymediainfo = "^5.1.0"
 commonregex = "^1.5.3"
-notify-py = "^0.3.3"
 yaspin = "^2.1.0"
 shortuuid = "^1.0.9"
 termynal = "^0.2.0"
-mkdocs-material = "^8.5.3"
+notify-py = {git = "https://github.com/in03/notify-py"}
+pydavinci = {git = "https://github.com/in03/pydavinci"}
+pytest = "^7.2.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^21.12b0"
@@ -40,6 +41,11 @@ mike = "^1.1.2"
 mkdocs-git-revision-date-localized-plugin = "^1.1.0"
 termynal = "^0.2.0"
 mkdocs = "*"
+mkdocs-gen-files = "^0.4.0"
+mkdocs-literate-nav = "^0.5.0"
+mkdocs-section-index = "^0.3.4"
+mkdocstrings = "^0.19.0"
+mkdocs-material = "^8.5.10"
 
 [tool.semantic_release]
 version_variable = [
@@ -57,4 +63,4 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-proxima = "proxima.app.cli:main"
+proxima = "proxima.cli.main:main"
