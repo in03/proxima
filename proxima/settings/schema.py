@@ -40,6 +40,7 @@ settings_schema = Schema(
             "audio_samplerate": str,
             Optional("misc_args"): list,
             "ext": And(str, lambda s: s.startswith(".")),
+            "overwrite": bool,
         },
         "filters": {
             "extension_whitelist": And(

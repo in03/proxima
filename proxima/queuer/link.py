@@ -107,7 +107,9 @@ class ProxyLinker:
         # Iterate through all available proxies
         for job in self.jobs:
 
-            logger.debug(f"[magenta]Attempting to link job:[/]\n{job.output_file_path}")
+            logger.debug(
+                f"[magenta]Attempting to link job:[/]\n{core.shorten_long_path(job.output_file_path)}"
+            )
             logger.info(f"[cyan]:link: '{job.source.file_name}'")
 
             mpi = media_pool_index.lookup(job.source.media_pool_id)

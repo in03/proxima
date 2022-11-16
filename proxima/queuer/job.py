@@ -68,30 +68,58 @@ class Job:
         status = "OFFLINE" if self.is_offline else status
         return f"Job object: '{self.source.file_name}' - {status} - {self.output_file_path}"
 
-    @property
+    @cached_property
     def output_file_path(self) -> str:
         """Get a clear output path for Job, incrementing if any exist"""
 
-        @lru_cache
-        def collision_free_path(
+        logger.info("[cyan]Getting collision-free path...")
+
+        def get_collision_free_path(
             initial_output_path: str, increment_num: int = 1
         ) -> str:
             """Get a collision-free output path by incrementing the filename if it already exists"""
 
-            file_name, file_ext = os.path.splitext(initial_output_path)
-            if os.path.exists(initial_output_path):
+            while True:
 
-                if file_name.endswith(f"_{increment_num}"):
+                file_name, file_ext = os.path.splitext(initial_output_path)
+                try_path = f"{file_name}_{increment_num}{file_ext}"
 
+                if os.path.exists(try_path):
+
+                    logger.debug(
+                        f"[magenta] * Path '{os.path.basename(try_path)}' exists. Incrementing."
+                    )
                     increment_num += 1
-                    collision_free_path(initial_output_path, increment_num)
 
-                file_name = file_name + "_1"
+                else:
 
-            return str(file_name + file_ext)
+                    logger.debug(
+                        f"[magenta] * Path '{os.path.basename(try_path)}' is free."
+                    )
+                    break
+
+            return str(try_path)
 
         initial_output_path = os.path.join(self.output_directory, self.source.file_name)
-        return collision_free_path(initial_output_path)
+
+        if self.settings["proxy"]["overwrite"]:
+
+            if not os.path.exists(initial_output_path):
+                return initial_output_path
+
+            collision_free_path = get_collision_free_path(initial_output_path)
+            logger.debug(
+                f"[magenta] * Collision free path: '{core.shorten_long_path(collision_free_path)}'"
+            )
+            assert not os.path.exists(collision_free_path)
+            return collision_free_path
+
+        else:
+
+            logger.debug(
+                f"[magenta] * Output path, will overwrite existing: {initial_output_path}"
+            )
+            return initial_output_path
 
     @property
     def output_file_name(self) -> str:
@@ -112,7 +140,7 @@ class Job:
 
         return os.path.normpath(
             os.path.join(
-                settings["paths"]["proxy_path_root"],
+                self.settings["paths"]["proxy_path_root"],
                 os.path.dirname(p.relative_to(*p.parts[:1])),
             )
         )
@@ -142,6 +170,8 @@ class Job:
         allowable file suffixes.
         """
 
+        logger.info("[cyan]Getting newest linkable proxy...")
+
         # Get glob path
         glob_path = os.path.splitext(
             os.path.join(
@@ -158,6 +188,7 @@ class Job:
 
             # If exact match
             if os.path.basename(x).upper() == self.source.file_name.upper():
+                logger.debug(f"[magenta] * Found exact match: '{os.path.basename(x)}'")
                 candidates.append(x)
 
             # If match allowed suffix
@@ -165,6 +196,9 @@ class Job:
             candidate_suffix = os.path.splitext(basename)[1]
             for criteria in self.settings["paths"]["linkable_proxy_suffix_regex"]:
                 if re.search(criteria, candidate_suffix):
+                    logger.debug(
+                        f"[magenta] * Found regex criteria match: '{os.path.basename(x)}'"
+                    )
                     candidates.append(x)
 
         if not candidates:
@@ -174,6 +208,7 @@ class Job:
             return os.path.normpath(candidates[0])
 
         candidates = sorted(candidates, key=os.path.getmtime, reverse=True)
+        logger.debug(f"[magenta] * Newest match: '{os.path.basename(candidates[0])}'")
         return os.path.normpath(candidates[0])
 
     @cached_property
@@ -183,6 +218,8 @@ class Job:
 
         Uses ffprobe to probe file for levels if Resolve data levels are set to Auto.
         """
+
+        logger.info("[cyan]Getting input level...")
 
         def probe_for_input_range(self):
             """
@@ -196,14 +233,16 @@ class Job:
             # Get first valid video stream
             video_info = None
             for stream in streams:
-                logger.debug(f"[magenta]Found stream {stream}")
+                logger.debug(
+                    f"[magenta] * Found stream '{stream.get('codec_long_name', 'Data stream')}'"
+                )
                 if stream["codec_type"] == "video":
                     if stream["r_frame_rate"] != "0/0":
                         video_info = stream
             assert video_info != None
 
             color_data = {k: v for k, v in video_info.items() if "color" in k}
-            logger.debug(f"Color data:\n{color_data}")
+            logger.debug(f"[magenta] * Color data: {color_data}")
 
             if "color_range" in color_data.keys():
                 switch = {
@@ -241,6 +280,8 @@ class Job:
             exceptions.ResolveLinkMismatchError: Occurs when the method returns False.
             Unfortunately the method returns no error context beyond that.
         """
+
+        logger.info("[debug]Linking proxy...")
 
         media_pool_item = media_pool_index.lookup(self.source.media_pool_id)
 

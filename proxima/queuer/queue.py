@@ -8,8 +8,11 @@ from pydavinci import davinci
 from proxima.queuer import resolve
 from proxima.app.cli import app_status
 from rich.panel import Panel
+from pydavinci.exceptions import TimelineNotFound
+
 
 core.install_rich_tracebacks()
+
 logger = logging.getLogger(__name__)
 logger.setLevel(settings["app"]["loglevel"])
 
@@ -17,9 +20,10 @@ logger.setLevel(settings["app"]["loglevel"])
 def queue_batch(batch: list):
     """Block until all queued tasks finish, notify results."""
 
+    logger.info("Queuing batch...")
+
     # Wrap task objects in Celery task function
     callable_tasks = [encode_proxy.s(x) for x in batch]
-    logger.debug(f"[magenta]callable_tasks:[/] {callable_tasks}")
 
     # Create task group to retrieve job results as batch
     task_group = group(callable_tasks)
@@ -28,7 +32,7 @@ def queue_batch(batch: list):
 
     # Queue job
     results = task_group.apply_async(expires=settings["broker"]["job_expires"])
-    logger.debug(f"[cyan]Queued tasks {results}[/]")
+    logger.debug(f"[magenta] * Queued batch with ID {results}[/]")
 
     # report progress is blocking!
     final_results = progress.report_progress(results)
@@ -40,8 +44,13 @@ def main():
 
     r_ = davinci.Resolve()
 
-    # Lets make it happen!
-    track_items = resolve.get_timeline_items(r_.active_timeline)
+    try:
+
+        track_items = resolve.get_timeline_items(r_.active_timeline)
+
+    except TimelineNotFound:
+        core.app_exit(1, -1)
+
     media_pool_items = resolve.get_media_pool_items(track_items)
     batch = resolve.generate_batch(media_pool_items, settings)
 

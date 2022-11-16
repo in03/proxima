@@ -78,9 +78,9 @@ class ProgressTracker:
                 continue
 
             switch = {
-                "STARTED": f"[bold cyan] :blue_circle: {result.worker}[/] -> [cyan]started on '{result.args[0]['file_name']}'",
-                "SUCCESS": f"[bold green] :green_circle: {result.worker}[/] -> [green]finished '{result.args[0]['file_name']}'",
-                "FAILURE": f"[bold red] :red_circle: {result.worker}[/] -> [red]failed '{result.args[0]['file_name']}'",
+                "STARTED": f"[bold cyan] :blue_circle: {result.worker}[/] -> [cyan]started on '{result.args[0]['source']['file_name']}'",
+                "SUCCESS": f"[bold green] :green_circle: {result.worker}[/] -> [green]finished '{result.args[0]['source']['file_name']}'",
+                "FAILURE": f"[bold red] :red_circle: {result.worker}[/] -> [red]failed '{result.args[0]['source']['file_name']}'",
             }
 
             if last_status := switch.get(result.status):

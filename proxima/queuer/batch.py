@@ -3,6 +3,7 @@ import logging
 import os
 from rich.prompt import Confirm, Prompt
 from rich import print
+from rich.console import Console
 from rich.panel import Panel
 from dataclasses import asdict
 import json
@@ -15,6 +16,8 @@ from proxima.settings import settings
 core.install_rich_tracebacks()
 logger = logging.getLogger(__name__)
 logger.setLevel(settings["app"]["loglevel"])
+
+console = Console()
 
 
 class Batch:
@@ -53,13 +56,16 @@ class Batch:
         elf = self.existing_link_failed_count
         elr = self.existing_link_requeued_count
 
+        if not settings["proxy"]["overwrite"]:
+            overwrite_warning = "[yellow]PRESERVE. Use wisely."
+        else:
+            overwrite_warning = "[magenta]OVERWRITE"
+
         return str(
-            f"[white]"
-            f"Project '{self.project}'\n"
-            f"Timeline '{self.timeline}'\n"
-            f"[/]"
+            f"[cyan]{self.project} | {self.timeline}[/]\n"
             f"[green]Linked {els} | [yellow]Requeued {elr} | [red]Failed {elf}\n"
-            f"[cyan]Queueable now {len(self.batch)}\n"
+            f"{settings['proxy']['nickname']} | {overwrite_warning}\n"
+            f"\n[bold][white]Total queueable now:[/bold] {len(self.batch)}\n"
         )
 
     @property
@@ -187,9 +193,8 @@ class Batch:
             else:
 
                 self.existing_link_requeued_count = len(existing_unlinked)
-                logger.warning(
-                    f"[yellow]Existing proxies will be [bold]OVERWRITTEN![/bold][/yellow]"
-                )
+                if settings["proxy"]["overwrite"]:
+                    logger.debug(f"[magenta] * Existing proxies set to be overwritten")
 
     def handle_offline_proxies(self):
         """Prompt to rerender proxies that are 'linked' but their media does not exist.
