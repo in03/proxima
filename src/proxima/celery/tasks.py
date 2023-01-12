@@ -44,10 +44,24 @@ class TaskJob:
 
         # TODO: Custom exceptions for task job validation
 
-        assert os.path.exists(self.source.file_path)  # SOURCE ACCESSIBLE
-        assert os.path.exists(self.output_directory)  # CLEAR EXPORT PATH
-        assert not os.path.exists(self.output_file_path)  # NO OVERWRITE
-        assert self.input_level in ["in_range=full", "in_range=video"]
+        if not os.path.exists(self.source.file_path):  # SOURCE ACCESSIBLE
+            raise FileNotFoundError(
+                f"Provided source file '{self.source.file_path}' does not exist"
+            )
+
+        # if not os.path.exists(self.output_directory):  # CLEAR EXPORT PATH
+        # raise FileNotFoundError(f"Provided output directory '{self.output_directory}' does not exist")
+        if not os.path.exists(self.output_file_path):  # NO OVERWRITE
+            raise FileExistsError(
+                f"File already exists at provided output path {self.output_file_path}"
+            )
+        if not self.input_level in [
+            "in_range=full",
+            "in_range=video",
+        ]:  # CHECK VALID VIDEO LEVELS
+            raise ValueError(
+                f"Calculated video levels are invalid: '{self.input_level}'"
+            )
 
 
 def ensure_logs_output_path(job: TaskJob):
@@ -93,6 +107,8 @@ def encode_proxy(self, job_dict: dict) -> str:
     Celery task to encode proxy media using parameters in job argument
     and user-defined settings
     """
+
+    logger.error(f"[magenta]Received job dict {job_dict}")
 
     project_metadata = class_from_args(ProjectMetadata, job_dict["project"])
     source_metadata = class_from_args(SourceMetadata, job_dict["source"])
