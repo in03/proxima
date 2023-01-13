@@ -290,13 +290,14 @@ class Job:
             Unfortunately the method returns no error context beyond that.
         """
 
-        logger.info("[debug]Linking proxy...")
-
         media_pool_item = media_pool_index.lookup(self.source.media_pool_id)
+        logger.debug(
+            f"[magenta]Attempting to link:[/]\n - PROXY: '{proxy_media_path}'\n - SOURCE: '{self.source.file_path}'"
+        )
 
         if not os.path.exists(proxy_media_path):
             raise FileNotFoundError(
-                f"File does not exist at path: '{proxy_media_path}'"
+                f"Proxy media file does not exist at path: '{proxy_media_path}'"
             )
 
         if not media_pool_item.link_proxy(proxy_media_path):

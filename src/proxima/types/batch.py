@@ -205,7 +205,7 @@ class Batch:
                         except exceptions.ResolveLinkMismatchError:
                             mismatch_fail.append(job)
                             logger.error(
-                                f"Failed to link {os.path.basename(job.newest_linkable_proxy)}"
+                                f"[red]Failed to link '{os.path.basename(job.newest_linkable_proxy)}' - proxy does not match source!"
                             )
                         else:
                             link_success.append(job)
@@ -214,7 +214,7 @@ class Batch:
                 # Prompt to requeue if any failures
                 if mismatch_fail:
                     if Confirm.ask(
-                        f"[yellow]{len(mismatch_fail)} files failed to link."
+                        f"[yellow]{len(mismatch_fail)} existing proxies failed to link. "
                         + "They may be corrupt or incomplete. Re-render them?"
                     ):
                         self.batch.extend(mismatch_fail)
