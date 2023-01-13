@@ -108,7 +108,7 @@ def encode_proxy(self, job_dict: dict) -> str:
     and user-defined settings
     """
 
-    logger.error(f"[magenta]Received job dict {job_dict}")
+    logger.debug(f"[magenta]Received job dict {job_dict}")
 
     project_metadata = class_from_args(ProjectMetadata, job_dict["project"])
     source_metadata = class_from_args(SourceMetadata, job_dict["source"])
