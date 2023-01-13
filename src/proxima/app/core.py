@@ -77,7 +77,7 @@ def app_exit(
 
     if timeout < 0:
         print()
-        answer = Prompt.ask("Press [yellow]ENTER[/] to exit", console=console)
+        _ = Prompt.ask("Press [yellow]ENTER[/] to exit", console=console)
         sys.exit(level)
 
     else:
@@ -85,11 +85,11 @@ def app_exit(
         for i in range(timeout, -1, -1):
 
             time.sleep(1)
-            console.print(f"\rExiting in " + str(i), end="")
+            sys.stdout.write(f"\rExiting in " + str(i))
 
         # Erase last line
-        console.print("\x1b[1A", end="")
-        console.print("\x1b[2K", end="")
+        sys.stdout.write("\x1b[1A")
+        sys.stdout.write("\x1b[2K")
 
     sys.exit(level)
 
