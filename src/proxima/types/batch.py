@@ -213,11 +213,11 @@ class Batch:
 
                 # Prompt to requeue if any failures
                 if mismatch_fail:
-                    if Confirm.ask(
+                    if not Confirm.ask(
                         f"[yellow]{len(mismatch_fail)} existing proxies failed to link. "
                         + "They may be corrupt or incomplete. Re-render them?"
                     ):
-                        self.batch.extend(mismatch_fail)
+                        [self.batch.remove(x) for x in mismatch_fail]
 
                 self.existing_link_success_count = len(link_success)
                 self.existing_link_failed_count = len(mismatch_fail)
@@ -227,6 +227,7 @@ class Batch:
                 self.existing_link_requeued_count = len(existing_unlinked)
                 if settings["proxy"]["overwrite"]:
                     logger.debug(f"[magenta] * Existing proxies set to be overwritten")
+                    # TODO: Implement overwrite logic - also need to test if this is feasible without oplock issues"
 
     def handle_offline_proxies(self):
         """Prompt to rerender proxies that are 'linked' but their media does not exist.
@@ -302,7 +303,7 @@ class Batch:
             if not self.action_taken:
 
                 print(
-                    "[green]Looks like all your media is already linked.[/]\n"
+                    "[green]No new media to link.[/]\n"
                     "[magenta italic]If you want to re-rerender proxies, unlink them within Resolve and try again."
                 )
                 return None
