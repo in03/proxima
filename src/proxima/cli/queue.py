@@ -21,7 +21,7 @@ logger.setLevel(settings["app"]["loglevel"])
 def queue_batch(batch: list):
     """Block until all queued tasks finish, notify results."""
 
-    logger.info("Queuing batch...")
+    logger.info("[cyan]Queuing batch...")
 
     # Wrap task objects in Celery task function
     callable_tasks = [encode_proxy.s(x) for x in batch]
