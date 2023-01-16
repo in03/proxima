@@ -210,16 +210,24 @@ class Job:
             if os.path.basename(x).upper() == self.source.file_name.upper():
                 logger.debug(f"[magenta] * Found exact match: '{os.path.basename(x)}'")
                 candidates.append(x)
+                continue
 
             # If match allowed suffix
             basename = os.path.basename(x)
-            candidate_suffix = os.path.splitext(basename)[1]
+            candidate_filename = os.path.splitext(basename)[0]
             for criteria in self.settings["paths"]["linkable_proxy_suffix_regex"]:
-                if re.search(criteria, candidate_suffix):
+                logger.debug(
+                    f"[magenta] * Search regex '{criteria}' in filename '{candidate_filename}' "
+                )
+                if re.search(criteria, candidate_filename):
                     logger.debug(
-                        f"[magenta] * Found regex criteria match: '{os.path.basename(x)}'"
+                        f"[green]   * Found regex criteria match: '{os.path.basename(x)}'"
                     )
                     candidates.append(x)
+                    continue
+
+                else:
+                    logger.debug(f"[yellow]   * Not found")
 
         if not candidates:
             return None
