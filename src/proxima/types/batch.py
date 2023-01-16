@@ -178,6 +178,7 @@ class Batch:
             existing_unlinked = [
                 x for x in self.batch if not x.is_linked and x.newest_linkable_proxy
             ]
+
         # Set media handled now to 'Online' so the offline handler doesn't catch it
         for x in self.batch:
             if x in existing_unlinked:
@@ -185,53 +186,64 @@ class Batch:
 
         if len(existing_unlinked) > 0:
 
-            [
+            # Log each existing unlinked media and matched proxy source with abbreviated file path
+            for x in existing_unlinked:
                 logger.debug(
                     f"[magenta] * Existing unlinked - '{x.source.file_name}' <-> {(core.shorten_long_path(x.newest_linkable_proxy))}"
                 )
-                for x in existing_unlinked
-            ]
 
-            if Confirm.ask(
+            # Prompt user to relink or rerender
+            if not Confirm.ask(
                 f"\n[yellow][bold]{len(existing_unlinked)} source files have existing but unlinked proxy media.\n"
                 "[/bold]Would you like to link them? If not they will be re-rendered."
             ):
 
-                from rich.progress import track
-
-                for job in track(
-                    existing_unlinked, description="[cyan]Linking...", transient=True
-                ):
-
-                    if job.newest_linkable_proxy:
-                        try:
-                            job.link_proxy(job.newest_linkable_proxy)
-                        except exceptions.ResolveLinkMismatchError:
-                            mismatch_fail.append(job)
-                            logger.error(
-                                f"[red]Failed to link '{os.path.basename(job.newest_linkable_proxy)}' - proxy does not match source!"
-                            )
-                        else:
-                            link_success.append(job)
-                            self.batch.remove(job)
-
-                # Prompt to requeue if any failures
-                if mismatch_fail:
-                    if not Confirm.ask(
-                        f"[yellow]{len(mismatch_fail)} existing proxies failed to link. "
-                        + "They may be corrupt or incomplete. Re-render them?"
-                    ):
-                        [self.batch.remove(x) for x in mismatch_fail]
-
-                self.existing_link_success_count = len(link_success)
-                self.existing_link_failed_count = len(mismatch_fail)
-
-            else:
-
+                # Mark all as requeued and carry on
                 self.existing_link_requeued_count = len(existing_unlinked)
+
                 if settings["proxy"]["overwrite"]:
                     logger.debug(f"[magenta] * Existing proxies set to be overwritten")
                     # TODO: Implement overwrite logic - also need to test if this is feasible without oplock issues"
+                return
+
+            # Handle linking
+            from rich.progress import track
+
+            for job in track(
+                existing_unlinked, description="[cyan]Linking...", transient=True
+            ):
+
+                if not job.newest_linkable_proxy:
+                    continue
+
+                try:
+                    job.link_proxy(job.newest_linkable_proxy)
+                except exceptions.ResolveLinkMismatchError:
+                    mismatch_fail.append(job)
+                    logger.error(
+                        f"[red]Failed to link '{os.path.basename(job.newest_linkable_proxy)}' - proxy does not match source!"
+                    )
+                else:
+                    link_success.append(job)
+                    self.batch.remove(job)
+
+            # Mark any successful links
+            self.existing_link_success_count = len(link_success)
+
+            # Prompt to requeue any failed links
+            if mismatch_fail:
+                if not Confirm.ask(
+                    f"[yellow]{len(mismatch_fail)} existing proxies failed to link. "
+                    + "They may be corrupt or incomplete. Re-render them?"
+                ):
+
+                    # Mark failed links as failed and remove
+                    [self.batch.remove(x) for x in mismatch_fail]
+                    self.existing_link_failed_count = len(mismatch_fail)
+                    return
+
+                # Mark failed links as requeued, not offline
+                self.existing_link_requeued_count += len(mismatch_fail)
 
     def handle_offline_proxies(self):
         """Prompt to rerender proxies that are 'linked' but their media does not exist.
