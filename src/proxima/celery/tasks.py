@@ -57,7 +57,7 @@ class TaskJob:
             )
         if not self.input_level in [
             "in_range=full",
-            "in_range=video",
+            "in_range=limited",
         ]:  # CHECK VALID VIDEO LEVELS
             raise ValueError(
                 f"Calculated video levels are invalid: '{self.input_level}'"
