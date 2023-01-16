@@ -63,6 +63,11 @@ class Job:
         self.project = project_metadata
         self.settings = settings
 
+        # Dynamic values
+        self.managed_proxy_status: bool = (
+            False if self.source.proxy_status == "Offline" else True
+        )
+
     def __repr__(self):
         status = "linked" if self.is_linked and not self.is_offline else "unlinked"
         status = "OFFLINE" if self.is_offline else status
@@ -166,9 +171,15 @@ class Job:
     def is_offline(self) -> bool:
         """Whether or not the job has offline proxy media"""
 
-        if self.source.proxy_status == "Offline":
-            return True
-        return False
+        return self.managed_proxy_status
+
+    @is_offline.setter
+    def is_offline(self, value: bool):
+        """Offline proxy media status setter"""
+
+        assert isinstance(value, bool)
+        self.managed_proxy_status = value
+        return self.managed_proxy_status
 
     @cached_property
     def newest_linkable_proxy(self) -> str | None:
