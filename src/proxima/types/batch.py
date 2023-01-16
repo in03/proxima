@@ -178,6 +178,10 @@ class Batch:
             existing_unlinked = [
                 x for x in self.batch if not x.is_linked and x.newest_linkable_proxy
             ]
+        # Set media handled now to 'Online' so the offline handler doesn't catch it
+        for x in self.batch:
+            if x in existing_unlinked:
+                x.is_offline = False
 
         if len(existing_unlinked) > 0:
 
