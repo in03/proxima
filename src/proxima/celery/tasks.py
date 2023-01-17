@@ -123,6 +123,9 @@ def encode_proxy(self, job_dict: dict) -> str:
         input_level=job_dict["job"]["input_level"],
     )
 
+    # Create proxy output directory
+    os.makedirs(job.output_directory, exist_ok=True)
+
     # Print new job header #####################################################################
 
     print("\n")
