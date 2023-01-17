@@ -49,8 +49,6 @@ class TaskJob:
                 f"Provided source file '{self.source.file_path}' does not exist"
             )
 
-        # if not os.path.exists(self.output_directory):  # CLEAR EXPORT PATH
-        # raise FileNotFoundError(f"Provided output directory '{self.output_directory}' does not exist")
         if os.path.exists(self.output_file_path):  # NO OVERWRITE
             raise FileExistsError(
                 f"File already exists at provided output path {self.output_file_path}"
