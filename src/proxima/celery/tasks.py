@@ -207,8 +207,12 @@ def encode_proxy(self, job_dict: dict) -> str:
         logger.error(f"[red]Error: {e}\nRejecting task to prevent requeuing.")
         raise Reject(e, requeue=False)
 
-    # Get logfile path
-    logfile_path = ensure_logs_output_path(job)
+    # Create logfile
+    encode_log_dir = job.settings["paths"]["ffmpeg_logfile_path"]
+    os.makedirs(encode_log_dir, exist_ok=True)
+    logfile_path = os.path.normpath(
+        os.path.join(encode_log_dir, job.output_file_name + ".txt")
+    )
     logger.debug(f"[magenta]Encoder logfile path: {logfile_path}[/]")
 
     # Run encode job
