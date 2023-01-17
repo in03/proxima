@@ -12,7 +12,7 @@ from rich.live import Live
 from celery.result import AsyncResult
 from celery.result import GroupResult
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("proxima")
 
 
 class ProgressTracker:

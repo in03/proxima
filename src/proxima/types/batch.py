@@ -14,7 +14,7 @@ from proxima.types.job import Job
 from proxima.settings import settings
 
 core.install_rich_tracebacks()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("proxima")
 logger.setLevel(settings["app"]["loglevel"])
 
 console = Console()

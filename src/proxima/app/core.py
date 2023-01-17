@@ -44,7 +44,7 @@ def setup_rich_logging():
 
 
 setup_rich_logging()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("proxima")
 
 
 def install_rich_tracebacks(show_locals=False):

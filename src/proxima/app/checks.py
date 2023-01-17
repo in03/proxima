@@ -13,7 +13,7 @@ from proxima.app.package import build_info
 from proxima.settings import settings
 
 core.install_rich_tracebacks()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("proxima")
 
 console = Console()
 

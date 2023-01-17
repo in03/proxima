@@ -49,7 +49,7 @@ def queue():
     from proxima.app import core
 
     core.setup_rich_logging()
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger("proxima")
     logger.setLevel(settings["app"]["loglevel"])
     # End init
 

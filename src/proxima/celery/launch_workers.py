@@ -18,7 +18,7 @@ from proxima.celery import get_version_constraint_key, get_queue
 
 core.install_rich_tracebacks()
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("proxima")
 logger.setLevel(settings["app"]["loglevel"])
 
 

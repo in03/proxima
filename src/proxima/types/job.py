@@ -17,7 +17,7 @@ from proxima.types.media_pool_index import media_pool_index
 from proxima.app import exceptions
 
 core.install_rich_tracebacks()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("proxima")
 logger.setLevel(settings["app"]["loglevel"])
 
 

@@ -9,7 +9,7 @@ from proxima.app import core
 from proxima.settings import settings
 
 core.install_rich_tracebacks()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("proxima")
 
 
 def cleanup_working_dir(dir):

@@ -19,7 +19,7 @@ from schema import SchemaError
 from .schema import settings_schema
 
 core.install_rich_tracebacks()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("proxima")
 
 DEFAULT_SETTINGS_FILE = os.path.join(
     os.path.dirname(__file__),

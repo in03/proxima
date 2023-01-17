@@ -18,7 +18,7 @@ from rich.console import Console
 console = Console()
 
 core.install_rich_tracebacks()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("proxima")
 logger.setLevel(settings["worker"]["loglevel"])
 
 

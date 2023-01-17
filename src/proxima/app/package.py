@@ -11,7 +11,7 @@ from proxima.settings import settings
 from pkg_resources import Distribution
 import pkg_resources
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("proxima")
 logger.setLevel(settings["app"]["loglevel"])
 
 

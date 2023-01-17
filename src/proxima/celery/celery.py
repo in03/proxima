@@ -9,7 +9,7 @@ from celery import Celery
 from proxima.settings import settings
 import proxima
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("proxima")
 logger.setLevel(settings["app"]["loglevel"])
 
 # Windows can't fork processes. It'll choke if you make it try.
