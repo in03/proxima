@@ -64,25 +64,6 @@ class TaskJob:
             )
 
 
-def ensure_logs_output_path(job: TaskJob):
-    """
-    Ensure log folder is writable, get path.
-
-    Args:
-        job (list): Job object
-        output_path(string): Proxy file output path
-
-    Returns:
-        logfile_path (path string): Path of output log file
-
-    """
-
-    encode_log_dir = job.settings["paths"]["ffmpeg_logfile_path"]
-    os.makedirs(encode_log_dir, exist_ok=True)
-
-    return os.path.normpath(os.path.join(encode_log_dir, job.output_file_name + ".txt"))
-
-
 def ffmpeg_video_flip(job: TaskJob):
     flip_string = ""
     if job.source.h_flip:
