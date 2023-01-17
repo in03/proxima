@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from functools import cached_property
+from celery.result import AsyncResult
 import logging
 
 from proxima.app import core
@@ -47,13 +48,22 @@ class WorkerCheck:
             raise ValueError(f"Couldn't read version constraint key: {e}")
 
         logger.debug(f"[magenta]Idle workers:[/]\n{self.idle_workers}")
+        logger.debug(f"[magenta]Busy workers:[/]\n{self.busy_workers}")
 
     def __len__(self):
         return len(self.get_idle_workers())
 
     @cached_property
+    def total_workers(self):
+        return self.idle_workers.extend(self.busy_workers)
+
+    @cached_property
     def idle_workers(self):
         return self.get_idle_workers()
+
+    @cached_property
+    def busy_workers(self):
+        return self.get_busy_workers()
 
     @property
     def compatible(self) -> list[_WorkerInfo]:
@@ -113,6 +123,46 @@ class WorkerCheck:
             idle_workers_info.append(worker_info)
 
         return idle_workers_info
+
+    def get_busy_workers(self) -> list[_WorkerInfo]:
+        """
+        Gets a WorkerInfo object for all busy workers.
+
+        This uses Celery's API to poll active queues.
+        Use the `busy_workers` property to avoid re-polling.
+
+        Returns:
+            list: List of WorkerInfo objects for all idle workers.
+        """
+
+        # TODO: Get busy workers
+        # Seems to be a glitch getting busy workers in this version of Celery.
+        # Fix planned for next release Feb or March.
+        # This might work, but isn't yet:
+        i = celery_app.control.inspect(timeout=10)
+        i.pattern = self.vc_key + "*"
+        i.limit = 1
+        logger.debug(f"[magenta]Active: {i.active_queues()}")
+
+        busy_workers_info = []
+        return busy_workers_info
+
+        if not busy_workers:
+            return busy_workers_info
+
+        for worker, attributes in busy_workers.items():
+
+            worker_vc_key = attributes[0]["routing_key"]
+
+            worker_info = _WorkerInfo(
+                name=worker,
+                host=str(worker).split("@")[1],
+                version_constraint_key=worker_vc_key,
+                compatible=worker_vc_key == self.vc_key,
+            )
+            busy_workers_info.append(worker_info)
+
+        return busy_workers_info
 
 
 class AppStatus:
@@ -193,9 +243,10 @@ class AppStatus:
 
         w = WorkerCheck()
 
-        self.status_text += (
-            f"[green]Available {len(w.idle_workers)}[/] | " "[yellow]Busy N/A"
-        )
+        idle_worker_count = str(len(w.idle_workers)) if w.idle_workers else "N/A"
+        busy_worker_count = str(len(w.busy_workers)) if w.busy_workers else "N/A"
+
+        self.status_text += f"[green]Available {idle_worker_count}[/] | [yellow]Busy {busy_worker_count}"
 
         if not w.all_are_compatible:
 
