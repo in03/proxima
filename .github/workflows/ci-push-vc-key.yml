@@ -32,7 +32,7 @@ jobs:
       - name: Write VC key file
         uses: DamianReeves/write-file-action@v1.0
         with:
-          path: src/version_constraint_key
+          path: version_constraint_key
           contents: |
             ${{ env.petname }}
           write-mode: overwrite
