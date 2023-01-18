@@ -61,7 +61,7 @@ def get_version_constraint_key() -> str:
     # These paths are relative and depend on both source and Pip installation structure not changing
     logger.debug("[cyan]Getting version constraint key")
 
-    if build_info.get_build_info:
+    if build_info.is_git_clone:
         vc_key_file = Path(proxima.__file__).parent.parent.parent.joinpath(
             "version_constraint_key"
         )
