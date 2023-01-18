@@ -85,7 +85,7 @@ class BuildInfo:
 
         except subprocess.CalledProcessError as e:
             logger.debug(f"[magenta]Git log execution error:\n{e}")
-            logger.error(f"Not a git repository!")
+            logger.debug(f"[magenta]Not a git repository!")
             return False
 
         else:
