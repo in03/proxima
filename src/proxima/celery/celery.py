@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 from celery import Celery
 from proxima.settings import settings
-import proxima
 
 logger = logging.getLogger("proxima")
 logger.setLevel(settings["app"]["loglevel"])
@@ -54,9 +53,13 @@ app.conf.update(
 
 def get_version_constraint_key() -> str:
 
-    package_root = Path(proxima.__file__)
-    great_grandfather = package_root.parent.parent.parent
-    vc_key_file = great_grandfather.joinpath("version_constraint_key")
+    # TODO: IMPORTANT! Make this path resolution more robust
+    # URL/release install puts VC file in site-packages. The path is different
+    # but just happens to be the same depth as the source structure.
+    # Moving proxima into 'src' recently broke it. Also if pip setup changes, this will break.
+
+    vc_key_file = Path(__file__).parent.parent.parent.joinpath("version_constraint_key")
+    logger.debug(f"[magenta]VC key file path: {vc_key_file}")
     with open(vc_key_file) as file:
         return file.read()
 
