@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from functools import cached_property
-from celery.result import AsyncResult
 import logging
 
 from proxima.app import core
