@@ -190,7 +190,7 @@ class Job:
         allowable file suffixes.
         """
 
-        logger.info("[magenta] * Getting newest linkable proxy...")
+        logger.info("[cyan]Getting newest linkable proxy...")
 
         # Get glob path
         glob_path = os.path.splitext(
