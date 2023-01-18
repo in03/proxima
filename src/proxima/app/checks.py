@@ -138,10 +138,10 @@ class WorkerCheck:
         # Seems to be a glitch getting busy workers in this version of Celery.
         # Fix planned for next release Feb or March.
         # This might work, but isn't yet:
-        i = celery_app.control.inspect(timeout=10)
-        i.pattern = self.vc_key + "*"
-        i.limit = 1
-        logger.debug(f"[magenta]Active: {i.active_queues()}")
+        # i = celery_app.control.inspect(timeout=10)
+        # i.pattern = self.vc_key + "*"
+        # i.limit = 1
+        # logger.debug(f"[magenta]Active: {i.active_queues()}")
 
         busy_workers_info = []
         return busy_workers_info
