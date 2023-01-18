@@ -3,10 +3,12 @@
 import logging
 import os
 import sys
+from functools import lru_cache
 
 from pathlib import Path
 from celery import Celery
 from proxima.settings import settings
+from proxima.app.package import build_info
 import proxima
 
 logger = logging.getLogger("proxima")
@@ -52,13 +54,30 @@ app.conf.update(
 )
 
 
+@lru_cache
 def get_version_constraint_key() -> str:
 
-    package_root = Path(proxima.__file__)
-    great_grandfather = package_root.parent.parent.parent
-    vc_key_file = great_grandfather.joinpath("version_constraint_key")
+    # TODO: IMPORTANT! Make this path resolution more robust
+    # These paths are relative and depend on both source and Pip installation structure not changing
+    logger.debug("[cyan]Getting version constraint key")
+
+    if build_info.get_build_info:
+        vc_key_file = Path(proxima.__file__).parent.parent.parent.joinpath(
+            "version_constraint_key"
+        )
+        logger.debug("[magenta] * Using source path")
+
+    else:
+        logger.debug("[magenta] * Using package path")
+        vc_key_file = Path(proxima.__file__).parent.parent.joinpath(
+            "version_constraint_key"
+        )
+        logger.debug(f"[magenta] * vc_key_file path: {vc_key_file}")
+
     with open(vc_key_file) as file:
-        return file.read()
+        vc_key = file.read()
+        logger.debug(f"[magenta] * vc_key value: {vc_key}")
+        return vc_key
 
 
 def get_queue() -> str:

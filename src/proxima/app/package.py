@@ -14,7 +14,8 @@ import pkg_resources
 logger = logging.getLogger("proxima")
 logger.setLevel(settings["app"]["loglevel"])
 
-
+# TODO: Buildinfo might return True to multiple build types
+# I think if you're running proxima in a repo and a URL/release is installed...
 class BuildInfo:
     def __init__(
         self,
@@ -32,13 +33,14 @@ class BuildInfo:
         self.build: str
         self.installed: bool
         self.version: str
+        self.dist: Distribution | None
 
-        self.dist: Distribution | None = self._get_distribution()
+        self._get_distribution()
         self.direct_url_metadata: dict
 
         if not self.get_build_info():
             raise ValueError(
-                f"Package '{package_name}' has no package metadata and is not a git repository."
+                f"Package '{package_name}' has no package metadata and is not a git repository.\n"
                 "This package may be corrupt, installed in an unsupported way, or simply not installed at all."
             )
 
@@ -55,6 +57,7 @@ class BuildInfo:
     def _get_distribution(self):
         try:
             self.dist = pkg_resources.get_distribution(self.package_name)
+            logger.debug(f"[magenta]Got package distribution '{self.package_name}'")
         except pkg_resources.DistributionNotFound as e:
             logger.debug(f"[yellow]Couldn't get package distribution\n{e}")
             self.dist = None
@@ -67,32 +70,29 @@ class BuildInfo:
 
     @cached_property
     def is_git_clone(self):
-        if not self.dist:
-            # No package info means local clone
-            try:
-                latest_commit_id = subprocess.check_output(
-                    [
-                        "git",
-                        "--no-pager",
-                        "log",
-                        "-1",
-                        '--format="%H"',
-                    ],
-                    stderr=subprocess.STDOUT,
-                ).decode()
+        try:
+            latest_commit_id = subprocess.check_output(
+                [
+                    "git",
+                    "--no-pager",
+                    "log",
+                    "-1",
+                    '--format="%H"',
+                ],
+                stderr=subprocess.STDOUT,
+            ).decode()
+            logger.debug(f"[magenta]Is git repo: {latest_commit_id}")
 
-            except subprocess.CalledProcessError as e:
-                logger.debug(f"[magenta]Git log execution error:\n{e}")
-                raise ValueError(
-                    f"Package '{self.package_name}' is not a git repository and has no package metadata."
-                    "It may not exist, is corrupt or is installed in an unsupported way."
-                )
-            else:
-                self.build = "git"
-                self.installed = False
-                self.version = latest_commit_id.replace('"', "").strip()
-                return True
-        return False
+        except subprocess.CalledProcessError as e:
+            logger.debug(f"[magenta]Git log execution error:\n{e}")
+            logger.error(f"Not a git repository!")
+            return False
+
+        else:
+            self.build = "git"
+            self.installed = False
+            self.version = latest_commit_id.replace('"', "").strip()
+            return True
 
     @cached_property
     def is_url_install(self):
