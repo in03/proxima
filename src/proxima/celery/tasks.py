@@ -6,7 +6,7 @@ from proxima.settings import settings
 from proxima.settings.manager import SettingsManager
 from proxima.celery import celery_app
 from proxima.celery.ffmpeg import FfmpegProcess
-from proxima.celery.celery import get_queue
+from proxima.celery.celery import celery_queue
 from celery.exceptions import Reject
 from proxima.types.job import ProjectMetadata, SourceMetadata
 
@@ -78,7 +78,7 @@ def ffmpeg_video_flip(job: TaskJob):
     prefetch_limit=1,
     soft_time_limit=60,
     reject_on_worker_lost=True,
-    queue=get_queue(),
+    queue=celery_queue,
 )
 def encode_proxy(self, job_dict: dict) -> str:
 

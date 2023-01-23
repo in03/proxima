@@ -7,18 +7,29 @@ from rich import print
 from rich.console import Console
 from rich.panel import Panel
 
-
+from proxima.app import globals
 from proxima.settings import settings
 from proxima.app.checks import AppStatus
-from proxima.celery import get_version_constraint_key
+from proxima.celery.celery import celery_queue
 
 # Init classes
 cli_app = typer.Typer()
 console = Console()
 app_status = AppStatus("proxima")
 
+
+def write_override_key(value: str):
+    globals.version_constraint_key = value
+
+
 hide_banner = typer.Option(
     default=False, help="Hide the title and build info on startup"
+)
+
+override_vc_key = typer.Option(
+    default="",
+    help="Override the version constraint key with a custom value",
+    callback=write_override_key,
 )
 
 # Special functions
@@ -51,14 +62,6 @@ def queue():
     core.setup_rich_logging()
     logger = logging.getLogger("proxima")
     logger.setLevel(settings["app"]["loglevel"])
-    # End init
-
-    # print("\n")
-    # console.rule(
-    #     f"[green bold]Queuing proxies from Resolve's active timeline[/] :outbox_tray:",
-    #     align="left",
-    # )
-    # print("\n")
 
     from proxima.cli import queue
 
@@ -68,6 +71,7 @@ def queue():
 @cli_app.command()
 def work(
     hide_banner: bool = hide_banner,
+    vc: str = override_vc_key,
     workers_to_launch: Optional[int] = typer.Argument(
         0, help="How many workers to start"
     ),
@@ -124,7 +128,7 @@ def purge():
             "proxima.celery",
             "purge",
             "-Q",
-            get_version_constraint_key(),
+            celery_queue,
         ]
     )
 

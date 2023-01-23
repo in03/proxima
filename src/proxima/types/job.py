@@ -282,7 +282,7 @@ class Job:
             else:
 
                 logger.warning(
-                    "[yellow]Couldn't get color range metadata from file! Assuming 'limited'..."
+                    f"[yellow]Couldn't get color range metadata from file {self.source.file_name}! Assuming 'limited'..."
                     "If interpretation is inaccurate, please transcode to a format that supports color metadata."
                 )
                 return "in_range=limited"

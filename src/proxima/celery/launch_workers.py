@@ -14,7 +14,7 @@ from rich import print
 from proxima.app import core
 from proxima.app import package
 from proxima.settings import settings
-from proxima.celery import get_version_constraint_key, get_queue
+from proxima.celery import celery_queue
 
 core.install_rich_tracebacks()
 
@@ -76,7 +76,7 @@ def new_worker(nickname: str = "") -> int:
 
     def get_worker_queue():
 
-        return f" -Q {get_version_constraint_key()},all"
+        return f" -Q {celery_queue},all"
 
     def get_new_console():
         """Get os command to spawn process in a new console window"""
@@ -161,7 +161,7 @@ def main(workers: int = 0):
     os_ = platform.system()
     cpu_cores = multiprocessing.cpu_count()
 
-    queue_name = get_queue()
+    queue_name = celery_queue
     if not queue_name:
         raise TypeError("Couldn't get queue!")
 
