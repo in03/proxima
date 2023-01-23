@@ -7,10 +7,10 @@ from rich import print
 from rich.console import Console
 from rich.panel import Panel
 
-
+from proxima.app import globals
 from proxima.settings import settings
 from proxima.app.checks import AppStatus
-from proxima.celery import get_version_constraint_key
+from proxima.celery.celery import celery_queue
 
 # Init classes
 cli_app = typer.Typer()
@@ -124,7 +124,7 @@ def purge():
             "proxima.celery",
             "purge",
             "-Q",
-            get_version_constraint_key(),
+            celery_queue,
         ]
     )
 

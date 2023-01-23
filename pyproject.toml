@@ -26,6 +26,7 @@ termynal = "^0.2.0"
 notify-py = {git = "https://github.com/in03/notify-py"}
 pydavinci = {git = "https://github.com/in03/pydavinci"}
 pytest = "^7.2.0"
+semver = "^2.13.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^21.12b0"

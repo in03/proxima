@@ -3,13 +3,15 @@
 import logging
 import os
 import sys
-from functools import lru_cache
 
-from pathlib import Path
 from celery import Celery
 from proxima.settings import settings
-from proxima.app.package import build_info
-import proxima
+from proxima.app import globals
+
+# QUEUE - Celery routing queue using version constraint key
+celery_queue = globals.version_constraint_key
+if settings["app"]["disable_version_constrain"]:
+    celery_queue = "all"
 
 logger = logging.getLogger("proxima")
 logger.setLevel(settings["app"]["loglevel"])
@@ -52,41 +54,3 @@ app.conf.update(
     worker_prefetch_multiplier=1,
     worker_max_tasks_per_child=1,
 )
-
-
-@lru_cache
-def get_version_constraint_key() -> str:
-
-    # TODO: IMPORTANT! Make this path resolution more robust
-    # These paths are relative and depend on both source and Pip installation structure not changing
-    logger.debug("[cyan]Getting version constraint key")
-
-    if build_info.is_git_clone:
-        vc_key_file = Path(proxima.__file__).parent.parent.parent.joinpath(
-            "version_constraint_key"
-        )
-        logger.debug("[magenta] * Using source path")
-
-    else:
-        logger.debug("[magenta] * Using package path")
-        vc_key_file = Path(proxima.__file__).parent.parent.joinpath(
-            "version_constraint_key"
-        )
-        logger.debug(f"[magenta] * vc_key_file path: {vc_key_file}")
-
-    with open(vc_key_file) as file:
-        vc_key = file.read()
-        logger.debug(f"[magenta] * vc_key value: {vc_key}")
-        return vc_key
-
-
-def get_queue() -> str:
-    """Get Celery queue name (routing key) from version constraint key
-
-    Allows constraining tasks and workers to exact same version and prevent breaking changes.
-    """
-
-    if settings["app"]["disable_version_constrain"]:
-        return "all"
-
-    return get_version_constraint_key()

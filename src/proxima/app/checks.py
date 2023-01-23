@@ -4,7 +4,7 @@ import logging
 
 from proxima.app import core
 from proxima.celery import celery_app
-from proxima.celery import get_queue
+from proxima.celery import celery_queue
 from rich.console import Console
 from rich.rule import Rule
 from rich.panel import Panel
@@ -42,7 +42,7 @@ class WorkerCheck:
         self._workers_info: list[_WorkerInfo] = []
 
         try:
-            self.vc_key: str = get_queue()
+            self.vc_key: str = celery_queue
         except ValueError and FileNotFoundError as e:
             raise ValueError(f"Couldn't read version constraint key: {e}")
 
@@ -169,7 +169,7 @@ class AppStatus:
 
         self.package_name = package_name
         self.status_text: str = ""
-        self.vc_key: str = get_queue()
+        self.vc_key: str = celery_queue
 
         self.build_status()
         self.update_status()
