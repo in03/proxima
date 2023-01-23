@@ -4,9 +4,10 @@
 
 ![GitHub](https://img.shields.io/github/license/in03/proxima) 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![semantic-release: angular](https://img.shields.io/badge/semantic--release-angular-e10079?logo=semantic-release)](https://github.com/semantic-release/semantic-release)
+
 ![GitHub branch checks state](https://img.shields.io/github/checks-status/in03/proxima/main)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/in03/proxima/main.svg)](https://results.pre-commit.ci/latest/github/in03/proxima/main)
-
 ![GitHub last commit](https://img.shields.io/github/last-commit/in03/proxima)
 ![GitHub Repo stars](https://img.shields.io/github/stars/in03/proxima?style=social)
 
