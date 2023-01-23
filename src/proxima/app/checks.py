@@ -198,43 +198,29 @@ class AppStatus:
             self.status_text += "[yellow]Update check disabled\n"
             return
 
-        if build_info.is_updatable == None:
-            self.status_text += "[red]Couldn't get latest update :x:\n"
+        if build_info.is_pip_updatable == False:
+            self.status_text += "[green]Running latest release :runner:\n"
             return
 
-        if build_info.is_updatable == True:
-            self.status_text += f"[green]Update available[/] :sparkles:\n"
-            return
-
-        if build_info.is_updatable == False:
-            self.status_text += "[cyan]Running latest :runner:\n"
+        if build_info.is_pip_updatable == True:
+            self.status_text += f"[yellow]New release available[/] :sparkles:\n"
             return
 
     def build_status(self):
 
         self.status_text += "[bold]\nBuild\n[/]"
 
-        if build_info.is_release_install:
+        if build_info.is_git_repo:
 
-            self.status_text += (
-                f"{str(build_info.build).capitalize()} "
-                f"Version: {build_info.version} | "
-                f"VC key: '{self.vc_key}'\n"
-            )
+            self.status_text += f"[magenta]Git: {build_info.git_version[:7:]}[/] | "
 
-        else:
+        self.status_text += (
+            f"[green]Release: {build_info.version}[/] | "
+            f'[cyan]VC key: "{self.vc_key}"\n'
+        )
 
-            self.status_text += (
-                f"{str(build_info.build).capitalize()} "
-                f"{'([green]installed[/] :package:)' if build_info.installed else '([yellow]cloned[/] :hammer_and_wrench:)'} | "
-                f"'{build_info.version[:7:]}' | "
-                f"VC key: '{self.vc_key}'\n"
-            )
-
-            if settings["app"]["disable_version_constrain"]:
-                self.status_text += (
-                    "[yellow]Version constrain is disabled! :dragon_face:"
-                )
+        if settings["app"]["disable_version_constrain"]:
+            self.status_text += "[yellow]Version constrain is disabled! :dragon_face:\n"
 
     def worker_status(self):
 
@@ -268,4 +254,4 @@ class AppStatus:
 
             if settings["app"]["disable_version_constrain"]:
 
-                self.status_text += f"[yellow]WARNING: Jobs will be queued to incompatible workers anyway."
+                self.status_text += f"\n\n[yellow]WARNING: Jobs will be queued to incompatible workers anyway.\n"
