@@ -42,7 +42,7 @@ ruamel-yaml-clib==0.2.6 ; platform_python_implementation == "CPython" and python
 ruamel-yaml==0.17.21 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
 schema==0.7.5 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
 semver==2.13.0 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
-shellingham==1.5.0 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
+shellingham==1.5.0.post1 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
 shortuuid==1.0.9 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
 six==1.16.0 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
 smmap==5.0.0 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
