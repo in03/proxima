@@ -56,9 +56,6 @@ theme:
           rendering:
             show_source: true
 
-  watch:
-    - src/proxima
-
   - git-revision-date-localized:
       enable_creation_date: true
   - gen-files:
@@ -67,6 +64,9 @@ theme:
   - literate-nav:
       nav_file: SUMMARY.md
   - section-index
+
+  watch:
+  - src/proxima
 
 
 extra:
