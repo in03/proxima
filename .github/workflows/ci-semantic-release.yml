@@ -19,7 +19,7 @@ jobs:
     - name: Install Python Poetry
       uses: abatilo/actions-poetry@v2.2.0
       with:
-        poetry-version: 1.2.1
+        poetry-version: 1.3.2
     - name: Configure poetry
       shell: bash
       run: poetry config virtualenvs.in-project true
