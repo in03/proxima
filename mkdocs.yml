@@ -83,7 +83,6 @@ copyright: Copyright &copy; 2019 - 2022 Caleb Trevatt
 markdown_extensions:
   - admonition
   - codehilite
-  - termynal
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
