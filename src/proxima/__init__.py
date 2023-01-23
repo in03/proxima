@@ -1,3 +1,5 @@
+__version__ = "0.1.0"
+
 from .app import core
 from .celery import shared
 from .app import checks

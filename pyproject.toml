@@ -49,7 +49,7 @@ mkdocs-material = "^8.5.10"
 
 [tool.semantic_release]
 version_variable = [
-    "proxima/__init__.py:__version__",
+    "src/proxima/__init__.py:__version__",
     "pyproject.toml:version"
 ]
 branch = "main"
