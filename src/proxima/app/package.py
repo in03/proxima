@@ -3,13 +3,12 @@ import os
 from distutils.sysconfig import get_python_lib
 from pathlib import Path
 from functools import cached_property
-import pkg_resources
 
+import importlib
 import subprocess
 import sys
 
 from proxima.settings import settings
-from proxima import __version__
 
 from git.repo import Repo
 from git.exc import InvalidGitRepositoryError
@@ -69,7 +68,18 @@ class Build:
 
     @cached_property
     def version(self) -> str:
-        return pkg_resources.get_distribution(self.package_name).version
+        """
+        Gets a package's version number.
+
+        This uses a package's `__version__` in the main `__init__.py`
+        instead of the more robust `pkg_resources.get_distibution("package").version`
+        to allow support for non-installed source code packages.
+
+        Returns:
+            str: Package verison number
+        """
+        this_package = importlib.import_module(self.package_name)
+        return this_package.__version__
 
     @cached_property
     def is_pip_updatable(self) -> bool:
