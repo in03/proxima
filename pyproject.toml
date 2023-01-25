@@ -37,6 +37,7 @@ isort = "^5.10.1"
 pre-commit = "^2.16.0"
 commitizen = "^2.27.1"
 flake8 = "^6.0.0"
+python-semantic-release = "^7.33.0"
 
 [tool.poetry.group.docs]
 optional = true
