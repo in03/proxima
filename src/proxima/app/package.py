@@ -135,4 +135,5 @@ class Build:
         return True
 
 
-build_info = Build("proxima", ".")
+package_path = os.path.dirname(str(sys.modules["proxima"].__file__))
+build_info = Build("proxima", package_path)
