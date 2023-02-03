@@ -169,8 +169,12 @@ Queuer and worker have separate loglevels to make debugging a little easier if y
 ### A Note on Concurrency
 Some pretty dangerous concurrency settings were moved out of the configuration settings to prevent accidents. Windows doesn't support pre-forking for concurrency. Actually, Celery doesn't officially support Windows anymore at all. Mac and Linux can pre-fork, but the worker launcher invoked with the `proxima work` command gets around this by launching separate processes with workers named `worker1@host`, `worker2@host`, etc. We're going for the lowest common denominator here. This works fine with Mac and Linux too. It makes monitoring easier and cross-platform behaviour more consistent. For those concerned about the extra overhead who would like to squeeze out every last bit of performance on Mac or Linux, consider injecting the `celery multi` command with `proxima celery`. See [Celery daemonization](https://docs.celeryq.dev/en/master/userguide/daemonizing.html?#init-script-celeryd) 
 
-
-
 ## How can I contribute?
 Hey! Thanks! Any help is appreciated. Please check the [Contribution Guide](https://github.com/in03/proxima/wiki/Contribution-Guide).
+
+
+## Star History
+Thanks for your interest! Every star helps :)
+[![Star History Chart](https://api.star-history.com/svg?repos=in03/proxima&type=Timeline)](https://star-history.com/#in03/proxima&Timeline)
+
 
