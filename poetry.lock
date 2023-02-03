@@ -1186,23 +1186,19 @@ setuptools = "*"
 
 [[package]]
 name = "notify-py"
-version = "0.3.31"
+version = "0.3.42"
 description = "Cross-platform desktop notification library for Python"
 category = "main"
 optional = false
 python-versions = ">=3.6,<4.0"
-files = []
-develop = false
+files = [
+    {file = "notify_py-0.3.42-py3-none-any.whl", hash = "sha256:184e1ddb81edfd5e3830784f31203e88f0cb9018f2d9d7aa04f5f540876c0f27"},
+    {file = "notify_py-0.3.42.tar.gz", hash = "sha256:f49457f1d0577a150df5c3fd58ed2892ce3106a517f8e2083f61743d1c05be36"},
+]
 
 [package.dependencies]
 jeepney = {version = "*", markers = "sys_platform == \"linux\""}
-loguru = ">=0.6.0"
-
-[package.source]
-type = "git"
-url = "https://github.com/in03/notify-py"
-reference = "HEAD"
-resolved_reference = "25c900245189068c8a64d13c013810f3746d178d"
+loguru = ">=0.5.3,<=0.6.0"
 
 [[package]]
 name = "ordered-set"
@@ -1407,10 +1403,10 @@ email = ["email-validator (>=1.0.3)"]
 [[package]]
 name = "pydavinci"
 version = "0.2.2"
-description = ""
+description = "A Davinci Resolve API Wrapper"
 category = "main"
 optional = false
-python-versions = ">=3.6.*"
+python-versions = ">=3.6.0,<4.0.0"
 files = []
 develop = false
 
@@ -1423,7 +1419,7 @@ typing_extensions = "4.1.1"
 type = "git"
 url = "https://github.com/in03/pydavinci"
 reference = "HEAD"
-resolved_reference = "9cb6c6a7d25d7d85d25537c94a41784d44813869"
+resolved_reference = "82037427c4290956999d6cb42d7054858377de18"
 
 [[package]]
 name = "pyfiglet"
@@ -2328,4 +2324,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10.0,<4.0.0"
-content-hash = "24bb25c5122be27514208838bc200d264f7cff4972cd936b60437ff7ac4593bf"
+content-hash = "95934eb5abd21440e8a6eeb9bc7c650c3746fa58a15f508cefff95ef75d7a379"

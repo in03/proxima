@@ -6,20 +6,16 @@ import typer
 from rich import print
 from rich.console import Console
 from rich.panel import Panel
+from proxima import version_constraint
 
-from proxima.app import globals
-from proxima.settings import settings
-from proxima.app.checks import AppStatus
-from proxima.celery.celery import celery_queue
 
 # Init classes
 cli_app = typer.Typer()
 console = Console()
-app_status = AppStatus("proxima")
 
 
 def write_override_key(value: str):
-    globals.version_constraint_key = value
+    version_constraint.key = value
 
 
 hide_banner = typer.Option(
@@ -46,26 +42,34 @@ def run_without_args(ctx: typer.Context):
 # Commands
 @cli_app.command()
 def status():
+    from proxima.app.checks import AppStatus
+
+    app_status = AppStatus("proxima")
     print(app_status.status_panel)
 
 
 @cli_app.command()
-def queue():
+def queue(
+    vc: str = override_vc_key,
+):
     """
     Queue proxies from the currently open
     DaVinci Resolve timeline
     """
 
     # Init
+    from proxima.settings import settings
     from proxima.app import core
 
     core.setup_rich_logging()
     logger = logging.getLogger("proxima")
     logger.setLevel(settings["app"]["loglevel"])
 
+    print(version_constraint.key)
+
     from proxima.cli import queue
 
-    queue.main()
+    queue.main(version_constraint.key)
 
 
 @cli_app.command()
@@ -120,6 +124,7 @@ def purge():
     print("\n")
 
     from proxima.app import package
+    from proxima.celery.celery import celery_queue
 
     subprocess.run(
         [
@@ -170,6 +175,7 @@ def celery(
 @cli_app.command()
 def config():
     """Open user settings configuration file for editing"""
+    from proxima.settings import settings
 
     print("\n")
     console.rule(
@@ -181,7 +187,7 @@ def config():
 
 
 def main():
-    print(app_status.banner)
+    status()
     cli_app()
 
 
