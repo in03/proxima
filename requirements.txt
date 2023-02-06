@@ -22,7 +22,7 @@ jeepney==0.8.0 ; python_full_version >= "3.10.0" and python_version < "4.0" and 
 kombu==5.2.4 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
 loguru==0.6.0 ; python_full_version >= "3.10.0" and python_version < "4.0"
 markdown==3.3.7 ; python_full_version >= "3.10.0" and python_version < "4.0"
-notify-py @ git+https://github.com/in03/notify-py@HEAD ; python_full_version >= "3.10.0" and python_version < "4.0"
+notify-py==0.3.42 ; python_full_version >= "3.10.0" and python_version < "4.0"
 ordered-set==4.1.0 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
 packaging==21.3 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
 pluggy==1.0.0 ; python_full_version >= "3.10.0" and python_full_version < "4.0.0"
