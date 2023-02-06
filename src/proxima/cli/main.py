@@ -29,12 +29,14 @@ override_vc_key = typer.Option(
 )
 
 # Special functions
+
+
 @cli_app.callback(invoke_without_command=True)
 def run_without_args(ctx: typer.Context):
     sub = ctx.invoked_subcommand
     if sub is None:
         print("Run [bold]proxima --help[/] for a list of commands")
-        status()
+        # status()
     else:
         print(Panel(f"[bold]{sub.capitalize()}", expand=False))
 
@@ -89,11 +91,11 @@ def work(
 
     if workers_to_launch > 0:
         console.rule(
-            f"[green bold]Starting workers![/] :construction_worker:", align="left"
+            "[green bold]Starting workers![/] :construction_worker:", align="left"
         )
     else:
         console.rule(
-            f"[green bold]Starting worker launcher prompt[/] :construction_worker:",
+            "[green bold]Starting worker launcher prompt[/] :construction_worker:",
             align="left",
         )
 
@@ -120,7 +122,7 @@ def purge():
     """
 
     print("\n")
-    console.rule(f"[red bold]Purge all tasks! :fire:", align="left")
+    console.rule("[red bold]Purge all tasks! :fire:", align="left")
     print("\n")
 
     from proxima.app import package
@@ -157,7 +159,7 @@ def celery(
     """
 
     print("\n")
-    console.rule(f"[cyan bold]Celery command :memo:", align="left")
+    console.rule("[cyan bold]Celery command :memo:", align="left")
     print("\n")
 
     from proxima.app import package
@@ -178,9 +180,7 @@ def config():
     from proxima.settings import settings
 
     print("\n")
-    console.rule(
-        f"[green bold]Open 'user_settings.yaml' config[/] :gear:", align="left"
-    )
+    console.rule("[green bold]Open 'user_settings.yaml' config[/] :gear:", align="left")
     print("\n")
 
     typer.launch(settings.user_file)
