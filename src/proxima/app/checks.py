@@ -1,15 +1,15 @@
+import logging
+import os
 from dataclasses import dataclass
 from functools import cached_property
-import logging
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.rule import Rule
 
 from proxima.app import core
-from proxima.celery import celery_app
-from proxima.celery import celery_queue
-from rich.console import Console
-from rich.rule import Rule
-from rich.panel import Panel
-from pyfiglet import Figlet
 from proxima.app.package import build_info
+from proxima.celery import celery_app
 from proxima.settings import settings
 
 core.install_rich_tracebacks()
@@ -22,7 +22,7 @@ console = Console()
 class _WorkerInfo:
     name: str
     host: str
-    version_constraint_key: str
+    vc_key: str
     compatible: bool
 
     def __repr__(self):
@@ -30,7 +30,7 @@ class _WorkerInfo:
             "WorkerInfo("
             f"name: '{self.name}', "
             f"host: '{self.host}', "
-            f"vc_key: '{self.version_constraint_key}', "
+            f"vc_key: '{self.vc_key}', "
             f"compatible: {self.compatible}"
             ")"
         )
@@ -40,12 +40,7 @@ class WorkerCheck:
     def __init__(self):
 
         self._workers_info: list[_WorkerInfo] = []
-
-        try:
-            self.vc_key: str = celery_queue
-        except ValueError and FileNotFoundError as e:
-            raise ValueError(f"Couldn't read version constraint key: {e}")
-
+        self.vc_key = os.getenv("PROXIMA_VC_KEY")
         logger.debug(f"[magenta]Idle workers:[/]\n{self.idle_workers}")
         logger.debug(f"[magenta]Busy workers:[/]\n{self.busy_workers}")
 
@@ -116,7 +111,7 @@ class WorkerCheck:
             worker_info = _WorkerInfo(
                 name=worker,
                 host=str(worker).split("@")[1],
-                version_constraint_key=worker_vc_key,
+                vc_key=worker_vc_key,
                 compatible=worker_vc_key == self.vc_key,
             )
             idle_workers_info.append(worker_info)
@@ -156,7 +151,7 @@ class WorkerCheck:
             worker_info = _WorkerInfo(
                 name=worker,
                 host=str(worker).split("@")[1],
-                version_constraint_key=worker_vc_key,
+                vc_key=worker_vc_key,
                 compatible=worker_vc_key == self.vc_key,
             )
             busy_workers_info.append(worker_info)
@@ -169,18 +164,13 @@ class AppStatus:
 
         self.package_name = package_name
         self.status_text: str = ""
-        self.vc_key: str = celery_queue
+        self.vc_key = os.getenv("PROXIMA_VC_KEY")
 
         self.build_status()
         self.update_status()
         self.worker_status()
 
         Rule()
-
-    @property
-    def banner(self):
-        fig = Figlet(font="rectangles")
-        return fig.renderText(self.package_name)
 
     @cached_property
     def status_panel(self):
@@ -198,12 +188,12 @@ class AppStatus:
             self.status_text += "[yellow]Update check disabled\n"
             return
 
-        if build_info.is_pip_updatable == False:
+        if build_info.is_pip_updatable is False:
             self.status_text += "[green]Running latest release :runner:\n"
             return
 
-        if build_info.is_pip_updatable == True:
-            self.status_text += f"[yellow]New release available[/] :sparkles:\n"
+        if build_info.is_pip_updatable is True:
+            self.status_text += "[yellow]New release available[/] :sparkles:\n"
             return
 
     def build_status(self):
@@ -248,10 +238,10 @@ class AppStatus:
 
             self.status_text += (
                 f"[red] | Incompatible {len(w.incompatible)}[/]\n"
-                f"[red]Proxima on these hosts may be out-of-date:\n"
+                f"[red]These hosts are using a different VC key:\n"
                 f"{incompatible_host_string}"
             )
 
             if settings["app"]["disable_version_constrain"]:
 
-                self.status_text += f"\n\n[yellow]WARNING: Jobs will be queued to incompatible workers anyway.\n"
+                self.status_text += "\n\n[yellow]WARNING: Jobs will be queued to incompatible workers anyway.\n"

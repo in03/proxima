@@ -14,7 +14,6 @@ from rich import print
 from proxima.app import core
 from proxima.app import package
 from proxima.settings import settings
-from proxima.celery import celery_queue
 
 core.install_rich_tracebacks()
 
@@ -31,14 +30,14 @@ def prompt_worker_amount(cpu_cores: int):
 
     def invalid_answer():
         """Restart prompt if answer invalid"""
-        print(f"[red]Invalid number! Please enter a whole number.[/]")
+        print("[red]Invalid number! Please enter a whole number.[/]")
         prompt_worker_amount(cpu_cores)
 
     try:
 
         # Input doesn't like parsing colours
         print(
-            f"[yellow]How many workers would you like to start?[/]\n"
+            "[yellow]How many workers would you like to start?[/]\n"
             + f"Press ENTER for default: {safe_cores_suggestion}\n"
         )
 
@@ -75,7 +74,7 @@ def new_worker(nickname: str = "") -> int:
         return f"-n {nickname}@{platform.node()}"
 
     def get_worker_queue():
-
+        celery_queue = os.getenv("PROXIMA_VC_KEY")
         return f" -Q {celery_queue},all"
 
     def get_new_console():
@@ -161,7 +160,7 @@ def main(workers: int = 0):
     os_ = platform.system()
     cpu_cores = multiprocessing.cpu_count()
 
-    queue_name = celery_queue
+    queue_name = os.getenv("PROXIMA_VC_KEY")
     if not queue_name:
         raise TypeError("Couldn't get queue!")
 
@@ -180,15 +179,5 @@ def main(workers: int = 0):
         print("Default recommendation is 2 cores spare for Resolve and other tasks.\n")
         launch_workers(prompt_worker_amount(cpu_cores))
 
-    print(f"[green]Done![/]")
+    print("[green]Done![/]")
     core.app_exit(0, 2)
-
-
-if __name__ == "__main__":
-
-    # Change to the expected directory of START_WIN_WORKER
-    module_path = os.path.dirname(os.path.abspath(__file__))
-    package_path = os.path.dirname(module_path)
-
-    os.chdir(package_path)
-    main(0)

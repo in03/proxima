@@ -1,47 +1,52 @@
 import logging
+import os
 import subprocess
-from typing import Optional, List
+from typing import List, Optional
 
 import typer
 from rich import print
 from rich.console import Console
-from rich.panel import Panel
-from proxima import version_constraint
-
+from pyfiglet import Figlet
 
 # Init classes
 cli_app = typer.Typer()
 console = Console()
 
+logger = logging.getLogger("proxima")
+
 
 def write_override_key(value: str):
-    version_constraint.key = value
+    if value:
+        logger.warning(f"[yellow]Version constraint key overriden with '{value}'")
+        os.environ["PROXIMA_VC_KEY"] = value
 
-
-hide_banner = typer.Option(
-    default=False, help="Hide the title and build info on startup"
-)
-
-override_vc_key = typer.Option(
-    default="",
-    help="Override the version constraint key with a custom value",
-    callback=write_override_key,
-)
 
 # Special functions
 
 
 @cli_app.callback(invoke_without_command=True)
-def run_without_args(ctx: typer.Context):
+def global_options(
+    ctx: typer.Context,
+    vc=typer.Option(
+        default="",
+        help="Override the version constraint key with a custom value",
+        callback=write_override_key,
+    ),
+):
+
+    print(
+        "\nDistributed transcoding for DaVinci Resolve proxies!\n"
+        "https://in03.github.io/proxima\n"
+    )
+
     sub = ctx.invoked_subcommand
     if sub is None:
         print("Run [bold]proxima --help[/] for a list of commands")
-        # status()
-    else:
-        print(Panel(f"[bold]{sub.capitalize()}", expand=False))
 
 
 # Commands
+
+
 @cli_app.command()
 def status():
     from proxima.app.checks import AppStatus
@@ -51,33 +56,27 @@ def status():
 
 
 @cli_app.command()
-def queue(
-    vc: str = override_vc_key,
-):
+def queue():
     """
     Queue proxies from the currently open
     DaVinci Resolve timeline
     """
 
     # Init
-    from proxima.settings import settings
     from proxima.app import core
+    from proxima.settings import settings
 
     core.setup_rich_logging()
     logger = logging.getLogger("proxima")
     logger.setLevel(settings["app"]["loglevel"])
 
-    print(version_constraint.key)
-
     from proxima.cli import queue
 
-    queue.main(version_constraint.key)
+    queue.main()
 
 
 @cli_app.command()
 def work(
-    hide_banner: bool = hide_banner,
-    vc: str = override_vc_key,
     workers_to_launch: Optional[int] = typer.Argument(
         0, help="How many workers to start"
     ),
@@ -126,7 +125,6 @@ def purge():
     print("\n")
 
     from proxima.app import package
-    from proxima.celery.celery import celery_queue
 
     subprocess.run(
         [
@@ -135,7 +133,7 @@ def purge():
             "proxima.celery",
             "purge",
             "-Q",
-            celery_queue,
+            str(os.getenv("PROXIMA_VC_KEY")),
         ]
     )
 
@@ -187,7 +185,8 @@ def config():
 
 
 def main():
-    status()
+    fig = Figlet(font="rectangles")
+    print(fig.renderText("proxima"))
     cli_app()
 
 

@@ -6,10 +6,9 @@ import sys
 
 from celery import Celery
 from proxima.settings import settings
-from proxima import version_constraint
 
 # QUEUE - Celery routing queue using version constraint key
-celery_queue = version_constraint.key
+celery_queue = os.getenv("PROXIMA_VC_KEY")
 if settings["app"]["disable_version_constrain"]:
     celery_queue = "all"
 

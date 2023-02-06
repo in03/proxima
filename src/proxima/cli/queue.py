@@ -1,16 +1,16 @@
 import logging
-from celery import group
-from proxima import ProxyLinker, shared, core
-from proxima.app import resolve
-from proxima.settings import settings
-from proxima.celery.tasks import encode_proxy
-from rich import print
-from pydavinci import davinci
-from proxima.app import resolve
-from proxima import cli
-from rich.panel import Panel
-from pydavinci.exceptions import TimelineNotFound
 
+from celery import group
+from pydavinci import davinci
+from pydavinci.exceptions import TimelineNotFound
+from rich import print
+from rich.panel import Panel
+
+from proxima import ProxyLinker, core, shared
+from proxima.app import resolve
+from proxima.app.checks import AppStatus
+from proxima.celery.tasks import encode_proxy
+from proxima.settings import settings
 
 core.install_rich_tracebacks()
 
@@ -59,13 +59,14 @@ def main():
     batch.handle_existing_unlinked()
     batch.remove_already_linked()
     batch.handle_offline_proxies()
+    app_status = AppStatus("proxima")
 
     print(
         Panel(
             expand=False,
             title_align="left",
             renderable=(
-                cli.app_status.status_text
+                app_status.status_text
                 + "\n\n[bold white]Jobs[/][/]\n"
                 + batch.batch_info
             ),
@@ -76,9 +77,9 @@ def main():
     # Confirm exit if nothing to queue, exit directly if user cancels
 
     cont = batch.prompt_queue()
-    if cont == None:
+    if cont is None:
         core.app_exit(0, -1)
-    if cont == False:
+    if cont is False:
         raise KeyboardInterrupt
 
     core.notify(f"Started encoding job '{r_.project.name} - {r_.active_timeline.name}'")
@@ -108,7 +109,7 @@ def main():
     except Exception:
 
         logger.error(
-            f"[red]Couldn't link jobs. Unhandled exception:[/]\n", exc_info=True
+            "[red]Couldn't link jobs. Unhandled exception:[/]\n", exc_info=True
         )
         core.app_exit(1, -1)
 
@@ -120,6 +121,3 @@ def main():
 # TODO: Refactor queue module
 # This module should be CLI/API agnostic
 # Move interactivity to the CLI module, then this queue module can move to 'app'
-
-if __name__ == "__main__":
-    main()
