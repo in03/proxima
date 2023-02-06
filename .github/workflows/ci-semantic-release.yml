@@ -44,6 +44,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
     concurrency: release
+    
     steps:
       - uses: actions/setup-python@v2
         with:
@@ -57,5 +58,4 @@ jobs:
         uses: relekang/python-semantic-release@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          repository_username: __token__
-          repository_password: ${{ secrets.PYPI_TOKEN }}
+          PyPI_token: ${{ secrets.PYPI_TOKEN }}
