@@ -12,11 +12,8 @@ console = Console()
 
 
 def shorten_long_path(long_path: str | None, max_len: int = 40):
-
     if long_path:
-
         if len(long_path) > max_len:
-
             front_slice = int(max_len / 2)
             end_slice = len(long_path) - front_slice
             return long_path[:front_slice] + "..." + long_path[end_slice:]
@@ -25,7 +22,6 @@ def shorten_long_path(long_path: str | None, max_len: int = 40):
 
 
 def setup_rich_logging():
-
     """Set logger to rich, allowing for console markup."""
 
     FORMAT = "%(message)s"
@@ -60,7 +56,6 @@ def app_exit(
     console: Console = console,
     cleanup_funcs: list = [],
 ):
-
     """
     Exit function to allow time to
     read console output if necessary before exit.
@@ -70,7 +65,6 @@ def app_exit(
 
     # Run any cleanup functions
     if cleanup_funcs:
-
         for x in cleanup_funcs:
             if x is not None:
                 x()
@@ -81,9 +75,7 @@ def app_exit(
         sys.exit(level)
 
     else:
-
         for i in range(timeout, -1, -1):
-
             time.sleep(1)
             sys.stdout.write(f"\rExiting in " + str(i))
 
@@ -110,7 +102,6 @@ def notify(message: str, title: str = "Proxima"):
     """
 
     try:
-
         notification = Notify()
         notification.title = title
         notification.message = message

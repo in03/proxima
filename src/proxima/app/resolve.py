@@ -38,7 +38,6 @@ def get_timeline_items(timeline: Timeline) -> list[TimelineItem]:
     track_len = timeline.track_count("video")
     logger.debug(f"[magenta] * Video tracks: {track_len}[/]")
     for i in range(1, track_len + 1):
-
         # Get items
         all_track_items.extend(timeline.items("video", i))
 
@@ -62,7 +61,6 @@ def get_media_pool_items(timeline_items: list[TimelineItem]) -> list[MediaPoolIt
     logger.info("[cyan]Getting media pool items...")
 
     for item in timeline_items:
-
         # Bit weird, but items without mediapoolitems still have the attribute
         # and accessing it at all causes a TypeError.
         try:
@@ -111,7 +109,6 @@ def get_resolve_timelines(
 
 
 def filter_queueable(media_pool_items: list[MediaPoolItem]) -> list[MediaPoolItem]:
-
     logger.debug("[magenta] * Filtering queueable jobs...")
 
     seen = []
@@ -143,9 +140,7 @@ def filter_queueable(media_pool_items: list[MediaPoolItem]) -> list[MediaPoolIte
 
         # Filter extension
         if settings["filters"]["extension_whitelist"]:
-
             if source_ext not in settings["filters"]["extension_whitelist"]:
-
                 logger.warning(
                     f"[yellow]Ignoring file with extension not in whitelist: '{source_ext}'\n"
                     + f"from '{mpi.properties['File Path']}'[/]\n"
@@ -154,13 +149,11 @@ def filter_queueable(media_pool_items: list[MediaPoolItem]) -> list[MediaPoolIte
 
         # Filter framerate
         if settings["filters"]["framerate_whitelist"]:
-
             # Make int to avoid awkward extra zeros.
             if float(mpi.properties["FPS"]).is_integer():
                 mpi.properties["FPS"] = int(float(mpi.properties["FPS"]))
 
             if mpi.properties["FPS"] not in settings["filters"]["framerate_whitelist"]:
-
                 logger.warning(
                     f"[yellow]Ignoring file with framerate not in whitelist: '{mpi.properties['FPS']}'\n"
                     + f"from '{mpi.properties['File Path']}' [/]\n"
@@ -173,12 +166,10 @@ def filter_queueable(media_pool_items: list[MediaPoolItem]) -> list[MediaPoolIte
 def generate_batch(
     media_pool_items: list[MediaPoolItem], settings: SettingsManager
 ) -> Batch:
-
     logger.info("[cyan]Generating batch of jobs...")
 
     job_list = []
     for mpi in media_pool_items:
-
         global media_pool_index
 
         props = mpi.properties

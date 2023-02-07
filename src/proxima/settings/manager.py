@@ -40,7 +40,6 @@ class SettingsManager:
         default_settings_file=DEFAULT_SETTINGS_FILE,
         user_settings_file=USER_SETTINGS_FILE,
     ):
-
         self.yaml = YAML()
         self.yaml.indent(mapping=2, sequence=4, offset=2)
         self.yaml.default_flow_style = False
@@ -58,7 +57,6 @@ class SettingsManager:
 
         # Validate user settings
         if logger.getEffectiveLevel() > 2:
-
             self.spinner = yaspin(
                 text="Checking settings...",
                 color="cyan",
@@ -75,11 +73,9 @@ class SettingsManager:
         return self.user_settings
 
     def __len__(self):
-
         return len(self.user_settings)
 
     def __getitem__(self, __items):
-
         if type(__items) == str:
             __items = __items.split(" ")
 
@@ -87,7 +83,6 @@ class SettingsManager:
             return reduce(operator.getitem, __items, self.user_settings)
 
         except KeyError as e:
-
             raise KeyError(e)
 
     def __load_default_file(self):
@@ -129,7 +124,6 @@ class SettingsManager:
         reduce(getitem, key_list[:-1], self.user_settings)[key_list[-1]] = value
 
         with open(self.user_file, "w") as file_:
-
             logger.debug(f"[magenta]Writing updated settings to '{self.user_file}'")
             self.yaml.dump(self.user_settings, file_)
 
@@ -144,7 +138,6 @@ class SettingsManager:
         logger.debug(f"Ensuring settings file exists at {self.user_file}")
 
         if not os.path.exists(self.user_file):
-
             self.spinner.fail("❌ ")
             if Confirm.ask(
                 f"[yellow]No user settings found at path [/]'{self.user_file}'\n"
@@ -156,28 +149,23 @@ class SettingsManager:
 
                 # Create dir, copy file, open
                 try:
-
                     os.makedirs(os.path.dirname(self.user_file))
 
                 except FileExistsError:
-
                     self.spinner.stop()
                     logger.info("[yellow]Directory exists, skipping...[/]")
                     self.spinner.start()
 
                 except OSError:
-
                     self.spinner.fail("❌ ")
                     logger.critical("[red]Error creating directory![/]")
                     core.app_exit(1, -1)
 
                 try:
-
                     shutil.copy(self.default_file, self.user_file)
                     self.spinner.ok("✅ ")
 
                 except:
-
                     self.spinner.fail("❌ ")
                     logger.error(
                         f"[red]Couldn't copy default settings to {self.user_file}![/]"
@@ -199,7 +187,6 @@ class SettingsManager:
 
         # Check for unknown settings
         if diffs.get("dictionary_item_added"):
-
             # listcomp log warning for each unknown setting
             [
                 logger.warning(
@@ -211,7 +198,6 @@ class SettingsManager:
             print()  # Newline
 
         def __prompt_setting_substitution(self, setting_name, key_list):
-
             # Get default value
             if len(key_list) > 0:
                 logger.debug("Getting default value from nested keys")
@@ -224,13 +210,11 @@ class SettingsManager:
             print(f'[red bold]Missing setting [green]"{setting_name}"[/][/]')
 
             try:
-
                 custom_value = Prompt.ask(
                     f"[cyan]Type a new value or leave blank to use default[/] ('{default_value}')"
                 )
 
             except KeyboardInterrupt:
-
                 print()
                 self.spinner.fail("❌ ")
                 # Log all missing settings so user doesn't have to know each missing.
@@ -244,25 +228,20 @@ class SettingsManager:
                 core.app_exit(1, -1)
 
             else:
-
                 if not custom_value:
-
                     print(f"[green]Using default '{default_value}'[/]")
                     custom_value = default_value
 
                 else:
-
                     print(f"[green]Using custom value '{custom_value}'[/]")
 
                 # TODO: Implement type validation for custom value and prompt retry on fail
                 self.update_nested_setting(key_list, custom_value)
 
             finally:
-
                 print()
 
         def _get_missing_settings(self):
-
             """
             Prompt substitution for settings present in default-settings that are not present in user-settings.
 
@@ -271,7 +250,6 @@ class SettingsManager:
             """
 
             if diffs.get("dictionary_item_removed"):
-
                 self.spinner.stop()
                 logger.error(
                     f"[bold red]Required user settings are missing!\n[/]"
@@ -281,13 +259,11 @@ class SettingsManager:
                 print()
 
                 for x in diffs["dictionary_item_removed"]:
-
                     # Match all keys in diff string
                     key_list = re.findall(r"\['(\w*)'\]", x)
                     __prompt_setting_substitution(self, x, key_list)
 
             def _catch_empty_setting_section_with_inline_comment(self):
-
                 """
                 Catch setting sections that don't show as empty because of inline comments.
 
@@ -308,7 +284,6 @@ class SettingsManager:
                 """
 
                 if diffs.get("type_changes"):
-
                     self.spinner.stop()
 
                     # Match root keys with entire missing sections except for an inline comment
@@ -319,7 +294,6 @@ class SettingsManager:
 
                     # If only value is a comment, section is empty
                     for key in empty_root_keys:
-
                         # TODO: Fix this. `_prompt_setting_substitution` expects a list
                         # this is not the way to do it
                         # labels: enhancement
@@ -342,11 +316,9 @@ class SettingsManager:
         logger.debug(f"Validating user settings against schema")
 
         try:
-
             settings_schema.validate(self.user_settings)
 
         except SchemaError as e:
-
             self.spinner.fail("❌ ")
             logger.error(
                 f"[red]Couldn't validate application settings![/]\n{e}\n"

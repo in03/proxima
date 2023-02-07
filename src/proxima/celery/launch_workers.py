@@ -34,7 +34,6 @@ def prompt_worker_amount(cpu_cores: int):
         prompt_worker_amount(cpu_cores)
 
     try:
-
         # Input doesn't like parsing colours
         print(
             "[yellow]How many workers would you like to start?[/]\n"
@@ -69,7 +68,6 @@ def new_worker(nickname: str = "") -> int:
     """
 
     def get_worker_name(nickname):
-
         # @h for 'hostname'
         return f"-n {nickname}@{platform.node()}"
 
@@ -144,7 +142,6 @@ def new_worker(nickname: str = "") -> int:
 
 
 def launch_workers(workers_to_launch: int) -> list[str]:
-
     # Start launching
 
     pids = []
@@ -169,11 +166,9 @@ def main(workers: int = 0):
 
     # Don't bother with tips if not prompting
     if workers:
-
         launch_workers(workers)
 
     else:
-
         print(f"[green]Running on {os_} with {cpu_cores} cores.[/]\n")
         print("For maximum performance, start as many workers as CPU cores.")
         print("Default recommendation is 2 cores spare for Resolve and other tasks.\n")

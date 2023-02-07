@@ -23,7 +23,6 @@ logger.setLevel(settings["app"]["loglevel"])
 
 @dataclass(frozen=True)
 class SourceMetadata:
-
     clip_name: str
     file_name: str
     file_path: str
@@ -57,7 +56,6 @@ class Job:
         source_metadata: SourceMetadata,
         settings: SettingsManager,
     ):
-
         # Get data
         self.source = source_metadata
         self.project = project_metadata
@@ -94,19 +92,16 @@ class Job:
             """Get a collision-free output path by incrementing the filename if it already exists"""
 
             while True:
-
                 file_name, file_ext = os.path.splitext(initial_output_path)
                 try_path = f"{file_name}_{increment_num}{file_ext}"
 
                 if os.path.exists(try_path):
-
                     logger.debug(
                         f"[magenta] * Path '{os.path.basename(try_path)}' exists. Incrementing."
                     )
                     increment_num += 1
 
                 else:
-
                     logger.debug(
                         f"[magenta] * Path '{os.path.basename(try_path)}' is free."
                     )
@@ -117,7 +112,6 @@ class Job:
         initial_output_path = os.path.join(self.output_directory, self.source.file_name)
 
         if self.settings["proxy"]["overwrite"]:
-
             if not os.path.exists(initial_output_path):
                 return initial_output_path
 
@@ -129,7 +123,6 @@ class Job:
             return collision_free_path
 
         else:
-
             logger.debug(
                 f"[magenta] * Output path, will overwrite existing: {initial_output_path}"
             )
@@ -205,7 +198,6 @@ class Job:
 
         candidates = []
         for x in matches:
-
             # If exact match
             if os.path.basename(x).upper() == self.source.file_name.upper():
                 logger.debug(f"[magenta] * Found exact match: '{os.path.basename(x)}'")
@@ -280,7 +272,6 @@ class Job:
                 return switch[video_info["color_range"]]
 
             else:
-
                 logger.warning(
                     f"[yellow]Couldn't get color range metadata from file {self.source.file_name}! Assuming 'limited'..."
                     "If interpretation is inaccurate, please transcode to a format that supports color metadata."

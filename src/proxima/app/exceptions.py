@@ -78,7 +78,6 @@ class ResolveLinkMismatchError(Exception):
     """
 
     def __init__(self, proxy_file: str, message: str = ""):
-
         self.proxy_file = proxy_file
 
         if message != "":
@@ -99,7 +98,6 @@ class ResolveLostMPIReferenceError(Exception):
     """
 
     def __init__(self, media_pool_item, message: str = ""):
-
         self.media_pool_item = media_pool_item
 
         if message != "":
@@ -120,7 +118,6 @@ class NoneLinkableError(Exception):
     """
 
     def __init__(self, message: str = ""):
-
         if message != "":
             self.message = message
         else:
@@ -138,7 +135,6 @@ class MPIAlreadyRegistered(Exception):
     """
 
     def __init__(self, mpi_id: str):
-
         self.message = f"The media pool item '{mpi_id}' is already registered.\n"
 
         super().__init__(self.message)

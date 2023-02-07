@@ -46,7 +46,6 @@ def main():
     r_ = davinci.Resolve()
 
     try:
-
         track_items = resolve.get_timeline_items(r_.active_timeline)
 
     except TimelineNotFound:
@@ -107,7 +106,6 @@ def main():
         proxy_linker.batch_link()
 
     except Exception:
-
         logger.error(
             "[red]Couldn't link jobs. Unhandled exception:[/]\n", exc_info=True
         )

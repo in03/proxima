@@ -52,7 +52,6 @@ class FfmpegProcess:
         self._ffmpeg_args += ["-progress", "pipe:1", "-nostats"]
 
     def run(self, celery_task_object, logfile=None):
-
         # Get progress bar
         console = Console(record=True)
         progress_bar = Progress(
@@ -106,20 +105,16 @@ class FfmpegProcess:
             core.app_exit(1, -1)
 
         try:
-
             progress_bar.start()
 
             while process.poll() is None:
-
                 while not progress_bar.finished:
-
                     if not process.stdout:
                         break
 
                     ffmpeg_output = process.stdout.readline().decode()
 
                     if "out_time_ms" in ffmpeg_output:
-
                         seconds_processed = int(ffmpeg_output.strip()[12:]) / 1_000_000
                         seconds_increase = (
                             seconds_processed - previous_seconds_processed
@@ -144,7 +139,6 @@ class FfmpegProcess:
                         previous_seconds_processed = seconds_processed
 
                     else:
-
                         break
 
             progress_bar.stop()
