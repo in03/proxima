@@ -22,7 +22,6 @@ logger.setLevel(settings["app"]["loglevel"])
 
 class ProxyLinker:
     def __init__(self, batch: list[Job]):
-
         self.jobs = batch
         self.project_name = self.jobs[0].project.project_name
 
@@ -35,7 +34,6 @@ class ProxyLinker:
 
         """
         try:
-
             current_project = resolve.project.name
 
         except exceptions.ResolveNoCurrentProjectError:
@@ -92,7 +90,6 @@ class ProxyLinker:
             raise exceptions.ResolveLinkMismatchError(proxy_file=proxy_media_path)
 
     def batch_link(self):
-
         """
         Iterate through media list and link each finished proxy with its media pool item.
         """
@@ -106,7 +103,6 @@ class ProxyLinker:
 
         # Iterate through all available proxies
         for job in self.jobs:
-
             logger.debug(
                 f"[magenta]Attempting to link job:[/]\n{core.shorten_long_path(job.output_file_path)}"
             )
@@ -118,7 +114,6 @@ class ProxyLinker:
                 self.single_link(mpi, job.output_file_path)
 
             except exceptions.ResolveLinkMismatchError:
-
                 show_exception = False
                 if logger.getEffectiveLevel() <= 10:
                     show_exception = True
@@ -141,7 +136,6 @@ class ProxyLinker:
             logger.error(f"[red]{len(self.mismatch_fail)} proxies failed to link!")
 
             if len(self.mismatch_fail) == len(self.jobs):
-
                 logger.critical(
                     "[red bold]Oh dear. All the proxies failed to link.[/]\n"
                     "[red]Resolve might not like your encoding settings or something else is wrong.[/]\n",

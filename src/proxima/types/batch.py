@@ -22,7 +22,6 @@ console = Console()
 
 class Batch:
     def __init__(self, batch: list[Job]):
-
         self.action_taken = False
         self.existing_link_success_count = 0
         self.existing_link_failed_count = 0
@@ -137,7 +136,6 @@ class Batch:
 
         data = []
         for x in self.batch:
-
             job_attributes = {
                 "output_file_path": x.output_file_path,
                 "output_file_name": x.output_file_name,
@@ -163,7 +161,6 @@ class Batch:
         self.batch = [x for x in self.batch if not x.is_linked]
 
     def handle_existing_unlinked(self):
-
         """
         Prompts user to either link or re-render unlinked proxy media that exists in the expected location.
         """
@@ -185,7 +182,6 @@ class Batch:
                 x.is_offline = False
 
         if len(existing_unlinked) > 0:
-
             # Log each existing unlinked media and matched proxy source with abbreviated file path
             for x in existing_unlinked:
                 logger.debug(
@@ -197,7 +193,6 @@ class Batch:
                 f"\n[yellow][bold]{len(existing_unlinked)} source files have existing but unlinked proxy media.\n"
                 "[/bold]Would you like to link them? If not they will be re-rendered."
             ):
-
                 # Mark all as requeued and carry on
                 self.existing_link_requeued_count = len(existing_unlinked)
 
@@ -212,7 +207,6 @@ class Batch:
             for job in track(
                 existing_unlinked, description="[cyan]Linking...", transient=True
             ):
-
                 if not job.newest_linkable_proxy:
                     continue
 
@@ -236,7 +230,6 @@ class Batch:
                     f"[yellow]{len(mismatch_fail)} existing proxies failed to link. "
                     + "They may be corrupt or incomplete. Re-render them?"
                 ):
-
                     # Mark failed links as failed and remove
                     [self.batch.remove(x) for x in mismatch_fail]
                     self.existing_link_failed_count = len(mismatch_fail)
@@ -260,7 +253,6 @@ class Batch:
             offline_proxies = [x for x in self.batch if x.is_offline]
 
         if len(offline_proxies) > 0:
-
             logger.warning(f"[yellow]Offline proxies: {len(offline_proxies)}[/]")
 
             choices = ["rerender", "skip", "choose"]
@@ -284,7 +276,6 @@ class Batch:
 
             new_jobs = []
             for offline_proxy in offline_proxies:
-
                 confirm = Confirm.ask(
                     f"[yellow bold]Offline media:[/] [green]'{offline_proxy.source.file_name}'[/] - "
                     f"[yellow bold]last path: [/][green]'{offline_proxy.source.proxy_media_path}'[/]\n"
@@ -315,9 +306,7 @@ class Batch:
         )
 
         if not self.batch:
-
             if not self.action_taken:
-
                 print(
                     "[green]No new media to link.[/]\n"
                     "[magenta italic]If you want to re-rerender proxies, unlink them within Resolve and try again."

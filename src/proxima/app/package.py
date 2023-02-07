@@ -38,10 +38,8 @@ def get_script_from_package(script_name: str) -> str:
     scripts_dir = os.path.join(package_dir, "Scripts")
 
     for x in os.listdir(scripts_dir):
-
         file_ = x.lower()
         if script_name.lower() in file_.lower():
-
             return os.path.abspath(os.path.join(scripts_dir, file_))
 
     raise ImportError(
@@ -83,7 +81,6 @@ class Build:
 
     @cached_property
     def is_pip_updatable(self) -> bool:
-
         latest_version = str(
             subprocess.run(
                 [

@@ -33,7 +33,6 @@ def global_options(
         callback=write_override_key,
     ),
 ):
-
     print(
         "\nDistributed transcoding for DaVinci Resolve proxies!\n"
         "https://in03.github.io/proxima\n"
