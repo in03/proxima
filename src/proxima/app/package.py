@@ -58,6 +58,9 @@ class Build:
         self.package_name = package_name
         self.package_path = package_path
 
+        self.git_sha: str | None
+        self.git_url: str | None
+
         try:
             self.repo = Repo(self.package_path, search_parent_directories=True)
             self.git_sha = self.repo.commit().hexsha
@@ -65,6 +68,7 @@ class Build:
 
         except InvalidGitRepositoryError:
             logger.debug("[magenta]Not a git repository")
+            self.git_sha
 
     @cached_property
     def version(self) -> str:
