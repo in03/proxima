@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.3 (2023-02-09)
+### Fix
+* Git sha type error ([`02064fb`](https://github.com/in03/proxima/commit/02064fb439786c37c305e763c0c06b97fe9e230f))
+* Git_sha attribute error ([`357c821`](https://github.com/in03/proxima/commit/357c821e6f021b7b9ef3cb8909dae727468f2775))
+
 ## v1.0.2 (2023-02-06)
 ### Fix
 * Package path was using PWD! ([`4b2972d`](https://github.com/in03/proxima/commit/4b2972d55c274f3e74429c0c454040e13dacda0b))
