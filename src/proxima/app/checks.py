@@ -38,7 +38,6 @@ class _WorkerInfo:
 
 class WorkerCheck:
     def __init__(self):
-
         self._workers_info: list[_WorkerInfo] = []
         self.vc_key = os.getenv("PROXIMA_VC_KEY")
         logger.debug(f"[magenta]Idle workers:[/]\n{self.idle_workers}")
@@ -105,7 +104,6 @@ class WorkerCheck:
             return idle_workers_info
 
         for worker, attributes in idle_workers.items():
-
             worker_vc_key = attributes[0]["routing_key"]
 
             worker_info = _WorkerInfo(
@@ -145,7 +143,6 @@ class WorkerCheck:
             return busy_workers_info
 
         for worker, attributes in busy_workers.items():
-
             worker_vc_key = attributes[0]["routing_key"]
 
             worker_info = _WorkerInfo(
@@ -161,7 +158,6 @@ class WorkerCheck:
 
 class AppStatus:
     def __init__(self, package_name: str):
-
         self.package_name = package_name
         self.status_text: str = ""
         self.vc_key = os.getenv("PROXIMA_VC_KEY")
@@ -174,7 +170,6 @@ class AppStatus:
 
     @cached_property
     def status_panel(self):
-
         return Panel(
             # title="[bold]Status",
             expand=False,
@@ -183,7 +178,6 @@ class AppStatus:
         )
 
     def update_status(self):
-
         if not settings["app"]["check_for_updates"]:
             self.status_text += "[yellow]Update check disabled\n"
             return
@@ -197,11 +191,9 @@ class AppStatus:
             return
 
     def build_status(self):
-
         self.status_text += "[bold]\nBuild\n[/]"
 
         if build_info.is_git_repo:
-
             self.status_text += f"[magenta]Git: {build_info.git_version[:7:]}[/] | "
 
         self.status_text += (
@@ -213,7 +205,6 @@ class AppStatus:
             self.status_text += "[yellow]Version constrain is disabled! :dragon_face:\n"
 
     def worker_status(self):
-
         self.status_text += "[bold]\nWorkers[/]\n"
 
         w = WorkerCheck()
@@ -224,7 +215,6 @@ class AppStatus:
         self.status_text += f"[green]Available {idle_worker_count}[/] | [yellow]Busy {busy_worker_count}"
 
         if not w.all_are_compatible:
-
             # Eww... 6 lines of code to add newline every 6 offline hosts...
             incompatible_host_string = [
                 el
@@ -243,5 +233,4 @@ class AppStatus:
             )
 
             if settings["app"]["disable_version_constrain"]:
-
                 self.status_text += "\n\n[yellow]WARNING: Jobs will be queued to incompatible workers anyway.\n"

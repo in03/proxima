@@ -30,7 +30,6 @@ def class_from_args(class_name, arg_dict: dict):
 
 @dataclass(frozen=True, init=True)
 class TaskJob:
-
     settings: SettingsManager
     project: ProjectMetadata
     source: SourceMetadata
@@ -41,7 +40,6 @@ class TaskJob:
     input_level: str
 
     def __post_init__(self):
-
         # TODO: Custom exceptions for task job validation
 
         if not os.path.exists(self.source.file_path):  # SOURCE ACCESSIBLE
@@ -81,7 +79,6 @@ def ffmpeg_video_flip(job: TaskJob):
     queue=celery_queue,
 )
 def encode_proxy(self, job_dict: dict) -> str:
-
     """
     Celery task to encode proxy media using parameters in job argument
     and user-defined settings

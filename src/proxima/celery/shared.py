@@ -25,7 +25,6 @@ class ProgressTracker:
         self.already_seen = {}
 
     def __define_progress_bars(self):
-
         self.status_view = Progress(
             TextColumn("{task.fields[last_status]}"),
         )
@@ -49,7 +48,6 @@ class ProgressTracker:
         )
 
     def __init_progress_bars(self):
-
         self.status_view_id = self.status_view.add_task(
             description="Last task event status",
             last_status="",
@@ -64,9 +62,7 @@ class ProgressTracker:
         )
 
     def update_last_status(self, task_results: List[AsyncResult]):
-
         for result in task_results:
-
             if not result or not result.args:
                 continue
 
@@ -84,7 +80,6 @@ class ProgressTracker:
             }
 
             if last_status := switch.get(result.status):
-
                 self.status_view.update(
                     task_id=self.status_view_id,
                     last_status=last_status,
@@ -94,7 +89,6 @@ class ProgressTracker:
             self.already_seen.update({result.id: result.status})
 
     def update_progress(self, task_results: List[AsyncResult]):
-
         # Get encoding progress from task custom status
         try:
             progress_data = [
@@ -120,17 +114,13 @@ class ProgressTracker:
         )
 
     def report_progress(self, group_results: GroupResult) -> GroupResult:
-
         self.group_id = group_results.id
         self.__define_progress_bars()
         self.__init_progress_bars()
 
         with Live(self.progress_group):
-
             try:
-
                 while not group_results.ready():
-
                     # UPDATE PROGRESS
                     task_results = group_results.results
                     assert task_results
