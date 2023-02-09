@@ -120,7 +120,7 @@ class Build:
         return bool(self.git_sha)
 
     @property
-    def git_version(self) -> str:
+    def git_version(self) -> str | None:
         return self.git_sha
 
     @cached_property
