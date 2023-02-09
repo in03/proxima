@@ -66,7 +66,6 @@ class Build:
 
         except InvalidGitRepositoryError:
             logger.debug("[magenta]Not a git repository")
-            self.git_sha
 
     @cached_property
     def version(self) -> str:
