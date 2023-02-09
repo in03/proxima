@@ -32,12 +32,12 @@ notify-py = "^0.3.42"
 pydavinci = {git = "https://github.com/in03/pydavinci"}
 
 [tool.poetry.group.dev.dependencies]
-black = "^21.12b0"
 isort = "^5.10.1"
 pre-commit = "^2.16.0"
 commitizen = "^2.27.1"
 flake8 = "^6.0.0"
 python-semantic-release = "^7.33.0"
+black = "^23.1.0"
 
 [tool.poetry.group.docs]
 optional = true
