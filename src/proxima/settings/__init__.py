@@ -1,2 +1,1 @@
-from .manager import settings
-from .manager import SettingsManager
+from .manager import SettingsManager, settings

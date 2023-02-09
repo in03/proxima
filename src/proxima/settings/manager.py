@@ -9,13 +9,14 @@ from pathlib import Path
 
 import typer
 from deepdiff import DeepDiff
-from proxima.app import core
 from rich import print
 from rich.prompt import Confirm, Prompt
 from ruamel.yaml import YAML
+from schema import SchemaError
 from yaspin import yaspin
 
-from schema import SchemaError
+from proxima.app import core
+
 from .schema import settings_schema
 
 core.install_rich_tracebacks()

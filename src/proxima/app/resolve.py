@@ -1,17 +1,18 @@
 import logging
 import os
 
-from proxima.app import core
-from proxima.settings import settings, SettingsManager
 from pydavinci import davinci
-from pydavinci.wrappers.timeline import Timeline
-from pydavinci.wrappers.project import Project
-from pydavinci.wrappers.timelineitem import TimelineItem
 from pydavinci.wrappers.mediapool import MediaPool
 from pydavinci.wrappers.mediapoolitem import MediaPoolItem
-from proxima.types.media_pool_index import media_pool_index
-from proxima.types.job import Job, ProjectMetadata, SourceMetadata
+from pydavinci.wrappers.project import Project
+from pydavinci.wrappers.timeline import Timeline
+from pydavinci.wrappers.timelineitem import TimelineItem
+
+from proxima.app import core
+from proxima.settings import SettingsManager, settings
 from proxima.types.batch import Batch
+from proxima.types.job import Job, ProjectMetadata, SourceMetadata
+from proxima.types.media_pool_index import media_pool_index
 
 resolve = davinci.Resolve()
 

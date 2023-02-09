@@ -1,10 +1,11 @@
-import logging
 import json
+import logging
 import os
 import shlex
 import subprocess
 import sys
 from fractions import Fraction
+
 from proxima.app import core
 from proxima.settings import settings
 

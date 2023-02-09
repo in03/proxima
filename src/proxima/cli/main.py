@@ -4,9 +4,9 @@ import subprocess
 from typing import List, Optional
 
 import typer
+from pyfiglet import Figlet
 from rich import print
 from rich.console import Console
-from pyfiglet import Figlet
 
 # Init classes
 cli_app = typer.Typer()

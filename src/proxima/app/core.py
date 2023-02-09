@@ -4,9 +4,9 @@ import sys
 import time
 
 from notifypy import Notify
+from rich.console import Console
 from rich.logging import RichHandler
 from rich.prompt import Prompt
-from rich.console import Console
 
 console = Console()
 

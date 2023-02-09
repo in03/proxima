@@ -1,7 +1,7 @@
+import json
 import logging
 import os
 import subprocess
-import json
 
 from rich.console import Console
 from rich.progress import (
@@ -13,10 +13,10 @@ from rich.progress import (
 )
 from rich.prompt import Confirm
 
-from .utils import ffprobe
-
 from proxima.app import core
 from proxima.settings import settings
+
+from .utils import ffprobe
 
 core.install_rich_tracebacks()
 logger = logging.getLogger("proxima")

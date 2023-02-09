@@ -1,17 +1,16 @@
+import importlib
 import logging
 import os
-from distutils.sysconfig import get_python_lib
-from pathlib import Path
-from functools import cached_property
-
-import importlib
 import subprocess
 import sys
+from distutils.sysconfig import get_python_lib
+from functools import cached_property
+from pathlib import Path
+
+from git.exc import InvalidGitRepositoryError
+from git.repo import Repo
 
 from proxima.settings import settings
-
-from git.repo import Repo
-from git.exc import InvalidGitRepositoryError
 
 logger = logging.getLogger("proxima")
 logger.setLevel(settings["app"]["loglevel"])

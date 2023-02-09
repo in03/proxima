@@ -2,8 +2,7 @@ import os
 import re
 
 from commonregex import link
-from schema import Schema, And, Optional
-
+from schema import And, Optional, Schema
 
 settings_schema = Schema(
     {

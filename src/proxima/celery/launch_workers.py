@@ -5,14 +5,13 @@ import multiprocessing
 import os
 import platform
 import subprocess
-import shortuuid
 import time
 from shutil import which
 
+import shortuuid
 from rich import print
 
-from proxima.app import core
-from proxima.app import package
+from proxima.app import core, package
 from proxima.settings import settings
 
 core.install_rich_tracebacks()

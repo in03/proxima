@@ -5,6 +5,7 @@ import os
 import sys
 
 from celery import Celery
+
 from proxima.settings import settings
 
 # QUEUE - Celery routing queue using version constraint key

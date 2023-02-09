@@ -1,17 +1,17 @@
-from functools import cached_property
+import json
 import logging
 import os
-from rich.prompt import Confirm, Prompt
+from dataclasses import asdict
+from functools import cached_property
+
 from rich import print
 from rich.console import Console
 from rich.panel import Panel
-from dataclasses import asdict
-import json
+from rich.prompt import Confirm, Prompt
 
-from proxima.app import core, exceptions
-from proxima.app import link
-from proxima.types.job import Job
+from proxima.app import core, exceptions, link
 from proxima.settings import settings
+from proxima.types.job import Job
 
 core.install_rich_tracebacks()
 logger = logging.getLogger("proxima")

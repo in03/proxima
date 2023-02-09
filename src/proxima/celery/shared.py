@@ -1,16 +1,11 @@
-from typing import List
 import logging
 import time
+from typing import List
+
+from celery.result import AsyncResult, GroupResult
 from rich.console import Group
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-)
 from rich.live import Live
-from celery.result import AsyncResult
-from celery.result import GroupResult
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
 
 logger = logging.getLogger("proxima")
 

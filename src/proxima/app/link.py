@@ -3,14 +3,15 @@
 import logging
 import os
 
-from rich.console import Console
-from proxima.app import core
-from proxima import exceptions
-from proxima.settings import settings
 from pydavinci import davinci
+from pydavinci.wrappers.mediapoolitem import MediaPoolItem
+from rich.console import Console
+
+from proxima import exceptions
+from proxima.app import core
+from proxima.settings import settings
 from proxima.types.job import Job
 from proxima.types.media_pool_index import media_pool_index
-from pydavinci.wrappers.mediapoolitem import MediaPoolItem
 
 resolve = davinci.Resolve()
 console = Console()

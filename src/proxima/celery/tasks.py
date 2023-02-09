@@ -1,17 +1,18 @@
-from dataclasses import dataclass, fields
 import logging
 import os
-from proxima.app import core
-from proxima.settings import settings
-from proxima.settings.manager import SettingsManager
-from proxima.celery import celery_app
-from proxima.celery.ffmpeg import FfmpegProcess
-from proxima.celery.celery import celery_queue
-from celery.exceptions import Reject
-from proxima.types.job import ProjectMetadata, SourceMetadata
+from dataclasses import dataclass, fields
 
+from celery.exceptions import Reject
 from rich import print
 from rich.console import Console
+
+from proxima.app import core
+from proxima.celery import celery_app
+from proxima.celery.celery import celery_queue
+from proxima.celery.ffmpeg import FfmpegProcess
+from proxima.settings import settings
+from proxima.settings.manager import SettingsManager
+from proxima.types.job import ProjectMetadata, SourceMetadata
 
 # Worker and Celery settings pulled from local user_settings file
 # All other settings are passed from queuer

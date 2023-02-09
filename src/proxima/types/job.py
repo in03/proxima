@@ -1,20 +1,15 @@
 import logging
 import os
-
-from proxima.app import core
-from proxima.celery import ffmpeg
-
-import os
 import pathlib
 import re
-
 from dataclasses import dataclass
-from glob import glob
 from functools import cached_property
+from glob import glob
 
-from proxima.settings import settings, SettingsManager
+from proxima.app import core, exceptions
+from proxima.celery import ffmpeg
+from proxima.settings import SettingsManager, settings
 from proxima.types.media_pool_index import media_pool_index
-from proxima.app import exceptions
 
 core.install_rich_tracebacks()
 logger = logging.getLogger("proxima")

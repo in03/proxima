@@ -1,4 +1,5 @@
 from pydavinci.wrappers.mediapoolitem import MediaPoolItem
+
 from proxima.app.exceptions import MPIAlreadyRegistered
 
 
