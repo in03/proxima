@@ -55,8 +55,8 @@ class Build:
         self.package_name = package_name
         self.package_path = package_path
 
-        self.git_sha: str | None
-        self.git_url: str | None
+        self.git_sha: str | None = None
+        self.git_url: str | None = None
 
         try:
             self.repo = Repo(self.package_path, search_parent_directories=True)
