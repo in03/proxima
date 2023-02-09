@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.4 (2023-02-09)
+### Fix
+* Isort broke fragile __init__ imports ([`e227ac2`](https://github.com/in03/proxima/commit/e227ac23a4daea40bcd278d9749b6442c61205de))
+
 ## v1.0.3 (2023-02-09)
 ### Fix
 * Git sha type error ([`02064fb`](https://github.com/in03/proxima/commit/02064fb439786c37c305e763c0c06b97fe9e230f))
