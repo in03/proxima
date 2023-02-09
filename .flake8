@@ -2,4 +2,5 @@
 [flake8]
 select = C,E,F,W
 max-complexity = 10
-ignore = E501
+max-doc-length = 72
+ignore = E211, E501, E999, F401, F821, W503

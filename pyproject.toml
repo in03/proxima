@@ -53,6 +53,13 @@ mkdocs-section-index = "^0.3.4"
 mkdocstrings = "^0.19.0"
 mkdocs-material = "^8.5.10"
 
+[tool.black]
+line_length = 88
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
 [tool.semantic_release]
 version_variable = [
     "src/proxima/__init__.py:__version__",
