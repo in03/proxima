@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.5 (2023-02-09)
+### Fix
+* **build:** Typed git vars were unassigned ([`ad53709`](https://github.com/in03/proxima/commit/ad5370969247f785118793a5eb775e1d49bf73b1))
+
 ## v1.0.4 (2023-02-09)
 ### Fix
 * Isort broke fragile __init__ imports ([`e227ac2`](https://github.com/in03/proxima/commit/e227ac23a4daea40bcd278d9749b6442c61205de))
