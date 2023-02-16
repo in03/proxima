@@ -20,7 +20,7 @@ from rich import print
 from rich.panel import Panel
 
 from proxima.app.core import setup_rich_logging
-from proxima.settings import default_settings_file, user_settings_file
+from proxima.settings import dotenv_settings_file, user_settings_file
 
 setup_rich_logging()
 
@@ -31,10 +31,6 @@ rich.traceback.install(show_locals=False)
 def load_toml_user(_):
     user_toml = pathlib.Path(user_settings_file)
     return rtoml.load(user_toml.read_text())
-
-
-def load_toml_defaults(_):
-    return rtoml.load(default_settings_file.read_text())
 
 
 class App(BaseModel):
@@ -183,8 +179,9 @@ class Settings(BaseSettings):
     worker: Worker
 
     class Config:
-        env_file = ".env", ".env.prod"
-        env_prefix = "proxima_"
+        env_file = dotenv_settings_file
+        env_file_encoding = "utf-8"
+        env_prefix = "PROXIMA_"
         env_nested_delimiter = "__"
 
         @classmethod
@@ -195,11 +192,9 @@ class Settings(BaseSettings):
             file_secret_settings,
         ):
             return (
-                init_settings,
-                # load_toml_defaults,
-                load_toml_user,
                 env_settings,
-                file_secret_settings,
+                load_toml_user,
+                init_settings,
             )
 
 
