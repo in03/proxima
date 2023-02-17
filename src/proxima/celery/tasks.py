@@ -10,7 +10,17 @@ from proxima.app import core
 from proxima.celery import celery_app
 from proxima.celery.celery import celery_queue
 from proxima.celery.ffmpeg import FfmpegProcess
-from proxima.settings.manager import Settings, settings
+from proxima.settings.manager import (
+    App,
+    BaseModel,
+    Broker,
+    Filters,
+    Paths,
+    Proxy,
+    Settings,
+    Worker,
+    settings,
+)
 from proxima.types.job import ProjectMetadata, SourceMetadata
 
 # Worker and Celery settings pulled from worker's proxima configuration.
@@ -28,9 +38,18 @@ def class_from_args(class_name, arg_dict: dict):
     return class_name(**filteredArgDict)
 
 
+class TaskSettings(BaseModel):
+    app: App
+    broker: Broker
+    paths: Paths
+    filters: Filters
+    proxy: Proxy
+    worker: Worker
+
+
 @dataclass(frozen=True, init=True)
 class TaskJob:
-    settings: Settings
+    settings: TaskSettings
     project: ProjectMetadata
     source: SourceMetadata
 
@@ -90,7 +109,7 @@ def encode_proxy(self, job_dict: dict) -> str:
     source_metadata = class_from_args(SourceMetadata, job_dict["source"])
 
     job = TaskJob(
-        settings=job_dict["settings"],
+        settings=TaskSettings(**job_dict["settings"]),
         project=project_metadata,
         source=source_metadata,
         output_file_path=job_dict["job"]["output_file_path"],
@@ -105,7 +124,7 @@ def encode_proxy(self, job_dict: dict) -> str:
     # Print new job header ############################################
 
     print("\n")
-    console.rule(f"[green]Received proxy encode job :clapper:[/]", align="left")
+    console.rule("[green]Received proxy encode job :clapper:[/]", align="left")
     print("\n")
 
     logger.info(
