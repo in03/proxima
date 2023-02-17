@@ -10,10 +10,10 @@ from pathlib import Path
 from git.exc import InvalidGitRepositoryError
 from git.repo import Repo
 
-from proxima.settings import settings
+from proxima.settings.manager import settings
 
 logger = logging.getLogger("proxima")
-logger.setLevel(settings["app"]["loglevel"])
+logger.setLevel(settings.app.loglevel)
 
 
 def get_script_from_package(script_name: str) -> str:

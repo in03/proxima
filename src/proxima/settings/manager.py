@@ -1,335 +1,220 @@
+from __future__ import annotations
+
 import logging
-import operator
 import os
+import pathlib
 import re
-import shutil
-from functools import reduce
-from operator import getitem
-from pathlib import Path
 
-import typer
-from deepdiff import DeepDiff
+import rich.traceback
+import rtoml
+from pydantic import (
+    BaseModel,
+    BaseSettings,
+    DirectoryPath,
+    Field,
+    RedisDsn,
+    ValidationError,
+    validator,
+)
 from rich import print
-from rich.prompt import Confirm, Prompt
-from ruamel.yaml import YAML
-from schema import SchemaError
-from yaspin import yaspin
+from rich.panel import Panel
 
-from proxima.app import core
+from proxima.app.core import setup_rich_logging
+from proxima.settings import dotenv_settings_file, user_settings_file
 
-from .schema import settings_schema
+setup_rich_logging()
 
-core.install_rich_tracebacks()
 logger = logging.getLogger("proxima")
-
-DEFAULT_SETTINGS_FILE = os.path.join(
-    os.path.dirname(__file__),
-    "default_settings.yml",
-)
-
-USER_SETTINGS_FILE = os.path.join(
-    Path.home(),
-    ".config",
-    "proxima",
-    "user_settings.yml",
-)
+rich.traceback.install(show_locals=False)
 
 
-class SettingsManager:
-    def __init__(
-        self,
-        default_settings_file=DEFAULT_SETTINGS_FILE,
-        user_settings_file=USER_SETTINGS_FILE,
-    ):
-        self.yaml = YAML()
-        self.yaml.indent(mapping=2, sequence=4, offset=2)
-        self.yaml.default_flow_style = False
+def load_toml_user(_):
+    user_toml = pathlib.Path(user_settings_file)
+    return rtoml.load(user_toml.read_text())
 
-        self.default_file = default_settings_file
-        self.user_file = user_settings_file
-        self.user_settings = dict()
-        self.load()
 
-    def load(self):
-        """
-        Load settings
-        """
-        self.__load_default_file()
+class App(BaseModel):
+    loglevel: str = Field("WARNING", description="General application loglevel")
+    check_for_updates: bool = Field(
+        True, description="Enable/Disable checking for updates"
+    )
+    version_constrain: bool = Field(
+        False,
+        description="Enable/disable version constrained queuer/worker compatibility. Keep it enabled unless you're sure!",
+    )
 
-        # Validate user settings
-        if logger.getEffectiveLevel() > 2:
-            self.spinner = yaspin(
-                text="Checking settings...",
-                color="cyan",
+    @validator("loglevel")
+    def must_be_valid_loglevel(cls, v):
+        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        if v not in valid_levels:
+            raise ValueError(
+                f"'{v}' is not a valid loglevel. Choose from [cyan]{', '.join(valid_levels)}[/]"
             )
-            self.spinner.start()
+        return v
 
-        self.__ensure_user_file()
-        self.__load_user_file()
-        self.__ensure_user_keys()
-        self.__validate_schema()
 
-        self.spinner.ok("✅ ")
+class Paths(BaseModel):
+    proxy_root: DirectoryPath = Field(
+        "R:/@ProxyMedia", description="Root directory for proxy transcode structure"
+    )
+    ffmpeg_logfile: DirectoryPath = Field(
+        "R:/ProxyMedia/@logs", description="Path for ffmpeg logfiles"
+    )
+    linkable_proxy_suffix_regex: list[str] = Field(
+        "[-\\d, _\\d, S\\d*]", min_items=1, unique_items=True
+    )
 
-        return self.user_settings
+    @validator("proxy_root", "ffmpeg_logfile")
+    def check_path_exists(cls, v):
+        if not os.path.exists(v):
+            raise ValueError(f"Path {v} does not exist")
+        return v
 
-    def __len__(self):
-        return len(self.user_settings)
-
-    def __getitem__(self, __items):
-        if type(__items) == str:
-            __items = __items.split(" ")
-
+    @validator("linkable_proxy_suffix_regex", each_item=True)
+    def must_be_valid_regex(cls, v):
         try:
-            return reduce(operator.getitem, __items, self.user_settings)
+            re.compile(v)
+        except Exception:
+            raise ValueError(f"Invalid regex for setting {v}")
+        return v
 
-        except KeyError as e:
-            raise KeyError(e)
 
-    def __load_default_file(self):
-        """Load default settings from yaml"""
+class Proxy(BaseModel):
+    ffmpeg_loglevel: str = Field(
+        "error", description="Ffmpeg's internal loglevel visible in worker output"
+    )
+    preset_nickname: str = Field(
+        "ProRes 422 720P", description="Encoding preset nickname for easy reference"
+    )
+    codec: str = Field(
+        "prores", description="Ffmpeg supported codec for proxy transcoding"
+    )
+    vertical_res: str = Field(
+        "720",
+        description="Target vertical resolution in pixels (aspect ratio is automatically preserved)",
+    )
+    profile: str = Field("0", description="Ffmpeg profile for given codec")
+    pix_fmt: str = Field("yuv422p", description="Ffmpeg pixel format for given codec")
+    audio_codec: str = Field(
+        "pcm_s16le",
+        description="Ffmpeg supported audio codec for given format/container",
+    )
+    audio_samplerate: str = Field(
+        "audio_samplerate",
+        description="Ffmpeg supported audio samplerate for audio codec",
+    )
+    misc_args: list[str] = Field(
+        ["-hide_banner", "-stats"], description="Misc Ffmpeg starting arguments"
+    )
+    ext: str = Field(
+        ".mov",
+        description="Extension for Ffmpeg supported container (must be compatible with other proxy settings!)",
+    )
+    overwrite: bool = Field(
+        True,
+        description="Whether or not to overwrite any existing proxy files on collision",
+    )
 
-        logger.debug(f"Loading default settings from {self.default_file}")
 
-        with open(os.path.join(self.default_file)) as file:
-            self.default_settings = self.yaml.load(file)
+class Filters(BaseModel):
+    extension_whitelist: list[str] = Field(
+        [".mov", ".mp4", ".mxf", ".avi"],
+        min_items=0,
+        unique_items=True,
+        description="Only transcode source media with these file extensions. Leave empty to disable.",
+    )
+    framerate_whitelist: list[int] = Field(
+        [24, 25, 30, 50, 60],
+        min_items=0,
+        unique_items=True,
+        description="Only transcode source media with these framerates. Leave empty to disable.",
+    )
 
-    def __load_user_file(self):
-        """Load user settings from yaml"""
+    @validator("extension_whitelist", each_item=True)
+    def check_are_file_extensions(cls, v):
+        if not v.startswith("."):
+            raise ValueError(f"{v} is not a valid file extension")
+        return v
 
-        logger.debug(f"Loading user settings from {self.user_file}")
 
-        with open(self.user_file, "r") as file:
-            self.user_settings = self.yaml.load(file)
+class Broker(BaseModel):
+    broker_url: RedisDsn = Field("redis://192.168.1.19:6379/0")
+    job_expires: int = Field(
+        3600,
+        description="How long until a queued proxy job expires if not received by a worker. Default: 1 hr",
+    )
+    result_expires: int = Field(
+        86400,
+        description="How long until a proxy job's result is discared. Default: 1 day. Used by monitor webapp",
+    )
 
-    def update_nested_setting(self, key_list, value):
-        """
-        Update nested user settings with key list.
 
-        Fully loads and rewrites the user settings file.
-        As such, invalid keys and values will be left out of the updated file.
+class Worker(BaseModel):
+    loglevel: str = Field("INFO", description="Worker loglevel")
+    terminal_args: list[str] = Field(
+        ...,
+        min_items=0,
+        description="Pre-command args. Use to invoke the command through another shell/terminal.",
+    )
+    celery_args: list[str] = Field(
+        ["-l", "INFO", "-P", "solo", "--without-mingle", "--without-gossip"],
+        min_items=0,
+        description="Pre-command args. Use to invoke the command through another shell/terminal.",
+    )
 
-        Args:
-            - self (contains user settings file path)
-            - key_list (list of keys to access nested key/val)
-            - value (new value to update)
+    @validator("loglevel")
+    def must_be_valid_loglevel(cls, v):
+        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+        if v not in valid_levels:
+            raise ValueError(f"{v} is not a valid loglevel. Choose from {valid_levels}")
+        return v
 
-        Returns:
-            Nothing
 
-        Raises:
-            Nothing
+class Settings(BaseSettings):
+    app: App
+    broker: Broker
+    filters: Filters
+    paths: Paths
+    proxy: Proxy
+    worker: Worker
 
-        """
+    class Config:
+        env_file = dotenv_settings_file
+        env_file_encoding = "utf-8"
+        env_prefix = "PROXIMA_"
+        env_nested_delimiter = "__"
 
-        reduce(getitem, key_list[:-1], self.user_settings)[key_list[-1]] = value
-
-        with open(self.user_file, "w") as file_:
-            logger.debug(f"[magenta]Writing updated settings to '{self.user_file}'")
-            self.yaml.dump(self.user_settings, file_)
-
-        return
-
-    def __ensure_user_file(self):
-        """Copy default settings to user settings if it doesn't exist
-
-        Prompt the user to edit the file afterwards, then exit.
-        """
-
-        logger.debug(f"Ensuring settings file exists at {self.user_file}")
-
-        if not os.path.exists(self.user_file):
-            self.spinner.fail("❌ ")
-            if Confirm.ask(
-                f"[yellow]No user settings found at path [/]'{self.user_file}'\n"
-                + "[cyan]Load defaults now for adjustment?[/]"
-            ):
-                print()  # Newline
-                self.spinner.text = "Copying default settings..."
-                self.spinner.start()
-
-                # Create dir, copy file, open
-                try:
-                    os.makedirs(os.path.dirname(self.user_file))
-
-                except FileExistsError:
-                    self.spinner.stop()
-                    logger.info("[yellow]Directory exists, skipping...[/]")
-                    self.spinner.start()
-
-                except OSError:
-                    self.spinner.fail("❌ ")
-                    logger.critical("[red]Error creating directory![/]")
-                    core.app_exit(1, -1)
-
-                try:
-                    shutil.copy(self.default_file, self.user_file)
-                    self.spinner.ok("✅ ")
-
-                except:
-                    self.spinner.fail("❌ ")
-                    logger.error(
-                        f"[red]Couldn't copy default settings to {self.user_file}![/]"
-                    )
-                    core.app_exit(1, -1)
-
-                self.spinner.stop()
-                typer.launch(self.user_file)
-
-            core.app_exit(0)
-
-    def __ensure_user_keys(self):
-        """Ensure user settings have all keys in default settings"""
-
-        self.spinner.stop()
-
-        diffs = DeepDiff(self.default_settings, self.user_settings)
-        logger.debug("[magenta]Diffs:[/]\n")
-
-        # Check for unknown settings
-        if diffs.get("dictionary_item_added"):
-            # listcomp log warning for each unknown setting
-            [
-                logger.warning(
-                    f'[yellow]Unknown setting[/] [white]"{x}"[/]'
-                    "[yellow] will be ignored![/]"
-                )
-                for x in diffs["dictionary_item_added"]
-            ]
-            print()  # Newline
-
-        def __prompt_setting_substitution(self, setting_name, key_list):
-            # Get default value
-            if len(key_list) > 0:
-                logger.debug("Getting default value from nested keys")
-                default_value = reduce(dict.get, key_list, self.default_settings)  # type: ignore
-
-            else:
-                logger.debug("Standard dict lookup")
-                default_value = self.default_settings[key_list]
-
-            print(f'[red bold]Missing setting [green]"{setting_name}"[/][/]')
-
-            try:
-                custom_value = Prompt.ask(
-                    f"[cyan]Type a new value or leave blank to use default[/] ('{default_value}')"
-                )
-
-            except KeyboardInterrupt:
-                print()
-                self.spinner.fail("❌ ")
-                # Log all missing settings so user doesn't have to know each missing.
-                [
-                    logger.error(f'[red bold]Missing setting "{x}"')
-                    for x in diffs["dictionary_item_removed"]
-                ]
-
-                print()
-                print("[red bold]Cannot continue.\nPlease define missing settings!")
-                core.app_exit(1, -1)
-
-            else:
-                if not custom_value:
-                    print(f"[green]Using default '{default_value}'[/]")
-                    custom_value = default_value
-
-                else:
-                    print(f"[green]Using custom value '{custom_value}'[/]")
-
-                # TODO: Implement type validation for custom value and prompt retry on fail
-                self.update_nested_setting(key_list, custom_value)
-
-            finally:
-                print()
-
-        def _get_missing_settings(self):
-            """
-            Prompt substitution for settings present in default-settings that are not present in user-settings.
-
-            Calls `_confirm_setting_substitution` if settings require substitution.
-
-            """
-
-            if diffs.get("dictionary_item_removed"):
-                self.spinner.stop()
-                logger.error(
-                    f"[bold red]Required user settings are missing!\n[/]"
-                    f"[yellow]Follow prompts to substitute missing settings with default or custom values.\n"
-                    f"Or edit settings manually here and re-run: '{self.user_file}'\n"
-                )
-                print()
-
-                for x in diffs["dictionary_item_removed"]:
-                    # Match all keys in diff string
-                    key_list = re.findall(r"\['(\w*)'\]", x)
-                    __prompt_setting_substitution(self, x, key_list)
-
-            def _catch_empty_setting_section_with_inline_comment(self):
-                """
-                Catch setting sections that don't show as empty because of inline comments.
-
-                Diff usually gives `dictionary_item_removed` when a section is empty, but
-                will actually show `type_changes` with `ruamel.yaml.comments.CommentedMap` as `old_type`
-                if the setting section has an inline comment after the setting section key.
-                This leads to inline comments breaking setting-substitution if all child settings are missing.
-                Bit of an edge case really.
-
-                Calls `_confirm_setting_substitution` if settings require substitution.
-
-                Args:
-                    self
-                Returns:
-                    Nothing
-                Raises:
-                    Nothing
-                """
-
-                if diffs.get("type_changes"):
-                    self.spinner.stop()
-
-                    # Match root keys with entire missing sections except for an inline comment
-                    empty_root_keys = re.findall(
-                        r"root\['(\w*)'\]\": {'old_type': <class 'ruamel\.yaml\.comments\.CommentedMap'>",
-                        str(diffs),
-                    )
-
-                    # If only value is a comment, section is empty
-                    for key in empty_root_keys:
-                        # TODO: Fix this. `_prompt_setting_substitution` expects a list
-                        # this is not the way to do it
-                        # labels: enhancement
-
-                        single_root_key_list = []
-                        single_root_key_list.append(key)
-                        __prompt_setting_substitution(
-                            self, "".join(key), single_root_key_list
-                        )
-
-            _catch_empty_setting_section_with_inline_comment(self)
-
-        _get_missing_settings(self)
-
-        print()
-
-    def __validate_schema(self):
-        """Validate user settings against schema"""
-
-        logger.debug(f"Validating user settings against schema")
-
-        try:
-            settings_schema.validate(self.user_settings)
-
-        except SchemaError as e:
-            self.spinner.fail("❌ ")
-            logger.error(
-                f"[red]Couldn't validate application settings![/]\n{e}\n"
-                + f"[red]Exiting...[/]\n"
+        @classmethod
+        def customise_sources(
+            cls,
+            init_settings,
+            env_settings,
+            file_secret_settings,
+        ):
+            return (
+                env_settings,
+                load_toml_user,
+                init_settings,
             )
-            core.app_exit(1, -1)
-
-    def update(self, dict_: dict):
-        logger.info(f"[yellow]Reconfigured settings:\n{dict_}")
-        self.user_settings.update(dict_)
 
 
-settings = SettingsManager()
+settings = None
+
+
+try:
+    settings = Settings()
+
+except ValidationError as e:
+    print(
+        Panel(
+            title="[red]Uh, oh! Invalid user settings",
+            title_align="left",
+            highlight=True,
+            expand=False,
+            renderable=f"\n{str(e)}\n\nRun 'Proxima config --help' to see how to fix broken settings.",
+        )
+    )
+
+if __name__ == "__main__":
+    if settings:
+        print(settings.dict())

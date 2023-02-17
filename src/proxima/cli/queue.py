@@ -10,12 +10,12 @@ from proxima import ProxyLinker, core, shared
 from proxima.app import resolve
 from proxima.app.checks import AppStatus
 from proxima.celery.tasks import encode_proxy
-from proxima.settings import settings
+from proxima.settings.manager import settings
 
 core.install_rich_tracebacks()
 
 logger = logging.getLogger("proxima")
-logger.setLevel(settings["app"]["loglevel"])
+logger.setLevel(settings.app.loglevel)
 
 
 def queue_batch(batch: list):
@@ -32,7 +32,7 @@ def queue_batch(batch: list):
     progress = shared.ProgressTracker()
 
     # Queue job
-    results = task_group.apply_async(expires=settings["broker"]["job_expires"])
+    results = task_group.apply_async(expires=settings.broker.job_expires)
     logger.debug(f"[magenta] * Queued batch with ID {results}[/]")
 
     # report progress is blocking!

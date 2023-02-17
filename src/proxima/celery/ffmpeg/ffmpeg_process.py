@@ -14,13 +14,13 @@ from rich.progress import (
 from rich.prompt import Confirm
 
 from proxima.app import core
-from proxima.settings import settings
+from proxima.settings.manager import settings
 
 from .utils import ffprobe
 
 core.install_rich_tracebacks()
 logger = logging.getLogger("proxima")
-logger.setLevel(settings["worker"]["loglevel"])
+logger.setLevel(settings.worker.loglevel)
 
 
 class FfmpegProcess:
@@ -101,7 +101,7 @@ class FfmpegProcess:
 
         # Don't continue if we don't have the process
         if not process:
-            logger.critical(f"Couldn't start ffmpeg process!")
+            logger.critical("Couldn't start ffmpeg process!")
             core.app_exit(1, -1)
 
         try:

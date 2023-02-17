@@ -9,7 +9,7 @@ from rich.console import Console
 
 from proxima import exceptions
 from proxima.app import core
-from proxima.settings import settings
+from proxima.settings.manager import settings
 from proxima.types.job import Job
 from proxima.types.media_pool_index import media_pool_index
 
@@ -18,7 +18,7 @@ console = Console()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger("proxima")
-logger.setLevel(settings["app"]["loglevel"])
+logger.setLevel(settings.app.loglevel)
 
 
 class ProxyLinker:

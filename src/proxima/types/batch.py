@@ -9,13 +9,13 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 
-from proxima.app import core, exceptions, link
-from proxima.settings import settings
+from proxima.app import core, exceptions
+from proxima.settings.manager import settings
 from proxima.types.job import Job
 
 core.install_rich_tracebacks()
 logger = logging.getLogger("proxima")
-logger.setLevel(settings["app"]["loglevel"])
+logger.setLevel(settings.app.loglevel)
 
 console = Console()
 
@@ -81,7 +81,7 @@ class Batch:
         elf = self.existing_link_failed_count
         elr = self.existing_link_requeued_count
 
-        if not settings["proxy"]["overwrite"]:
+        if not settings.proxy.overwrite:
             overwrite_warning = "[yellow]PRESERVE. Use wisely."
         else:
             overwrite_warning = "[magenta]OVERWRITE"
@@ -89,7 +89,7 @@ class Batch:
         return str(
             f"[cyan]{self.project} | {self.timeline}[/]\n"
             f"[green]Linked {els} | [yellow]Requeued {elr} | [red]Failed {elf}\n"
-            f"{settings['proxy']['nickname']} | {overwrite_warning}\n"
+            f"{settings.proxy.preset_nickname} | {overwrite_warning}\n"
             f"\n[bold][white]Total queueable now:[/bold] {len(self.batch)}\n"
         )
 
@@ -151,7 +151,7 @@ class Batch:
                     "job": job_attributes,
                     "project": as_dict(x.project),
                     "source": as_dict(x.source),
-                    "settings": x.settings.user_settings,
+                    "settings": x.settings.dict(),
                 }
             )
 
@@ -165,7 +165,7 @@ class Batch:
         Prompts user to either link or re-render unlinked proxy media that exists in the expected location.
         """
 
-        logger.info(f"[cyan]Checking for existing, unlinked media...")
+        logger.info("[cyan]Checking for existing, unlinked media...")
 
         existing_unlinked = []
         mismatch_fail = []
@@ -196,8 +196,8 @@ class Batch:
                 # Mark all as requeued and carry on
                 self.existing_link_requeued_count = len(existing_unlinked)
 
-                if settings["proxy"]["overwrite"]:
-                    logger.debug(f"[magenta] * Existing proxies set to be overwritten")
+                if settings.proxy.overwrite:
+                    logger.debug("[magenta] * Existing proxies set to be overwritten")
                     # TODO: Implement overwrite logic - also need to test if this is feasible without oplock issues"
                 return
 
