@@ -2,14 +2,13 @@ import logging
 import os
 
 from pydavinci import davinci
-from pydavinci.wrappers.mediapool import MediaPool
 from pydavinci.wrappers.mediapoolitem import MediaPoolItem
 from pydavinci.wrappers.project import Project
 from pydavinci.wrappers.timeline import Timeline
 from pydavinci.wrappers.timelineitem import TimelineItem
 
 from proxima.app import core
-from proxima.settings import SettingsManager, settings
+from proxima.settings.manager import Settings, settings
 from proxima.types.batch import Batch
 from proxima.types.job import Job, ProjectMetadata, SourceMetadata
 from proxima.types.media_pool_index import media_pool_index
@@ -18,7 +17,7 @@ resolve = davinci.Resolve()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger("proxima")
-logger.setLevel(settings["app"]["loglevel"])
+logger.setLevel(settings.app.loglevel)
 
 
 def get_timeline_items(timeline: Timeline) -> list[TimelineItem]:
@@ -140,8 +139,8 @@ def filter_queueable(media_pool_items: list[MediaPoolItem]) -> list[MediaPoolIte
         source_ext = os.path.splitext(source_path)[1].lower()
 
         # Filter extension
-        if settings["filters"]["extension_whitelist"]:
-            if source_ext not in settings["filters"]["extension_whitelist"]:
+        if settings.filters.extension_whitelist:
+            if source_ext not in settings.filters.extension_whitelist:
                 logger.warning(
                     f"[yellow]Ignoring file with extension not in whitelist: '{source_ext}'\n"
                     + f"from '{mpi.properties['File Path']}'[/]\n"
@@ -149,12 +148,12 @@ def filter_queueable(media_pool_items: list[MediaPoolItem]) -> list[MediaPoolIte
                 continue
 
         # Filter framerate
-        if settings["filters"]["framerate_whitelist"]:
+        if settings.filters.framerate_whitelist:
             # Make int to avoid awkward extra zeros.
             if float(mpi.properties["FPS"]).is_integer():
                 mpi.properties["FPS"] = int(float(mpi.properties["FPS"]))
 
-            if mpi.properties["FPS"] not in settings["filters"]["framerate_whitelist"]:
+            if mpi.properties["FPS"] not in settings.filters.framerate_whitelist:
                 logger.warning(
                     f"[yellow]Ignoring file with framerate not in whitelist: '{mpi.properties['FPS']}'\n"
                     + f"from '{mpi.properties['File Path']}' [/]\n"
@@ -164,9 +163,7 @@ def filter_queueable(media_pool_items: list[MediaPoolItem]) -> list[MediaPoolIte
     return media_pool_items
 
 
-def generate_batch(
-    media_pool_items: list[MediaPoolItem], settings: SettingsManager
-) -> Batch:
+def generate_batch(media_pool_items: list[MediaPoolItem], settings: Settings) -> Batch:
     logger.info("[cyan]Generating batch of jobs...")
 
     job_list = []

@@ -37,11 +37,11 @@ setup_rich_logging()
 # isort is configured not to touch __init__ files
 # but this is fragile and should be fixed
 
-# from proxima.cli import main as cli
+from proxima.cli import main as cli
 
-# from .app import core
-# from .celery import shared
-# from .app import checks
-# from .app import exceptions
-# from .app import resolve
-# from .app.link import ProxyLinker
+from .app import core
+from .celery import shared
+from .app import checks
+from .app import exceptions
+from .app import resolve
+from .app.link import ProxyLinker

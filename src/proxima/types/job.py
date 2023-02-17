@@ -8,12 +8,12 @@ from glob import glob
 
 from proxima.app import core, exceptions
 from proxima.celery import ffmpeg
-from proxima.settings import SettingsManager, settings
+from proxima.settings.manager import Settings, settings
 from proxima.types.media_pool_index import media_pool_index
 
 core.install_rich_tracebacks()
 logger = logging.getLogger("proxima")
-logger.setLevel(settings["app"]["loglevel"])
+logger.setLevel(settings.app.loglevel)
 
 
 @dataclass(frozen=True)
@@ -49,7 +49,7 @@ class Job:
         self,
         project_metadata: ProjectMetadata,
         source_metadata: SourceMetadata,
-        settings: SettingsManager,
+        settings: Settings,
     ):
         # Get data
         self.source = source_metadata
@@ -106,7 +106,7 @@ class Job:
 
         initial_output_path = os.path.join(self.output_directory, self.source.file_name)
 
-        if self.settings["proxy"]["overwrite"]:
+        if self.settings.proxy.overwrite:
             if not os.path.exists(initial_output_path):
                 return initial_output_path
 
@@ -142,7 +142,7 @@ class Job:
 
         return os.path.normpath(
             os.path.join(
-                self.settings["paths"]["proxy_path_root"],
+                self.settings.paths.proxy_root,
                 os.path.dirname(p.relative_to(*p.parts[:1])),
             )
         )
@@ -202,7 +202,7 @@ class Job:
             # If match allowed suffix
             basename = os.path.basename(x)
             candidate_filename = os.path.splitext(basename)[0]
-            for criteria in self.settings["paths"]["linkable_proxy_suffix_regex"]:
+            for criteria in self.settings.paths.linkable_proxy_suffix_regex:
                 logger.debug(
                     f"[magenta] * Search regex '{criteria}' in filename '{candidate_filename}' "
                 )
@@ -214,7 +214,7 @@ class Job:
                     continue
 
                 else:
-                    logger.debug(f"[yellow]   * Not found")
+                    logger.debug("[yellow]   * Not found")
 
         if not candidates:
             return None
@@ -254,7 +254,7 @@ class Job:
                 if stream["codec_type"] == "video":
                     if stream["r_frame_rate"] != "0/0":
                         video_info = stream
-            assert video_info != None
+            assert video_info is not None
 
             color_data = {k: v for k, v in video_info.items() if "color" in k}
             logger.debug(f"[magenta] * Color data: {color_data}")

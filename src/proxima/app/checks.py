@@ -10,7 +10,7 @@ from rich.rule import Rule
 from proxima.app import core
 from proxima.app.package import build_info
 from proxima.celery import celery_app
-from proxima.settings import settings
+from proxima.settings.manager import settings
 
 core.install_rich_tracebacks()
 logger = logging.getLogger("proxima")
@@ -178,7 +178,7 @@ class AppStatus:
         )
 
     def update_status(self):
-        if not settings["app"]["check_for_updates"]:
+        if not settings.app.check_for_updates:
             self.status_text += "[yellow]Update check disabled\n"
             return
 
@@ -194,14 +194,15 @@ class AppStatus:
         self.status_text += "[bold]\nBuild\n[/]"
 
         if build_info.is_git_repo:
-            self.status_text += f"[magenta]Git: {build_info.git_version[:7:]}[/] | "
+            if build_info.git_version:
+                self.status_text += f"[magenta]Git: {build_info.git_version[:7:]}[/] | "
 
         self.status_text += (
             f"[green]Release: {build_info.version}[/] | "
             f'[cyan]VC key: "{self.vc_key}"\n'
         )
 
-        if settings["app"]["disable_version_constrain"]:
+        if not settings.app.version_constrain:
             self.status_text += "[yellow]Version constrain is disabled! :dragon_face:\n"
 
     def worker_status(self):
@@ -232,5 +233,5 @@ class AppStatus:
                 f"{incompatible_host_string}"
             )
 
-            if settings["app"]["disable_version_constrain"]:
+            if not settings.app.version_constrain:
                 self.status_text += "\n\n[yellow]WARNING: Jobs will be queued to incompatible workers anyway.\n"

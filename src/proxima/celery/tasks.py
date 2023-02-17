@@ -10,17 +10,16 @@ from proxima.app import core
 from proxima.celery import celery_app
 from proxima.celery.celery import celery_queue
 from proxima.celery.ffmpeg import FfmpegProcess
-from proxima.settings import settings
-from proxima.settings.manager import SettingsManager
+from proxima.settings.manager import Settings, settings
 from proxima.types.job import ProjectMetadata, SourceMetadata
 
-# Worker and Celery settings pulled from local user_settings file
+# Worker and Celery settings pulled from worker's proxima configuration.
 # All other settings are passed from queuer
 console = Console()
 
 core.install_rich_tracebacks()
 logger = logging.getLogger("proxima")
-logger.setLevel(settings["worker"]["loglevel"])
+logger.setLevel(settings.worker.loglevel)
 
 
 def class_from_args(class_name, arg_dict: dict):
@@ -31,7 +30,7 @@ def class_from_args(class_name, arg_dict: dict):
 
 @dataclass(frozen=True, init=True)
 class TaskJob:
-    settings: SettingsManager
+    settings: Settings
     project: ProjectMetadata
     source: SourceMetadata
 
@@ -52,7 +51,7 @@ class TaskJob:
             raise FileExistsError(
                 f"File already exists at provided output path {self.output_file_path}"
             )
-        if not self.input_level in [
+        if self.input_level not in [
             "in_range=full",
             "in_range=limited",
         ]:  # CHECK VALID VIDEO LEVELS
@@ -103,7 +102,7 @@ def encode_proxy(self, job_dict: dict) -> str:
     # Create proxy output directory
     os.makedirs(job.output_directory, exist_ok=True)
 
-    # Print new job header #####################################################################
+    # Print new job header ############################################
 
     print("\n")
     console.rule(f"[green]Received proxy encode job :clapper:[/]", align="left")
@@ -114,7 +113,7 @@ def encode_proxy(self, job_dict: dict) -> str:
         f"Input File: '{job.source.file_path}'"
     )
 
-    ############################################################################################
+    ###################################################################
 
     # Log job details
     logger.info(f"Output File: '{job.output_file_path}'\n")
@@ -127,20 +126,20 @@ def encode_proxy(self, job_dict: dict) -> str:
     logger.info(f"Starting Timecode: {job.source.start_tc}")
 
     # Get FFmpeg Command
-    ps = job.settings["proxy"]
+    ps = job.settings.proxy
 
     ffmpeg_command = [
         # INPUT
         "ffmpeg",
         "-y",  # Never prompt!
-        *ps["misc_args"],
+        *ps.misc_args,
         "-i",
         job.source.file_path,
         # VIDEO
         "-c:v",
-        ps["codec"],
+        ps.codec,
         "-profile:v",
-        ps["profile"],
+        ps.profile,
         "-vsync",
         "-1",  # Necessary to match VFR
         # TODO: Format this better
@@ -152,17 +151,17 @@ def encode_proxy(self, job_dict: dict) -> str:
         # labels: enhancement
         # VIDEO FILTERS
         "-vf",
-        f"scale=-2:{job.settings['proxy']['vertical_res']},"
+        f"scale=-2:{ps.vertical_res},"
         f"scale={job.input_level}:out_range=limited, "
         f"{ffmpeg_video_flip(job)}"
-        f"format={ps['pix_fmt']}"
-        if ps["pix_fmt"]
+        f"format={ps.pix_fmt}"
+        if ps.pix_fmt
         else "",
         # AUDIO
         "-c:a",
-        ps["audio_codec"],
+        ps.audio_codec,
         "-ar",
-        ps["audio_samplerate"],
+        ps.audio_samplerate,
         # TIMECODE
         "-timecode",
         job.source.start_tc,
@@ -181,14 +180,14 @@ def encode_proxy(self, job_dict: dict) -> str:
             task_id=self.request.id,
             channel_id=self.request.group,
             command=[*ffmpeg_command],
-            ffmpeg_loglevel=ps["ffmpeg_loglevel"],
+            ffmpeg_loglevel=ps.ffmpeg_loglevel,
         )
     except Exception as e:
         logger.error(f"[red]Error: {e}\nRejecting task to prevent requeuing.")
         raise Reject(e, requeue=False)
 
     # Create logfile
-    encode_log_dir = job.settings["paths"]["ffmpeg_logfile_path"]
+    encode_log_dir = job.settings.paths.ffmpeg_logfile
     os.makedirs(encode_log_dir, exist_ok=True)
     logfile_path = os.path.normpath(
         os.path.join(encode_log_dir, job.output_file_name + ".txt")

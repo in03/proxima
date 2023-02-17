@@ -3,11 +3,9 @@ import logging
 import os
 import shlex
 import subprocess
-import sys
 from fractions import Fraction
 
 from proxima.app import core
-from proxima.settings import settings
 
 core.install_rich_tracebacks()
 logger = logging.getLogger("proxima")
@@ -19,8 +17,8 @@ def cleanup_working_dir(dir):
     if os.path.exists(dir):
         try:
             os.rmdir(dir)
-        except:
-            print(f"Couldn't remove {dir}. In use?")
+        except Exception as e:
+            print(f"Couldn't remove {dir}. In use?\n{e}")
             return False
     else:
         print(f"File: '{dir}' already deleted. No action taken.")
