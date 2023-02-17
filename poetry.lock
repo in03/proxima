@@ -448,15 +448,6 @@ files = [
 test = ["flake8 (==3.7.8)", "hypothesis (==3.55.3)"]
 
 [[package]]
-name = "commonregex"
-version = "1.5.4"
-description = "Find all dates, times, emails, phone numbers, links, emails, ip addresses, prices, bitcoin address, and street addresses in a string."
-category = "main"
-optional = false
-python-versions = "*"
-files = []
-
-[[package]]
 name = "contextlib2"
 version = "21.6.0"
 description = "Backports and enhancements for the contextlib module"
@@ -2400,4 +2391,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10.0,<4.0.0"
-content-hash = "f7d5372ef8c9bb439a23526f2bfb2bb40a553ce6693c47613ae616cd7db41e97"
+content-hash = "57f293f2ed27706e83b5259ccf29e5932592e46579a01de26151f50293db5dfe"
