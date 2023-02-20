@@ -190,15 +190,24 @@ class Job:
         # Fetch paths of all possible variants of source filename
         matches = glob(glob_path + "*.*")
 
+        if not matches:
+            logger.debug(
+                f'[magenta] * No variants found at expected path:\n   "{glob_path}"'
+            )
+            return
+
         candidates = []
         for x in matches:
-            # If exact match
+            logger.debug(f"[magenta] * Checking variant {x}")
+
+            logger.debug("[magenta] * Checking for exact match")
             if os.path.basename(x).upper() == self.source.file_name.upper():
                 logger.debug(f"[magenta] * Found exact match: '{os.path.basename(x)}'")
                 candidates.append(x)
                 continue
 
             # If match allowed suffix
+            logger.debug("[magenta] * Checking for regex match")
             basename = os.path.basename(x)
             candidate_filename = os.path.splitext(basename)[0]
             for criteria in self.settings.paths.linkable_proxy_suffix_regex:
