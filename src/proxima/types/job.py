@@ -157,9 +157,8 @@ class Job:
 
     @property
     def is_offline(self) -> bool:
-        """Whether or not the job has offline proxy media"""
-
-        return self.managed_proxy_status
+        """Job with \"Offline\" linked media"""
+        return self.proxy_offline_status
 
     @is_offline.setter
     def is_offline(self, value: bool):
