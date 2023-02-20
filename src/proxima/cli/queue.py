@@ -54,9 +54,13 @@ def main():
     media_pool_items = resolve.get_media_pool_items(track_items)
     batch = resolve.generate_batch(media_pool_items, settings)
 
-    batch.remove_already_linked()
+    # 'Remove healthy' runs twice because 'Handle Existing Unlinked'
+    # can make media healthy, ut we also don't want it to
+    # handle healthy media.
+
+    batch.remove_healthy()
     batch.handle_existing_unlinked()
-    batch.remove_already_linked()
+    batch.remove_healthy()
     batch.handle_offline_proxies()
     app_status = AppStatus("proxima")
 

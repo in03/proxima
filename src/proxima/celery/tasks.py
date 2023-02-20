@@ -206,7 +206,7 @@ def encode_proxy(self, job_dict: dict) -> str:
         raise Reject(e, requeue=False)
 
     # Create logfile
-    encode_log_dir = job.settings.paths.ffmpeg_logfile
+    encode_log_dir = job.settings.paths.ffmpeg_logfile_dir
     os.makedirs(encode_log_dir, exist_ok=True)
     logfile_path = os.path.normpath(
         os.path.join(encode_log_dir, job.output_file_name + ".txt")

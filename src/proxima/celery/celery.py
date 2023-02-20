@@ -30,8 +30,8 @@ app.autodiscover_tasks(
 
 # Remap terms
 broker_settings = {
-    "broker_url": settings.broker.broker_url,
-    "result_backend": settings.broker.broker_url,
+    "broker_url": settings.broker.url,
+    "result_backend": settings.broker.url,
     "result_expires": settings.broker.result_expires,
 }
 
