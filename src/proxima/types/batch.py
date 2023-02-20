@@ -157,8 +157,9 @@ class Batch:
 
         return data
 
-    def remove_already_linked(self):
-        self.batch = [x for x in self.batch if not x.is_linked]
+    def remove_healthy(self):
+        """Remove linked and online source media, i.e. \"healthy\" """
+        self.batch = [x for x in self.batch if not x.is_linked or x.is_offline]
 
     def handle_existing_unlinked(self):
         """
