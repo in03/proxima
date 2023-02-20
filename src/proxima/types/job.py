@@ -151,7 +151,7 @@ class Job:
     def is_linked(self) -> bool:
         """Job with linked media that may or may not be \"Offline\" """
 
-        if self.source.proxy_status in ["None", "Offline"]:
+        if self.source.proxy_status == "None":
             return False
         return True
 
