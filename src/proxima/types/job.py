@@ -165,8 +165,8 @@ class Job:
         """Offline proxy media status setter"""
 
         assert isinstance(value, bool)
-        self.managed_proxy_status = value
-        return self.managed_proxy_status
+        self.proxy_offline_status = value
+        return self.proxy_offline_status
 
     @cached_property
     def newest_linkable_proxy(self) -> str | None:
