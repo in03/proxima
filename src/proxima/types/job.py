@@ -57,8 +57,8 @@ class Job:
         self.settings = settings
 
         # Dynamic values
-        self.managed_proxy_status: bool = (
-            False if self.source.proxy_status == "Offline" else True
+        self.proxy_offline_status: bool = (
+            True if self.source.proxy_status == "Offline" else False
         )
 
     def __repr__(self):
