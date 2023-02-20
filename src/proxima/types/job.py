@@ -149,7 +149,7 @@ class Job:
 
     @property
     def is_linked(self) -> bool:
-        """Whether or not the job has linked proxy media"""
+        """Job with linked media that may or may not be \"Offline\" """
 
         if self.source.proxy_status in ["None", "Offline"]:
             return False
