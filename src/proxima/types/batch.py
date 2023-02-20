@@ -89,7 +89,7 @@ class Batch:
         return str(
             f"[cyan]{self.project} | {self.timeline}[/]\n"
             f"[green]Linked {els} | [yellow]Requeued {elr} | [red]Failed {elf}\n"
-            f"{settings.proxy.preset_nickname} | {overwrite_warning}\n"
+            f"{settings.proxy.nickname} | {overwrite_warning}\n"
             f"\n[bold][white]Total queueable now:[/bold] {len(self.batch)}\n"
         )
 

@@ -10,12 +10,12 @@ import rtoml
 from pydantic import (
     BaseModel,
     BaseSettings,
-    DirectoryPath,
     Field,
     RedisDsn,
     ValidationError,
     validator,
 )
+from pydantic.env_settings import SettingsSourceCallable
 from rich import print
 from rich.panel import Panel
 
@@ -54,17 +54,13 @@ class App(BaseModel):
 
 
 class Paths(BaseModel):
-    proxy_root: DirectoryPath = Field(
-        "R:/@ProxyMedia", description="Root directory for proxy transcode structure"
+    proxy_root: str = Field(
+        ..., description="Root directory for proxy transcode structure"
     )
-    ffmpeg_logfile: DirectoryPath = Field(
-        "R:/ProxyMedia/@logs", description="Path for ffmpeg logfiles"
-    )
-    linkable_proxy_suffix_regex: list[str] = Field(
-        "[-\\d, _\\d, S\\d*]", min_items=1, unique_items=True
-    )
+    ffmpeg_logfile_dir: str = Field(..., description="Path for ffmpeg logfiles")
+    linkable_proxy_suffix_regex: list[str] = Field(..., min_items=1, unique_items=True)
 
-    @validator("proxy_root", "ffmpeg_logfile")
+    @validator("proxy_root", "ffmpeg_logfile_dir")
     def check_path_exists(cls, v):
         if not os.path.exists(v):
             raise ValueError(f"Path {v} does not exist")
@@ -81,50 +77,46 @@ class Paths(BaseModel):
 
 class Proxy(BaseModel):
     ffmpeg_loglevel: str = Field(
-        "error", description="Ffmpeg's internal loglevel visible in worker output"
+        ..., description="Ffmpeg's internal loglevel visible in worker output"
     )
-    preset_nickname: str = Field(
-        "ProRes 422 720P", description="Encoding preset nickname for easy reference"
+    nickname: str = Field(
+        ..., description="Encoding preset nickname for easy reference"
     )
-    codec: str = Field(
-        "prores", description="Ffmpeg supported codec for proxy transcoding"
-    )
+    codec: str = Field(..., description="Ffmpeg supported codec for proxy transcoding")
     vertical_res: str = Field(
-        "720",
+        ...,
         description="Target vertical resolution in pixels (aspect ratio is automatically preserved)",
     )
-    profile: str = Field("0", description="Ffmpeg profile for given codec")
-    pix_fmt: str = Field("yuv422p", description="Ffmpeg pixel format for given codec")
+    profile: str = Field(..., description="Ffmpeg profile for given codec")
+    pix_fmt: str = Field(..., description="Ffmpeg pixel format for given codec")
     audio_codec: str = Field(
-        "pcm_s16le",
+        ...,
         description="Ffmpeg supported audio codec for given format/container",
     )
     audio_samplerate: str = Field(
-        "audio_samplerate",
+        ...,
         description="Ffmpeg supported audio samplerate for audio codec",
     )
-    misc_args: list[str] = Field(
-        ["-hide_banner", "-stats"], description="Misc Ffmpeg starting arguments"
-    )
+    misc_args: list[str] = Field(..., description="Misc Ffmpeg starting arguments")
     ext: str = Field(
-        ".mov",
+        ...,
         description="Extension for Ffmpeg supported container (must be compatible with other proxy settings!)",
     )
     overwrite: bool = Field(
-        True,
+        ...,
         description="Whether or not to overwrite any existing proxy files on collision",
     )
 
 
 class Filters(BaseModel):
     extension_whitelist: list[str] = Field(
-        [".mov", ".mp4", ".mxf", ".avi"],
+        ...,
         min_items=0,
         unique_items=True,
         description="Only transcode source media with these file extensions. Leave empty to disable.",
     )
     framerate_whitelist: list[int] = Field(
-        [24, 25, 30, 50, 60],
+        ...,
         min_items=0,
         unique_items=True,
         description="Only transcode source media with these framerates. Leave empty to disable.",
@@ -138,26 +130,26 @@ class Filters(BaseModel):
 
 
 class Broker(BaseModel):
-    broker_url: RedisDsn = Field("redis://192.168.1.19:6379/0")
+    url: RedisDsn = Field(..., description="Redis broker address")
     job_expires: int = Field(
-        3600,
+        ...,
         description="How long until a queued proxy job expires if not received by a worker. Default: 1 hr",
     )
     result_expires: int = Field(
-        86400,
+        ...,
         description="How long until a proxy job's result is discared. Default: 1 day. Used by monitor webapp",
     )
 
 
 class Worker(BaseModel):
-    loglevel: str = Field("INFO", description="Worker loglevel")
+    loglevel: str = Field(..., description="Worker loglevel")
     terminal_args: list[str] = Field(
         ...,
         min_items=0,
         description="Pre-command args. Use to invoke the command through another shell/terminal.",
     )
     celery_args: list[str] = Field(
-        ["-l", "INFO", "-P", "solo", "--without-mingle", "--without-gossip"],
+        ...,
         min_items=0,
         description="Pre-command args. Use to invoke the command through another shell/terminal.",
     )
@@ -190,10 +182,11 @@ class Settings(BaseSettings):
             init_settings,
             env_settings,
             file_secret_settings,
-        ):
+        ) -> tuple[SettingsSourceCallable, ...]:
             return (
                 env_settings,
                 load_toml_user,
+                file_secret_settings,
                 init_settings,
             )
 
