@@ -2,6 +2,16 @@
 
 <!--next-version-placeholder-->
 
+## v1.0.6 (2023-02-20)
+### Fix
+* Incorrect definition of 'linked' ([`70c3c03`](https://github.com/in03/proxima/commit/70c3c03ecc129f47e2ab41b5de6bd3942ed67632))
+* Inverted offline logic ([`1ce6aa5`](https://github.com/in03/proxima/commit/1ce6aa5dc0dc8a2df777b6d3967c929a4c06dcd0))
+* **settings:** Settings priority issues ([`b11c5de`](https://github.com/in03/proxima/commit/b11c5de79e0ec84d927110c1e03f6feec0b32ee5))
+
+### Documentation
+* **is_offline:** Disambiguate 'Offline' ([`99ac4ef`](https://github.com/in03/proxima/commit/99ac4ef3cd41ef64aa29a258bdf0939fcf43813f))
+* **is_linked:** Disambiguate 'linked' ([`572294f`](https://github.com/in03/proxima/commit/572294ff395a482f1a487360e05fa24bebd2a6b5))
+
 ## v1.0.5 (2023-02-09)
 ### Fix
 * **build:** Typed git vars were unassigned ([`ad53709`](https://github.com/in03/proxima/commit/ad5370969247f785118793a5eb775e1d49bf73b1))

@@ -1,15 +1,28 @@
 import logging
 import os
+import shutil
 import subprocess
-from typing import List, Optional
+from enum import Enum
+from typing import List, Literal, Optional
 
 import typer
 from pyfiglet import Figlet
 from rich import print
 from rich.console import Console
+from rich.prompt import Confirm
+from rich.syntax import Syntax
+
+from proxima.settings import (
+    default_settings_file,
+    dotenv_settings_file,
+    user_settings_file,
+)
 
 # Init classes
 cli_app = typer.Typer()
+config_app = typer.Typer()
+cli_app.add_typer(config_app, name="config")
+
 console = Console()
 
 logger = logging.getLogger("proxima")
@@ -63,11 +76,11 @@ def queue():
 
     # Init
     from proxima.app import core
-    from proxima.settings import settings
+    from proxima.settings.manager import settings
 
     core.setup_rich_logging()
     logger = logging.getLogger("proxima")
-    logger.setLevel(settings["app"]["loglevel"])
+    logger.setLevel(settings.dict()["app"]["loglevel"])
 
     from proxima.cli import queue
 
@@ -171,16 +184,190 @@ def celery(
     )
 
 
-@cli_app.command()
-def config():
-    """Open user settings configuration file for editing"""
-    from proxima.settings import settings
+@config_app.callback(invoke_without_command=True)
+def config_callback(ctx: typer.Context):
+    """
+    Manage Proxima's configuration
 
-    print("\n")
-    console.rule("[green bold]Open 'user_settings.yaml' config[/] :gear:", align="left")
-    print("\n")
+    Proxima's configuration is layered.
 
-    typer.launch(settings.user_file)
+    Toml is populated with modifiable defaults.
+
+    .env overrides toml configuration.
+    Environment variables override .env and toml.
+
+    Run `--help` on any of the below commands for further details.
+    """
+
+    # Ensure 'user_settings_file' exists
+    if not os.path.exists(user_settings_file):
+        with open(user_settings_file, "x"):
+            print("[cyan]Initialised user toml config file")
+
+    # Ensure 'dotenv_settings_file' exists
+    if not os.path.exists(dotenv_settings_file):
+        with open(dotenv_settings_file, "x"):
+            print("[cyan]Initialised dotenv config file")
+
+    if ctx.invoked_subcommand:
+        return
+    from proxima.settings.manager import settings
+
+    if settings:
+        print("[[magenta]Consolidated configuration]")
+        print(settings.dict())
+
+
+class RWConfigTypes(str, Enum):
+    """Read and writable config types"""
+
+    dotenv = "dotenv"
+    toml = "toml"
+
+
+class RConfigTypes(str, Enum):
+    """Readable config types"""
+
+    env = "env"
+    dotenv = "dotenv"
+    toml = "toml"
+
+
+@config_app.command("view")
+def view_configuration(
+    config_type: RConfigTypes = typer.Argument(
+        ..., help="View configuration", show_default=False
+    )
+):
+    """
+    Print the current user configuration to screen.
+
+    Supply a configuration type to view, or run
+    `proxima config` to see consolidated configuration.
+    """
+
+    match config_type:
+        case "dotenv":
+            print("[[magenta]Proxima dotenv configuration]")
+            print(
+                Syntax.from_path(
+                    dotenv_settings_file, theme="nord-darker", line_numbers=True
+                )
+            )
+
+        case "env":
+            print("[[magenta]Proxima environment variables]")
+
+            prefix: str = "PROXIMA"
+            variables: dict[str, str] = {}
+            for key, value in os.environ.items():
+                if key.startswith(prefix):
+                    variables.update({key: value})
+
+            [print(f"{x}={os.environ[x]}") for x in variables]
+            return
+
+        case "toml":
+            print("[[magenta]Proxima toml configuration]")
+            print(
+                Syntax.from_path(
+                    user_settings_file, theme="nord-darker", line_numbers=True
+                )
+            )
+
+        case _:
+            raise typer.BadParameter(f"Unsupported config type: '{config_type}'")
+
+
+@config_app.command("edit")
+def edit_configuration(
+    config_type: RWConfigTypes = typer.Argument(
+        ..., help="Edit configuration", show_default=False
+    )
+):
+    """
+    Edit provided user configuration.
+
+    Note that environment variables, while supported,
+    are not editable here.
+
+    Modify them in your own shell environment.
+    """
+
+    match config_type:
+        case "dotenv":
+            print("[cyan]Editing .env config file")
+            typer.launch(str(dotenv_settings_file))
+            return
+
+        case "toml":
+            print("[cyan]Editing user toml config file")
+            typer.launch(str(user_settings_file))
+
+        case _:
+            raise typer.BadParameter(f"Unsupported config type: '{config_type}'")
+
+
+@config_app.command("reset")
+def reset_configuration(
+    config_type: RWConfigTypes = typer.Argument(
+        ..., help="Reset configuration", show_default=False
+    ),
+    force: bool = typer.Option(
+        False, "--force", help="Bypass any confirmation prompts.", show_default=False
+    ),
+):
+    """
+    Reset the provided user configuration type.
+
+    Be aware that this is IRREVERSIBLE.
+    """
+
+    if not force:
+        if not Confirm.ask(
+            "[yellow]Woah! The action you're about to perform is un-undoable![/]\n"
+            f"Are you sure you want to reset the {config_type} configuration file to defaults?"
+        ):
+            return
+
+    match config_type:
+        case "dotenv":
+            with open(dotenv_settings_file, "w"):
+                print("[cyan]Reset toml config file to defaults")
+                return
+
+        case "toml":
+            shutil.move(default_settings_file, user_settings_file)
+            print("[cyan]Reset toml config to defaults")
+            return
+
+
+@config_app.command("reset")
+def reset_all_configuration(
+    force: bool = typer.Option(
+        False, "--force", help="Bypass any confirmation prompts.", show_default=False
+    )
+):
+    """
+    Reset ALL user configuration types to defaults.
+
+    This will result in '.env' being made empty
+    and 'user_settings.toml' being reset to default values.
+
+    Environment variables will NOT be unset.
+    Run `proxima view env` to see their current values.
+    """
+
+    # Prompt for confirmation if not forced
+    if not force:
+        if not Confirm.ask(
+            "[yellow]Woah! The action you're about to perform is un-undoable![/]\n"
+            "Are you sure you want to reset all user configuration to defaults?"
+        ):
+            return
+
+    reset_configuration(config_type=RWConfigTypes.dotenv, force=True)
+    reset_configuration(config_type=RWConfigTypes.toml, force=True)
 
 
 def main():

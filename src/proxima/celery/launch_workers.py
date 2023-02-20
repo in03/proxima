@@ -12,12 +12,12 @@ import shortuuid
 from rich import print
 
 from proxima.app import core, package
-from proxima.settings import settings
+from proxima.settings.manager import settings
 
-core.install_rich_tracebacks()
+core.install_rich_tracebacks(show_locals=False)
 
 logger = logging.getLogger("proxima")
-logger.setLevel(settings["app"]["loglevel"])
+logger.setLevel(settings.app.loglevel)
 
 
 def prompt_worker_amount(cpu_cores: int):
@@ -77,18 +77,15 @@ def new_worker(nickname: str = "") -> int:
     def get_new_console():
         """Get os command to spawn process in a new console window"""
 
-        # Get new terminal
-        worker_terminal_args = settings["worker"]["terminal_args"]
-
         # Check if any args are on path. Probably terminal executable.
-        executable_args = [which(x) for x in worker_terminal_args]
+        executable_args = [which(x) for x in settings.worker.terminal_args]
         if executable_args:
             return ""
 
         # TODO: Ensure partial matches work here too
         # Make sure no starting args exist
         start_commands = ["open", "start"]
-        if any(x in start_commands for x in worker_terminal_args):
+        if any(x in start_commands for x in settings.worker.terminal_args):
             return ""
 
         # TODO: Need to test starting workers on other platforms
@@ -116,13 +113,13 @@ def new_worker(nickname: str = "") -> int:
 
     launch_cmd = [
         get_new_console(),
-        *settings["worker"]["terminal_args"],
+        *settings.worker.terminal_args,
         f'"{package.get_script_from_package("celery")}"',
         "-A proxima.celery",
         "worker",
         get_worker_name(nickname),
         get_worker_queue(),
-        *settings["worker"]["celery_args"],
+        *settings.worker.celery_args,
     ]
 
     logger.info(f"[cyan]NEW WORKER - {nickname}[/]")

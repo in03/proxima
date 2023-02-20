@@ -1,0 +1,41 @@
+# Proxy paths, codecs, resolution, filters, etc are all inherited from the queuer's user configuration.
+# 'Celery' and 'Worker' settings are pulled from local user configuration.
+
+[app]
+  loglevel = "WARNING"
+  check_for_updates = true
+  update_check_url = "https://github.com/in03/proxima" # If you fork the repo, change this to your fork
+  version_constrain = true # DANGEROUS! If false, allows any version of worker to take jobs.
+
+[paths]
+  proxy_root = "R:/ProxyMedia"  # Proxy media retains source folder structure
+  ffmpeg_logfile_dir = "R:/ProxyMedia/@logs"
+  linkable_proxy_suffix_regex = [ "-\\d", "_\\d", "S\\d*" ] # -1, # _1, #_S001 respectively
+
+[proxy]
+  nickname = "ProRes 422 720P"
+  ffmpeg_loglevel = "error" # "quiet", "panic", "fatal", "error", "warning", "info", "verbose", "debug"
+  codec = "prores"
+  vertical_res = "720"
+  profile = "0"
+  pix_fmt = "yuv422p"
+  audio_codec = "pcm_s16le"
+  audio_samplerate = "48000"
+  misc_args = [ "-hide_banner", "-stats" ]
+  ext = ".mov"
+  overwrite = true
+
+[filters]
+  # Remove elements from lists to disable filter
+  extension_whitelist  = [ ".mov", ".mp4", ".mxf", ".avi" ]
+  framerate_whitelist  = [24, 25, 30, 50, 60]
+
+[broker]
+  url =  "redis://192.168.1.19:6379/0"
+  job_expires = 3600 # 1 hour (cleared if not received by worker)
+  result_expires = 86400 # 1 day (Needed for webapp monitor)
+
+[worker]
+  loglevel = "INFO"
+  terminal_args = ["wt"] # use alternate shell? Recommend windows terminal ("wt") on Windows.
+  celery_args = [ "-l", "INFO", "-P", "solo", "--without-mingle", "--without-gossip" ]
