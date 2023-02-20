@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "proxima"
-version = "1.0.5"
+version = "1.0.6"
 description = "Transcode source media in DaVinci Resolve using multiple machines. Great for quickly creating proxies without interrupting work."
 authors = ["Caleb Trevatt <in03@users.noreply.github.com>"]
 license = "MIT"
