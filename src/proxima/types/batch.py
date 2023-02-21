@@ -206,8 +206,11 @@ class Batch:
                 # also need to test for oplock issues"
             return
 
-        # Handle linking
-        from rich.progress import track
+        self.link_existing_unlinked()
+
+    def link_existing_unlinked(self):
+        self.mismatch_fail = []
+        self.link_success = []
 
         for job in progress.track(
             self.existing_unlinked, description="[cyan]Linking...", transient=True
