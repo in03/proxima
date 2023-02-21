@@ -4,7 +4,7 @@ import os
 from dataclasses import asdict
 from functools import cached_property
 
-from rich import print
+from rich import print, progress
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
@@ -37,10 +37,12 @@ class Batch:
         """
         Project name derived from first job in batch.
 
-        Property is cached to prevent KeyError if handler removes all jobs.
+        Property is cached to prevent KeyError
+        if handler removes all jobs.
 
         Returns:
-            project_name: The name of the Resolve project the job refers to
+            project_name: The name of the Resolve project
+            the job refers to
         """
         try:
             return self.batch[0].project.project_name
@@ -53,10 +55,12 @@ class Batch:
         """
         Timeline name derived from first job in batch.
 
-        Timeline is cached to prevent KeyError if handler removes all jobs.
+        Timeline is cached to prevent KeyError
+        if handler removes all jobs.
 
         Returns:
-            timeline_name: The name of the Resolve timeline the job refers to
+            timeline_name: The name of the Resolve timeline
+            the job refers to
         """
         try:
             return self.batch[0].project.timeline_name
@@ -161,44 +165,40 @@ class Batch:
         """Remove linked and online source media, i.e. \"healthy\" """
         self.batch = [x for x in self.batch if not x.is_linked or x.is_offline]
 
-    def handle_existing_unlinked(self):
+    def get_existing_unlinked(self):
         """
         Prompts to link or re-render existing but unlinked media.
         """
 
         logger.info("[cyan]Checking for existing, unlinked media...")
-        existing_unlinked, mismatch_fail, link_success = [], [], []
 
-        if not self.batch:
-            raise ValueError("No batch to handle!")
-
-        existing_unlinked = [
+        self.existing_unlinked = [
             x for x in self.batch if not x.is_linked and x.newest_linkable_proxy
         ]
 
         # Exit early if none
-        if not len(existing_unlinked) > 0:
+        if not len(self.existing_unlinked) > 0:
             logger.debug("[magenta]No existing unlinked media detected.")
             return
 
         # 'Online' handled media so the offline handler doesn't catch it
         for x in self.batch:
-            if x in existing_unlinked:
+            if x in self.existing_unlinked:
                 x.is_offline = False
 
         # Log with abbreviated file paths
-        for x in existing_unlinked:
+        for x in self.existing_unlinked:
             logger.debug(
                 f"[magenta] * Existing unlinked - '{x.source.file_name}' <-> {(core.shorten_long_path(x.newest_linkable_proxy))}"
             )
 
         # Prompt user to relink or rerender
         if not Confirm.ask(
-            f"\n[yellow][bold]{len(existing_unlinked)} source files have existing but unlinked proxy media.\n"
+            f"\n[yellow][bold]{len(self.existing_unlinked)} source files have existing but unlinked proxy media.\n"
             "[/bold]Would you like to link them? If not they will be re-rendered."
         ):
             # Mark all as requeued and carry on
-            self.existing_link_requeued_count = len(existing_unlinked)
+            self.existing_link_requeued_count = len(self.existing_unlinked)
 
             if settings.proxy.overwrite:
                 logger.debug("[magenta] * Existing proxies set to be overwritten")
@@ -209,8 +209,8 @@ class Batch:
         # Handle linking
         from rich.progress import track
 
-        for job in track(
-            existing_unlinked, description="[cyan]Linking...", transient=True
+        for job in progress.track(
+            self.existing_unlinked, description="[cyan]Linking...", transient=True
         ):
             if not job.newest_linkable_proxy:
                 continue
@@ -218,36 +218,39 @@ class Batch:
             try:
                 job.link_proxy(job.newest_linkable_proxy)
             except exceptions.ResolveLinkMismatchError:
-                mismatch_fail.append(job)
+                self.mismatch_fail.append(job)
                 logger.error(
                     f"[red]Failed to link '{os.path.basename(job.newest_linkable_proxy)}' - proxy does not match source!"
                 )
             else:
-                link_success.append(job)
+                self.link_success.append(job)
                 self.batch.remove(job)
 
         # Mark any successful links
-        self.existing_link_success_count = len(link_success)
+        self.existing_link_success_count = len(self.link_success)
 
         # Prompt to requeue any failed links
-        if mismatch_fail:
-            if not Confirm.ask(
-                f"[yellow]{len(mismatch_fail)} existing proxies failed to link.\n"
-                "They may be corrupt or incomplete. Re-render them?"
-            ):
-                # Mark failed links as failed and remove
-                [self.batch.remove(x) for x in mismatch_fail]
-                self.existing_link_failed_count = len(mismatch_fail)
-                return
+        if not self.mismatch_fail:
+            return
+        if not Confirm.ask(
+            f"[yellow]{len(self.mismatch_fail)} existing proxies failed to link.\n"
+            "They may be corrupt or incomplete. Re-render them?"
+        ):
+            # Mark failed links as failed and remove
+            [self.batch.remove(x) for x in self.mismatch_fail]
+            self.existing_link_failed_count = len(self.mismatch_fail)
+            return
 
-            # Mark failed links as requeued, not offline
-            self.existing_link_requeued_count += len(mismatch_fail)
+        # Mark failed links as requeued, not offline
+        self.existing_link_requeued_count += len(self.mismatch_fail)
 
     def handle_offline_proxies(self):
-        """Prompt to rerender proxies that are 'linked' but their media does not exist.
+        """
+        Prompt to rerender 'linked' but offline proxies.
 
-        Resolve refers to proxies that are linked but inaccessible as 'offline'.
-        This prompt can warn users to find that media if it's missing, or rerender if intentionally unavailable.
+        Resolve refers to linked, inaccessible proxy media as 'offline'.
+        This prompt warns that media is missing
+        and facilitiates rerendering if desirable.
         """
 
         logger.info("[cyan]Checking for offline proxies...")

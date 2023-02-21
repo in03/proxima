@@ -59,7 +59,7 @@ def main():
     # handle healthy media.
 
     batch.remove_healthy()
-    batch.handle_existing_unlinked()
+    batch.get_existing_unlinked()
     batch.remove_healthy()
     batch.handle_offline_proxies()
     app_status = AppStatus("proxima")
@@ -122,4 +122,5 @@ def main():
 
 # TODO: Refactor queue module
 # This module should be CLI/API agnostic
-# Move interactivity to the CLI module, then this queue module can move to 'app'
+# Move interactivity to the CLI module,
+# then this queue module can move to 'app'

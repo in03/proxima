@@ -195,8 +195,7 @@ settings = None
 
 
 try:
-    settings = Settings()
-
+    settings = Settings()  # type: ignore
 except ValidationError as e:
     print(
         Panel(
