@@ -38,15 +38,15 @@ DaVinci Resolve's greatly benefits from having all-intra media, like ProRes or D
 - [x] Automatically checks for updates
 - [x] Control Celery with Celery commands from CLI, even when installed with pipx
 - [x] Multi progress-bar [#190](https://github.com/in03/proxima/issues/190)
+- [x] Faster config parsing and validation with TOML [#258](https://github.com/in03/proxima/pull/258) 
+- [x] Manage configuration from CLI [#258](https://github.com/in03/proxima/pull/258)
 
 ## Roadmap ##
 - [ ] Better Apple silicon support
-- [ ] Faster config parsing and validation with TOML [#207](https://github.com/in03/proxima/issues/207)
 - [ ] Interactive timeline selection [#161](https://github.com/in03/proxima/issues/161)
 - [ ] Better resource-utilization with encode-chunking
 - [ ] Multiple, customizable proxy-presets with rule-based matching [#201](https://github.com/in03/proxima/issues/201)
 - [ ] Easier cross-platform paths via path-mapping
-- [ ] Manage configuration from CLI
 - [ ] Pre-flight checks - encoding settings validation 
 - [ ] UI improvements
 - [ ] Monitor Web App
