@@ -1444,6 +1444,21 @@ reference = "HEAD"
 resolved_reference = "59fad01d302f3628bfe9979a90da59196216e2b4"
 
 [[package]]
+name = "pyee"
+version = "9.0.4"
+description = "A port of node.js's EventEmitter to python."
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pyee-9.0.4-py2.py3-none-any.whl", hash = "sha256:9f066570130c554e9cc12de5a9d86f57c7ee47fece163bbdaa3e9c933cfbdfa5"},
+    {file = "pyee-9.0.4.tar.gz", hash = "sha256:2770c4928abc721f46b705e6a72b0c59480c4a69c9a83ca0b00bb994f1ea4b32"},
+]
+
+[package.dependencies]
+typing-extensions = "*"
+
+[[package]]
 name = "pyfiglet"
 version = "0.8.post1"
 description = "Pure-python FIGlet implementation"
@@ -1564,6 +1579,22 @@ files = [
 
 [package.extras]
 cli = ["click (>=5.0)"]
+
+[[package]]
+name = "python-ffmpeg"
+version = "2.0.2"
+description = "A python binding for FFmpeg which provides sync and async APIs"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "python-ffmpeg-2.0.2.tar.gz", hash = "sha256:56929580b3a2f4b55cd6f1a6928e9e689d525e0198b5194185c144b58e2de06a"},
+    {file = "python_ffmpeg-2.0.2-py3-none-any.whl", hash = "sha256:c7528eba0d8dfcb511bab08946fc14a90bd0fa41c456b4621768392295d45ba2"},
+]
+
+[package.dependencies]
+pyee = "*"
+typing-extensions = "*"
 
 [[package]]
 name = "python-gitlab"
@@ -2391,4 +2422,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10.0,<4.0.0"
-content-hash = "57f293f2ed27706e83b5259ccf29e5932592e46579a01de26151f50293db5dfe"
+content-hash = "d7e04778ca8a1d37ec654e6b44d2fd1dbab567f405e8e322432c2fd38d78f386"

@@ -3,8 +3,9 @@ import os
 import pathlib
 import re
 from dataclasses import dataclass
-from functools import cached_property
+from functools import cached_property, lru_cache
 from glob import glob
+from math import floor
 
 from proxima.app import core, exceptions
 from proxima.celery import ffmpeg
@@ -60,6 +61,10 @@ class Job:
         self.proxy_offline_status: bool = (
             True if self.source.proxy_status == "Offline" else False
         )
+        # Segments
+        self.segment_number: int | None = None
+        self.segment_range_in: int | None = None
+        self.segment_range_out: int | None = None
 
     def __repr__(self):
         status = "linked" if self.is_linked and not self.is_offline else "unlinked"

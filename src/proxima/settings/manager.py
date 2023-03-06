@@ -106,6 +106,14 @@ class Proxy(BaseModel):
         ...,
         description="Whether or not to overwrite any existing proxy files on collision",
     )
+    split_and_stitch_encoding: bool = Field(
+        ...,
+        description="Whether or not to use 'split and stitch' style encoding for better parallelisation",
+    )
+    segment_duration: int = Field(
+        ...,
+        description="Duration between each split",
+    )
 
 
 class Filters(BaseModel):
@@ -195,8 +203,7 @@ settings = None
 
 
 try:
-    settings = Settings()
-
+    settings = Settings()  # type: ignore
 except ValidationError as e:
     print(
         Panel(

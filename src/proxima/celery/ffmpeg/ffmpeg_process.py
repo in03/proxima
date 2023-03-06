@@ -148,10 +148,10 @@ class FfmpegProcess:
             progress_bar.stop()
             process.kill()
             print("[yellow][KeyboardInterrupt] FFmpeg process killed. Exiting...[/]")
-            core.app_exit(0)
+            return
 
         except Exception as e:
             progress_bar.stop()
             process.kill()
             logger.critical(f"[red][Error] {e}\nExiting...[/]")
-            core.app_exit(1, -1)
+            return

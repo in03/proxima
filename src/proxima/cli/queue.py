@@ -1,6 +1,6 @@
 import logging
 
-from celery import group
+from celery import chord, group
 from pydavinci import davinci
 from pydavinci.exceptions import TimelineNotFound
 from rich import print
@@ -9,8 +9,9 @@ from rich.panel import Panel
 from proxima import ProxyLinker, core, shared
 from proxima.app import resolve
 from proxima.app.checks import AppStatus
-from proxima.celery.tasks import encode_proxy
+from proxima.celery.tasks import concat_segments, encode_proxy, encode_segment
 from proxima.settings.manager import settings
+from proxima.types.job import Job
 
 core.install_rich_tracebacks()
 
@@ -18,7 +19,7 @@ logger = logging.getLogger("proxima")
 logger.setLevel(settings.app.loglevel)
 
 
-def queue_batch(batch: list):
+def queue_standard_batch(batch: list[dict]):
     """Block until all queued tasks finish, notify results."""
 
     logger.info("[cyan]Queuing batch...")
@@ -28,6 +29,41 @@ def queue_batch(batch: list):
 
     # Create task group to retrieve job results as batch
     task_group = group(callable_tasks)
+
+    progress = shared.ProgressTracker()
+
+    # Queue job
+    results = task_group.apply_async(expires=settings.broker.job_expires)
+    logger.debug(f"[magenta] * Queued batch with ID {results}[/]")
+
+    # report progress is blocking!
+    final_results = progress.report_progress(results)
+    return final_results
+
+
+def queue_split_batch(batch: list[dict]):
+    """Block until all queued tasks finish, notify results."""
+
+    logger.info("[cyan]Queuing split batch...")
+
+    unique_job_file_names = {job_dict["job"]["output_file_path"] for job_dict in batch}
+
+    nested_jobs = []
+    for job_dict in batch:
+        current_sort = []
+
+        for unique_file_path in unique_job_file_names:
+            if job_dict["job"]["output_file_path"] == unique_file_path:
+                current_sort.append(job_dict)
+
+        nested_jobs.append(group(current_sort))
+
+    # Wrap task objects in Celery task function
+    callable_tasks = chord((encode_segment.s(x) for x in batch), concat_segments.s())
+
+    # Create task group to retrieve job results as batch
+    task_group = group(callable_tasks)
+    print(task_group)
 
     progress = shared.ProgressTracker()
 
@@ -59,9 +95,10 @@ def main():
     # handle healthy media.
 
     batch.remove_healthy()
-    batch.handle_existing_unlinked()
+    batch.get_existing_unlinked()
     batch.remove_healthy()
     batch.handle_offline_proxies()
+
     app_status = AppStatus("proxima")
 
     print(
@@ -88,7 +125,12 @@ def main():
     core.notify(f"Started encoding job '{r_.project.name} - {r_.active_timeline.name}'")
 
     # Queue tasks to workers and track task progress
-    results = queue_batch(batch.hashable)
+    if settings.proxy.split_and_stitch_encoding:
+        batch.split_jobs()
+        results = queue_split_batch(batch.hashable)
+
+    else:
+        results = queue_standard_batch(batch.hashable)
 
     if results.failed():
         fail_message = "Some videos failed to encode!"
@@ -104,7 +146,7 @@ def main():
 
     _ = results.join()  # Must always call join, or results don't expire
 
-    proxy_linker = ProxyLinker(batch.batch)
+    proxy_linker = ProxyLinker(batch.job_list)
 
     try:
         proxy_linker.batch_link()
@@ -122,4 +164,5 @@ def main():
 
 # TODO: Refactor queue module
 # This module should be CLI/API agnostic
-# Move interactivity to the CLI module, then this queue module can move to 'app'
+# Move interactivity to the CLI module,
+# then this queue module can move to 'app'

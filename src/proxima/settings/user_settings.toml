@@ -24,6 +24,8 @@
   misc_args = [ "-hide_banner", "-stats" ]
   ext = ".mov"
   overwrite = true
+  split_and_stitch_encoding = true
+  segment_duration = 30 # in seconds
 
 [filters]
   # Remove elements from lists to disable filter
