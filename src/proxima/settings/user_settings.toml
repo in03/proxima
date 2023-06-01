@@ -8,8 +8,8 @@
   version_constrain = true # DANGEROUS! If false, allows any version of worker to take jobs.
 
 [paths]
-  proxy_root = "R:/ProxyMedia"  # Proxy media retains source folder structure
-  ffmpeg_logfile_dir = "R:/ProxyMedia/@logs"
+  proxy_root = "/Users/danielbunker/Resolve/ProxyMedia"  # Proxy media retains source folder structure
+  ffmpeg_logfile_dir = "/Users/danielbunker/Resolve/ProxyMedia/@logs"
   linkable_proxy_suffix_regex = [ "-\\d", "_\\d", "S\\d*" ] # -1, # _1, #_S001 respectively
 
 [proxy]

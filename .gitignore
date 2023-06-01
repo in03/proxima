@@ -117,3 +117,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+src/proxima/settings/user_settings.toml
