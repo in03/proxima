@@ -1,9 +1,22 @@
 [tool.poetry]
-name = "proxima"
-version = "1.0.6"
+name = "dr_proxima"
+version = "1.0.7"
 description = "Transcode source media in DaVinci Resolve using multiple machines. Great for quickly creating proxies without interrupting work."
-authors = ["Caleb Trevatt <in03@users.noreply.github.com>"]
+authors = ["Caleb Trevatt <sk188okj@duck.com>"]
 license = "MIT"
+readme = "README.md"
+homepage = "https://in03.github.com/proxima"
+repository = "https://github.com/in03/proxima"
+keywords = ["DaVinci Resolve", "Scripting", "Proxy", "Transcode", "Distributed", "Batch"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+]
+
+packages = [
+    {include = "src/proxima"}
+]
 
 include = ["version_constraint_key"]
 
@@ -28,9 +41,9 @@ semver = "^2.13.0"
 click = "^8.1.3"
 shellingham = "^1.5.0.post1"
 notify-py = "^0.3.42"
-pydavinci = {git = "https://github.com/in03/pydavinci"}
 pydantic = {extras = ["dotenv"], version = "^1.10.4"}
 rtoml = "^0.9.0"
+pydavinci-18 = "^0.3.1"
 
 [tool.poetry.group.dev.dependencies]
 isort = "^5.10.1"

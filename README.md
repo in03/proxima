@@ -1,4 +1,4 @@
-# Proxima :sparkles:
+# Proxima ✨
 
 ![proxima logo](https://in03.github.io/proxima/images/proxima_banner_vector.svg)
 
@@ -13,7 +13,7 @@
 
 ---
 
-**Check out the Docs!** :sparkles: https://in03.github.io/proxima/
+**Check out the Docs!** ✨ https://in03.github.io/proxima/
 
 ---
 
