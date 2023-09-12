@@ -2,7 +2,7 @@ fail_fast: false
 repos:
 
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v2.42.0
+    rev: 3.8.2
     hooks:
       - id: commitizen
 
@@ -12,7 +12,7 @@ repos:
     -   id: isort
 
   - repo: https://github.com/psf/black
-    rev: 23.1.0
+    rev: 23.9.1
     hooks:
     -   id: black
 
