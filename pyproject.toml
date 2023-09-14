@@ -15,7 +15,7 @@ classifiers = [
 ]
 
 packages = [
-    {include = "src/proxima"}
+    {include = "proxima"}
 ]
 
 include = ["version_constraint_key"]
@@ -77,7 +77,7 @@ skip="__init__.py"
 
 [tool.semantic_release]
 version_variable = [
-    "src/proxima/__init__.py:__version__",
+    "proxima/__init__.py:__version__",
     "pyproject.toml:version"
 ]
 branch = "main"
