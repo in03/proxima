@@ -170,12 +170,14 @@ def encode_proxy(self, job_dict: dict) -> str:
         # labels: enhancement
         # VIDEO FILTERS
         "-vf",
-        f"scale=-2:{ps.vertical_res},"
-        f"scale={job.input_level}:out_range=limited, "
-        f"{ffmpeg_video_flip(job)}"
-        f"format={ps.pix_fmt}"
-        if ps.pix_fmt
-        else "",
+        (
+            f"scale=-2:{ps.vertical_res},"
+            f"scale={job.input_level}:out_range=limited, "
+            f"{ffmpeg_video_flip(job)}"
+            f"format={ps.pix_fmt}"
+            if ps.pix_fmt
+            else ""
+        ),
         # AUDIO
         "-c:a",
         ps.audio_codec,
