@@ -19,7 +19,7 @@ from pydantic.env_settings import SettingsSourceCallable
 from rich import print
 from rich.panel import Panel
 
-from proxima.app.core import setup_rich_logging, app_exit
+from proxima.app.core import app_exit, setup_rich_logging
 from proxima.settings import dotenv_settings_file, user_settings_file
 
 setup_rich_logging()
